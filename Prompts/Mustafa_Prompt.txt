@@ -1,0 +1,52 @@
+Ben Mustafa'yım. Eco Quest adlı bir TÜBİTAK Unity projesinde çalışıyorum. Proje C:\GameProjects\EcoQuest klasöründe ve GitHub'a bağlı.
+
+PROJE BİLGİLERİ:
+- 2D Top-Down piksel art çevre yönetimi oyunu
+- Tile-based yerleşim sistemi
+- Real-time gün/gece döngüsü
+- Windows PC hedefli
+- 3 kişilik ekip: Mustafa (ben), Hanefi, Bilge
+
+BENİM GÖREV ALANIM:
+Ben projenin teknik lideriyim. Aşağıdaki sistemlerden sorumluyum:
+1. Oyuncu hareketi ve kamera sistemi (WASD hareket, kamera takibi, bina modunda kamera kaydırma)
+2. Tilemap ve harita iskeleti (6 bölge: Buzul, Rüzgarlı, Şehir, Güneşli, Sanayi, Su Kaynağı)
+3. Gün/gece döngüsü (gerçek zamanlı, güneş paneli verimi etkisi)
+4. Bina yerleştirme sistemi (tile-based build mode, ghost preview, yerleşim kuralları)
+5. Kablo ve boru sistemi (elektrik ve su taşıma)
+6. Enerji yönetim sistemi (üretim-tüketim dengesi)
+7. Düşman temel AI sistemi (patrol, hedef seçme, saldırı davranışı)
+8. Vakum silahı mod sistemi (Vakum/Anti-vakum/Su fırlatma)
+9. YEP (Ekolojik Denge Puanı) sistemi
+10. İklim değişikliği zincirleri (Karbon → Sıcaklık → Buzul → Su → Tarım → Yangın)
+
+KLASÖR YAPISI:
+- Assets/_Shared/ → Ortak kodlar ve assetler (SADECE ben düzenlerim)
+- Assets/Mustafa/ → Benim çalışma alanım (kodlarımı buraya yazarım)
+- Assets/Hanefi/ → Hanefi'nin alanı (DOKUNMAM)
+- Assets/Bilge/ → Bilge'nin alanı (DOKUNMAM)
+
+KURALLAR:
+1. Kodlarımı SADECE Assets/Mustafa/ klasörüne yazarım.
+2. Assets/_Shared/ klasöründeki scriptleri sadece ben düzenlerim.
+3. Hanefi ve Bilge'nin klasörlerine dokunmam.
+4. _Shared klasöründeki GameEvents.cs, GameEnums.cs, GameManager.cs, GameConstants.cs dosyalarını referans olarak kullanırım.
+5. Yeni bir event veya enum gerektiğinde _Shared'daki ilgili dosyayı güncellerim.
+
+MEVCUT ORTAK DOSYALAR:
+- Assets/_Shared/Scripts/Core/GameEvents.cs → Merkezi event sistemi
+- Assets/_Shared/Scripts/Core/GameEnums.cs → Tüm enum tanımları
+- Assets/_Shared/Scripts/Core/GameManager.cs → Singleton kaynak/gösterge yöneticisi
+- Assets/_Shared/Scripts/Core/GameConstants.cs → Sabit değerler (maliyet, hız vb.)
+- Assets/_Shared/Scripts/Data/BuildingData.cs → Bina ScriptableObject
+- Assets/_Shared/Scripts/Data/EnemyData.cs → Düşman ScriptableObject
+
+GDD DOSYASI:
+Projenin tam oyun tasarım belgesi C:\GameProjects\EcoQuest\GDD.md dosyasında. Detaylı bilgi için bu dosyayı oku.
+
+GIT KULLANIMI:
+Her iş birimini bitirdiğimde: git add . → git commit -m "açıklama" → git push
+Çalışmaya başlamadan önce: git pull
+
+ŞİMDİ NE YAPMALIYIM:
+Aşama 1'deki görevlerime başlamalıyım. İlk olarak oyuncu hareketi + kamera sistemini oluşturmalıyım.

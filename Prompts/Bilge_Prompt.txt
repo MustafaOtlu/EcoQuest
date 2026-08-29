@@ -1,0 +1,53 @@
+Ben Bilge'yim. Eco Quest adlı bir TÜBİTAK Unity projesinde çalışıyorum. Proje C:\GameProjects\EcoQuest klasöründe ve GitHub'a bağlı.
+
+PROJE BİLGİLERİ:
+- 2D Top-Down piksel art çevre yönetimi oyunu
+- Tile-based yerleşim sistemi
+- Real-time gün/gece döngüsü
+- Windows PC hedefli
+- 3 kişilik ekip: Mustafa (teknik lider), Hanefi, Bilge (ben)
+
+BENİM GÖREV ALANIM:
+1. Çöp/atık spawning ve toplama sistemi (haritaya çöp spawn, vakum silahı ile toplama)
+2. Geri dönüşüm mekaniği (toplanan çöp → metal/plastik dönüşümü)
+3. Geri Dönüşüm Tesisi binası (otomatik dönüşüm, enerji tüketimi, 3 boyut)
+4. Su Arıtma Tesisi + Su Deposu binaları (su temizleme, depolama, boru bağlantısı)
+5. Duman Canavarı düşmanı (güneş paneli verimini düşürür, filtreyle etkisizleştirilir)
+6. Salya Canavarı düşmanı (suda bulunur, balıkları zehirler, su arıtma ile azaltılır)
+7. Çocuk karakter sahnesi (tek oda, pencere manzarası, çocuğun durumsal tepkileri)
+8. Balık mekaniği (su kalitesine bağlı popülasyon, gösterge işlevi)
+
+KLASÖR YAPISI:
+- Assets/_Shared/ → Ortak kodlar (SADECE Mustafa düzenler, ben SADECE okurum/kullanırım)
+- Assets/Mustafa/ → Mustafa'nın alanı (DOKUNMAM)
+- Assets/Hanefi/ → Hanefi'nin alanı (DOKUNMAM)
+- Assets/Bilge/ → Benim çalışma alanım (kodlarımı buraya yazarım)
+
+KURALLAR:
+1. Kodlarımı SADECE Assets/Bilge/ klasörüne yazarım.
+2. Assets/_Shared/ klasöründeki dosyaları SADECE okurum, DEĞİŞTİRMEM. Değişiklik gerekiyorsa Mustafa'ya bildiririm.
+3. Diğer kişilerin klasörlerine dokunmam.
+4. _Shared klasöründeki GameEvents, GameEnums, GameManager, GameConstants dosyalarını referans olarak kullanırım.
+
+MEVCUT ORTAK DOSYALAR:
+- Assets/_Shared/Scripts/Core/GameEvents.cs → Merkezi event sistemi (OnResourceChanged, OnIndicatorChanged vb.)
+- Assets/_Shared/Scripts/Core/GameEnums.cs → Tüm enum tanımları (ResourceType, IndicatorType, BuildingType vb.)
+- Assets/_Shared/Scripts/Core/GameManager.cs → Singleton kaynak/gösterge yöneticisi (GetResource, AddResource, UpdateIndicator vb.)
+- Assets/_Shared/Scripts/Core/GameConstants.cs → Sabit değerler (maliyet, hız, zaman değerleri vb.)
+- Assets/_Shared/Scripts/Data/BuildingData.cs → Bina verileri için ScriptableObject
+- Assets/_Shared/Scripts/Data/EnemyData.cs → Düşman verileri için ScriptableObject
+
+ÖNEMLİ:
+- GameManager.Instance üzerinden kaynak ve gösterge verilerine erişirim.
+- GameEvents üzerinden olayları dinlerim (subscribe) ve tetiklerim (invoke).
+- BuildingData ve EnemyData ScriptableObject'lerini kullanarak bina/düşman davranışlarını tanımlarım.
+
+GDD DOSYASI:
+Projenin tam oyun tasarım belgesi C:\GameProjects\EcoQuest\GDD.md dosyasında. Detaylı bilgi için bu dosyayı oku.
+
+GIT KULLANIMI:
+Her iş birimini bitirdiğimde: git add . → git commit -m "açıklama" → git push
+Çalışmaya başlamadan önce: git pull
+
+ŞİMDİ NE YAPMALIYIM:
+Aşama 1'deki görevlerime başlamalıyım. İlk olarak çöp/atık spawning ve toplama sistemini oluşturmalıyım.

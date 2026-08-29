@@ -1,0 +1,258 @@
+Yapılacaklar
+Güneş paneli, Rüzgar tirübini vb. Olanların gerçekçi etkilere göre düzenlenmeli.
+biyo için: Kuşlar, balıklar vb. Ekosistem ,,, ekosistem oyuna etkisi eklenmesi.
+Çevre yönetimi için (buzullar eklenecek): Çevrenin bölgelerde tam kötü olarak değil eşit dağılım (iyi kötü dengesi)
+Geri dönüşüm ile: gübre, (Metaryellerin kullanımı) (örnek: Metal ile günel paneli vb.)
+YEP(Yenilenebilir Enerji Puanı) (Sınırlayıcı etken olarak kullanılabilir.) 
+Oyuncunun yaptıklarının ödül ceza sistemi eklenmesi gerekiyor. 
+Fazla Rüzgar tribini veya baraj yanlış kurulması bize ceza gibi şeyler vermeli.
+Karbon ayak izini neye göre belirleriz. KAİ(Karbon ayak izi) puanı olsun.
+Oyun Döngüsü (Core Loop)
+Oyuncu, çevresel sorunlarla karşı karşıya olan bir şehirde yaşamaktadır. Oyuncunun temel amacı, şehirdeki hava, su, sıcaklık, atık ve ekosistem göstergelerini takip ederek çevresel dengeyi korumak ve gelecek nesiller için yaşanabilir bir çevre oluşturmaktır.
+Oyuncunun evinde bulunan çocuk, gelecek nesilleri temsil eder ve çevrede meydana gelen değişimlerin sonuçlarını oyuncuya görünür hâle getirir. Çocuğun durumu doğrudan çevresel göstergelerden etkilenir. Örneğin hava kirliliği arttığında çocuk öksürmeye başlayabilir; iklim değişikliğine bağlı olarak sıcaklık yükseldiğinde sıcaktan rahatsız olabilir. Çevresel koşullar iyileştiğinde ise çocuğun tepkileri de olumlu yönde değişir. Şehir yeşillendiğinde ve ekosistem iyileştiğinde pencerenin önüne gelen kuşları izleyerek "Kuş sesleri ne kadar güzel!" gibi olumlu geri bildirimler verebilir.
+Çevredeki değişim aynı zamanda pencereden görülen şehir manzarasına yansır. Kirlilik arttıkça şehir daha gri, kirli ve cansız görünürken; çevresel göstergeler iyileştikçe bitki örtüsü artar, su kaynakları temizlenir ve canlılar yeniden görülmeye başlar. Böylece oyuncu kararlarının sonuçlarını hem göstergelerden hem de görsel çevreden takip edebilir.
+Oyuncu şehirde ortaya çıkan dinamik çevresel sorunları çözmek için atıkları toplar ve geri dönüştürür, yenilenebilir enerji sistemleri kurar, su kaynaklarını temizler, ağaçlandırma yapar ve ekipmanlarını geliştirir. Ancak amaç yalnızca kirliliği temizlemek değil, kaynakları doğru kullanarak çevresel dengenin devamlılığını sağlamaktır.
+Su ekosisteminin urumunu oyuncuya göstermek amacıyla basit bir balık tutma mekaniği kullanılabilir. Kirli sularda balık popülasyonu azalır veya sağlıksız balıklarla karşılaşılırken, su kalitesi yükseldikçe balık çeşitliliği ve popülasyonu artar. Böylece balık tutma mekaniği yalnızca yiyecek elde etmek için değil, su ekosisteminin sağlığını gösteren bir mekanik olarak kullanılır.
+Temel oyun döngüsü şu şekilde işler:
+Çevresel göstergeleri takip et → Sorunu belirle → Kaynakları ve uygun çözümü seç → Müdahale et → Çevredeki değişimi gözlemle → Çocuğun ve ekosistemin tepkisini gör → Kaynak/ekipmanlarını geliştir → Yeni çevresel sorunlara hazırlan.
+Burada özellikle değiştirdiğim iki şey
+Birincisi, öğrencilerin yazdığı "yemek yedirmemiz gerekir, su içirmemiz gerekir" kısmını ana mekanik yapmayın. Çocuğun açlık/susuzluk barı olursa oyuncunun dikkati "sürdürülebilir çevre oluşturma"dan "çocuğa bakma"ya kayar. Çocuk daha çok oyuncunun çevresel kararlarının insana ve gelecek nesillere etkisini gösteren bir geri bildirim mekanizması olsun.
+İkincisi, "kirli sudan tutulan balığı çocuğa yedirirsek zarar verir" fikrini de değiştirmek daha iyi olur. Bunun yerine kirli su → balıkların azalması/sağlıksızlaşması → temiz su → balıkların ve biyolojik çeşitliliğin geri dönmesi bağlantısı kurulursa çevresel sürdürülebilirlik açısından çok daha anlamlı olur.
+Böylece oyunun ana mesajı "çevreyi temizle ve çocuğu iyileştir" değil, daha güçlü biçimde "Bugünkü çevresel kararların gelecek nesillerin yaşam koşullarını belirler" olur. Bu, sürdürülebilirlik temasına çok daha iyi oturur.
+YEP (Yenilenebilir Enerji puanı)
+Nedir: oyunlardaki xp mantığı ile aynı binaların kilidinin açılmasına veya sınırlandırılmasına yarar. Sadece bina değil silahların da geliştirilebilmesi için YEP gereklidir. Maksimum 24 veya 48 level olur. (bunun sebebi : 2,3,4,6,8 gibi sayılara aynı anda bölünmesi)
+Kazanılan yerler: 
+Canavar alt etme
+Bina inşa etme
+Geri dönüştürme
+Ağaç dikme
+Yeşil alan (olabilir) : Yeşil alan saniye başı az miktarlarda YEP verir.
+Düşmanlar:
+Alev Ruhu: her binaya eriterek hasar verir ormanları da ayrıca yakar. Su ile saldırılır. 
+Duman canavarı: Özellikle Güneş paneline saldırır. Hasar vermez ama verim düşürür. Oyuncuya geldiği zaman ekranı bulanıklaştırır görüşünü kısıtlar.
+Teneke Canavarı:  Canı çok tur yavaştır. Bacasından duman canavarı çıkartır (ilerleyem aşama) her şeye saldırır.
+Salya Canavarı: Suda bulunur. Özellikle su hayvanlarının zehirli olmasına ve sayısının azalmasına yol açarken aynı zamanda su arıtmayıda oldukça yavaşlatır. 
+Asit Yağmuru: Ekinlere, binalara Zarar verir. Ekinlerin Zararlı olmasına veya yok olmasına sebep olur.
+Iklim canavarı: İklim canavarı değerler (çevre kirliliği, karbon ayak izi gibi değerlerin kötü olma durumuna göre güçlenir.) Buzulları eriterek oradaki ekosisteme Zarar vermenin yanı sıra rüzgar, güneşli, yağmurlu alanların yerlerinin değişmesine sebep olarak Güneş ve Rüzgar enerjisine büyük bir Zarar verir (boss) hükmündedir.
+Binalar/ Üretilenler
+Kablolar: Elektrik taşıma için  kullanılır. Her metre başına 1 metal parça1 plastik parça gerektirir.
+Borular: Suyu taşımak için yapılır. Metre başı 1 plastik.
+Rüzgar Türbini: 7/24 elektrik üretmek için kullanılır. 
+Gereksinimler:  1280x plastik ve iki katı metal (YEP 4. Seviyede açılık her 3 seviyede 2 tane üretme izni verir.)
+Detaylar: Günde 120 KWH elektrik üretir. (Gerçekte güneş enerjisinin 340 katı)
+Tehditler:
+    Teneke canavarı (Hasar verir)
+    Asit yağmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = üretim maliyeti.
+Güneş Paneli: Gündüzleri elektrik üretmek için kullanılır.
+Gereksinimler:  128x plastik ve iki katı metal (YEP Her seviyede 2 tane üretme izni verir.)
+Detaylar: Günde 2KWH elektrik üretir.
+Tehditler:
+   Teneke canavarı (Hasar verir)
+   Asit yağmuru (Hasar verir.)
+   Alev ruhu (Eriterek zarar verir.)
+   Duman canavarı (Verim düşürür.)
+   Fazla kurulumunda yer sıkıntısı yaşanır. 
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = üretim maliyeti.
+Su Arıtma Tesisi: Suyu Temizler.
+Gereksinimler:  64x/128x/256x plastic ve metal
+Detaylar:  (16m3/64m3/256m3) 1/4 olacak şekilde su depolar
+YEP (4, 12, 24 levellere göre küçük orta ve büyük açılır. 8 tane üretilebilir en fazla)
+Tehditler:
+    Teneke canavarı (Hasar verir)
+    Asit yağmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Boyutuna oranla maksimum = üretim maliyeti şeklinde
+Sürdürülebilirlikle ilişkisi: Temiz su kaynakları, Su tasarrufu, Su arıtımı
+Su Deposu: Suyun depolanması. 
+Gereksinimler:  64x/128x/256x plastik
+Detaylar:  (16m3/64m3/256m3) 1/4 olacak şekilde su depolar
+YEP (4, 12, 24 levellere göre küçük orta ve büyük açılır. 8 tane üretilebilir en fazla)
+Tehditler:
+    Teneke canavarı (Hasar verir)
+    Asit yağmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = üretim maliyeti.
+Geri Dönüşüm Tesisi: Toplanılan eşyaların geri dönüştürülmesinde kullanılır.
+Gereksinimler:  64x/128x/256x plastik ve iki katı metal (YEP 2/6/12 de kilitleri açılır.)
+Detaylar: Dönüşüm için günlük (3/9/27 kWh) harcar. En büyük olan geliştirilebilir. Harcadığı enerji ve geliştirme maliyeti 27x seviye(üs) olarak artar. Aynı şekilde verim de artar.
+Tehditler:
+    Teneke canavarı (Hasar verir)
+    Asit yağmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = üretim maliyeti.
+Tarla alanı: Yemek/sebze üretimi için yerekli alan.
+Gereksinimler:  24x/48x/64x plastik (Büyüklüğe göre) YEP (Tarlalar açıktır üretim sınırı yoktur. YEP ile Tohumlar açılır. Her Tohumun/sebzenin farklı özellikleri vardır.(ileride)
+Detaylar:  Böcekler ekine zarar verebilir. Onun için yanmış ağaçlar veya yerdeki yaprak kalıntılarının geri dönüştürülmesi ile özel gübre üretilir. Üretilen bu gübre böcekleri uzak tutar.
+Her tohum her iklimde yetişmeyeceği için farklı yerlere iklimlere kurulması gerekir.
+Tehditler:
+    Teneke canavarı (Hasar verir)
+    Asit yağmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+    Salya canavarı (Tohumların büyümesini yavaşlatır ve büyüyenlerde zehirleme ihtimali artar.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = üretim maliyeti.
+Ekipmanlar
+Vakum silahı:
+Temel işlevi: Elektrik harcayarak eşyaları toplamaya yarar.
+Geliştirmeler ile: Su fırlatmaya başlar. Silahın deposu geliştirilebilir. Çekim alanı ve uzaklığı arttırılabilir.
+Geliştirmeler: plastik ve metal parçalar ile yapılır. YEP seviyesi her artışta 3 geliştirme yapılabilir. Geliştirme için gereken malzemeler artış = c(kontrol sayısı başlangıç gereksinimi) * seviye(üs) olarak gerekir. Geliştirmeler sonucu kullanılan enerji artar.
+Not : Su fırlatırken eğer temiz su ise tıkanmaz ama kirli su doldurulduysa tıkanma ihtimali olur. Alev ruhları ile savaşırken suyun tıkanması oyunu zorlaştırmak için ideal.
+Ayrıca duman ile veya yağmur bulutu ile savaşırken anti vakum ile onları dağıtabilir ve hasar verebilir.
+Vakum silahı seçili iken mod seçimi yapılır. (Vakum, Anti vakum, Su fırlatma) (vakum ile su deposu dolumu yapılır)
+Tohum silahı (Demir sapan):
+Temel işlevi: Elektrik harcayarak hızlı bir şekilde tohum dikmeye yarar. Teneke canavarı ile savaşırken Demir toplar fırlatarak (mağazadan metal parça karşılığı satın alınır) savaşılır.
+Geliştirmeler ile: Silahın tohum deposu geliştirilebilir. Tek seferde dikilen tohum sayısı ve dikme uzaklığı arttırılabilir.
+Geliştirmeler: plastik ve metal parçalar ile yapılır. YEP seviyesi her artışta 3 geliştirme yapılabilir. Geliştirme için gereken malzemeler artış = c(kontrol sayısı başlangıç gereksinimi) * seviye(üs) olarak gerekir. Geliştirmeler sonucu kullanılan enerji artar.
+Geri Dönüşüm silahı:
+Temel işlevi: Elektrik harcayarak eşyaları geri dönüştürür (yavaştır).
+Geliştirmeler ile: Silahın Tek seferde dönüştürdüğü malzeme geliştirilebilir. Dönüştürme hızı da geliştirilebilir. Daha büyük metalleri ve plastik parçalar dönüştürmeni sağlar (kilidi açılır.)
+Geliştirmeler: plastik ve metal parçalar ile yapılır. YEP seviyesi her artışta 3 geliştirme yapılabilir. Geliştirme için gereken malzemeler artış = c(kontrol sayısı başlangıç gereksinimi) * seviye(üs) olarak gerekir. Geliştirmeler sonucu kullanılan enerji artar.
+Denizdeki müsilaj (deniz salyası) toplanır ve geri dönüştürülür. (bunun yapılması için Vakum geliştirmesi gerekir ek enerji harcar.)
+Tarama cihazı:
+Temel işlevi: Elektrik ile rüzgârı vb. durumlarını gösterir.
+(Geliştirme yok)
+Malzemeler
+Metaller:
+üretimi:
+Hazır bulunabilir
+Metal çöplerin geri dönüşümü ile üretilebilir. (Geri dönüşüm el dönüştürücüsü ile az miktarlarda enerji harcayarak yapabilir. Ayrıca Geri dönüşüm tesislerinde yapılabilir.)
+Teneke canavarının yenilmesi ile elde edilebilir.
+Kullanım:
+Bina Yapımlarında
+Ekipman geliştirmelerinde
+Tamirlerde
+Plastikler:
+üretimi:
+Hazır bulunabilir
+Plastik çöplerin geri dönüşümü ile üretilebilir. (Geri dönüşüm el dönüştürücüsü ile az miktarlarda enerji harcayarak yapabilir. Ayrıca Geri dönüşüm tesislerinde yapılabilir.)
+Kullanım:
+Bina Yapımlarında
+Ekipman geliştirmelerinde
+Tamirlerde kullanılır.
+Demir top: Mağazadan satın alınır metal parçalar ile satın alınır. Demir sapan için Kullanılır.
+Tohumlar:  Demir sapan için mermi, hasar vermez sadece ağaç dikmek için kullanılır.
+Büyük/Küçük Hava Filtresi: Küçük  Teneke canavar için (stan yediği zaman filtre takılarak etkisiz hale getirilir.) Büyük  Haritada bulunan ve Filtresiz olan Fabrikaların.
+Harita
+Bölgeler: 
+Buzul (üst)
+Rüzgarlı alan (sol)
+Şehir (orta-üst)
+Güneşli bölge (orta-alt)
+sanayi bölgesi (sağ-üst)
+Temiz Su Kaynağı (Görsel YZ ile oluşturulduğu için ben normalde 2 ayrı göl olması (sınırlı kaynak için) istemiştim)
+(Görsel temsili değiştirebilirim)
+ 
+Dönütler
+-Oyuncu yangın olan yerde eğer ağaçlandırma yaparsa: kelebekler gelir. Kuşlar gelir (Kuşlar Tarım için de önemli zararlı böceklerin yenmesi).
+-Oyuncu filtresiz bir fabrikayı filtre taktığı zaman beyaz dumanlar çıkar.
+-Oyuncu Temizlediği suda balıklar (temiz balıklar çoğalır)
+-Oyuncu karbon ayak izi fazla olursa buzullar erir sıcaklık değerleri artar tarım zorlaşır ve yangınlar artar.(alev ruhları daha çok çıkar.)
+-Hasta karakter:a
+- Öksürük  kirli hava
+- Ağıt (“Eskiden kuşlar cıvıldardı”)  Az ağaçlandırma veya Rüzgar türbini sorunu
+- Pencere (yeşillik)  Temiz cevre ve iyi ağaçlandırma
+-Pencere (Kirlilik)  Kirli çevre
+- Ses (Kuş sesleri)  iyi planlama ve yeşil çevre
+- Hastanın bitkin yüzü  Balık (yememesi) ve düzenli beslenmemesi
+-Hastanın Terlemesi (Ateşinin çıkması)   Sıcaklık değerinin artması (iklim değişikliğinde gerçekleşir.)
+- Hastanın konuşması (“Kuşların sesi çok güzel”)  Güzel planlama  temiz çevre.
+-Hastanın konuşması (Eline sağlık!)   Düzenli besleme
+-Oyuncu fazla güneş paneli dikmesi fazla maliyet ve fazla yer kalması sonucu planlamada zorluklar çıkartır.
+- Oyuncu Gerekli binaları Gereksiz yerlere koyarsa enerji verimi düşer.
+Kullanıcı Arayüzü (UI) Tasarım Önerileri
+Oyun İçi HUD (Ana Ekran)
+İnşa ve Üretim (Crafting) Ekranı
+Envanter ve Yetenek (YEP) Ağacı
+Düzeltilecekler
+1. YEP sisteminin mantığını değiştirelim
+Şu anda YEP, klasik XP gibi çalışıyor ve canavar öldürmek, bina inşa etmek, geri dönüştürmek, ağaç dikmek YEP kazandırıyor. Hatta yeşil alanın saniye başına YEP vermesi düşünülmüş. 
+Burada problem şu: "Ne kadar çok bina kurarsan o kadar sürdürülebilirsin" mesajı çıkabilir.
+Bunun yerine YEP'i "Sürdürülebilirlik Puanı" veya "Ekolojik Denge Puanı" yapabilirsiniz. Puan;
+su kalitesinin iyileşmesi, 
+karbon ayak izinin azalması, 
+biyoçeşitliliğin artması, 
+atıkların geri dönüştürülmesi, 
+yenilenebilir enerji oranının yükselmesi 
+ile kazanılsın.
+Sadece bina kurmak puan vermesin. Binanın çevreye sağladığı olumlu sonuç puan versin.
+2- Canavar alt etme yerine çevresel tehdidi giderme
+Öğrenciler hâlâ oyunu biraz fazla savaş oyununa götürmüşler. "Canavar alt etme", "silah", "hasar verme", "mermi" vb. ifadeler çok fazla. Örneğin tohum silahıyla Teneke Canavarı'na demir top fırlatılıyor. 
+Bunu değiştirirdim.
+Örneğin:
+Teneke Canavarı → geri dönüştürülerek etkisizleştirilir.Duman Canavarı → filtre ve temiz enerjiyle etkisizleştirilir.Salya Canavarı → su arıtma ve atık temizliğiyle azaltılır.Alev Ruhu → su yönetimi + yangın önleme sistemiyle kontrol edilir.
+Böylece çevresel probleme uygun sürdürülebilir çözümü seçme oyunun ana mekaniğine dönüşür.
+3- Rüzgâr türbini kısmı düzeltilmeli
+"Rüzgâr Türbini: 7/24 elektrik üretmek için kullanılır."
+Bu yanlış. Rüzgâr yoksa elektrik üretemez.
+Üstelik aşağıda "Tarama cihazı rüzgârı vb. durumları gösterir" denmiş. 
+Bu aslında çok güzel bir mekanik fırsatı.
+Şöyle yapalım:
+Rüzgâr türbinleri yalnızca yeterli rüzgâr bulunan bölgelerde verimli çalışır. Oyuncu tarama cihazıyla rüzgâr potansiyelini belirleyerek türbinleri uygun alanlara yerleştirir. Yanlış konumlandırılan türbinlerin enerji verimliliği düşer.
+Böylece oyuncu sadece türbin kur değil, doğru yere türbin kur öğrenir.
+4- Güneş panelinde de aynı sistemi kullanalım
+Güneş panelinin yalnızca gündüz elektrik ürettiği belirtilmiş. Bu iyi.
+Ama bunu daha da geliştirebiliriz:
+Güneşlenme süresi → panel verimi
+olsun.
+Böylece tarama cihazıyla oyuncu;
+rüzgâr → türbingüneşlenme → güneş paneli
+eşleştirmesi yapar.
+5. "Fazla güneş paneli → yer sıkıntısı" daha anlamlı hale getirilmeli
+Şu an yalnızca:
+"Fazla kurulumunda yer sıkıntısı yaşanır."
+Bunu sürdürülebilirlik kararına çevirebiliriz:
+Enerji üretimi için kullanılan alan arttıkça yeşil alan veya tarım alanı azalabilir. Oyuncu enerji ihtiyacı ile arazi kullanımını dengeler.
+Bu çok daha güçlü bir sürdürülebilirlik mekaniği olur.
+Oyuncuya şu ikilemi yaşatmış oluruz:
+Daha fazla temiz enerji mi?  Daha fazla tarım/yeşil alan mı?
+İşte bu gerçek bir sürdürülebilirlik kararıdır.
+6. Su sistemi çok iyi bir fırsat, genişletelim
+Su arıtma tesisi ve su deposu eklenmiş. Ayrıca temiz su, su tasarrufu ve su arıtımıyla sürdürülebilirlik ilişkisi açıkça kurulmuş. 
+Burada sınırlı su kaynağı fikrini mutlaka korurdum.
+Oyuncunun;
+Temiz su kaynağı → arıtma → depolama → kullanım
+zincirini yönetmesi sağlanabilir.
+Su;
+tarım, 
+yangın söndürme, 
+ağaçlandırma, 
+karakterin ihtiyacı 
+arasında paylaştırılabilir.
+Böylece oyuncu gerçek anlamda kaynak yönetimi yapar.
+7. Balık mekaniğinin yeni hali çok daha iyi
+Önceki versiyonda "kirli balığı çocuğa yedirme" vardı. Şimdi Salya Canavarı'nın su hayvanlarını zehirlemesi ve sayılarını azaltması yazılmış. Ayrıca su temizlendiğinde temiz balıkların çoğalması geri bildirim olarak eklenmiş. 
+Bu hali daha iyi.
+Hatta balığı çocuğa yedirme zorunluluğunu tamamen çıkarabilirsiniz.
+Balıklar su ekosisteminin sağlık göstergesi olsun:
+9. Biyoçeşitlilik mekanik haline getirilmeli
+Öğrenciler kelebeklerin ve kuşların geri gelmesini eklemiş. Ayrıca kuşların tarımdaki zararlı böceklerle ilişkilendirilmesi düşünülmüş. 
+Bu çok iyi ama sadece görsel dönüt olarak kalmasın.
+Örneğin:
+Ağaçlandırma ↑ → kuş/kelebek ↑ → biyoçeşitlilik ↑
+ve
+Kuş popülasyonu ↑ → bazı zararlı böcekler ↓ → tarımsal verim ↑
+şeklinde sistemler birbirine bağlansın.
+10. İklim Canavarı fikri iyi ama neden-sonuç zinciri daha net olmalı
+Burada en güçlü fikirlerden biri var. Öğrenciler karbon ayak izi yükseldiğinde buzulların erimesini, sıcaklığın artmasını, tarımın zorlaşmasını ve yangınların çoğalmasını düşünmüşler. 
+Bunu oyunun ana sürdürülebilirlik sistemi haline getirebiliriz:
+Fosil/kirletici faaliyetler ↑ → Karbon ayak izi ↑ → Sıcaklık ↑ → Buzullar ↓ → Su dengesi bozulur → Tarım verimi ↓ → Yangın riski ↑
+Oyuncu yalnızca tek tek canavarlarla savaşmaz; bir çevresel kararın başka bir sistemi nasıl etkilediğini görür.
+11. Çocuk karakteri kalsın ama "hasta karakter" demeyelim
+Dokümanın sonunda hâlâ "Hasta karakter" yazıyor ve bitkin yüzün "balık yememesi ve düzenli beslenmemesi" ile ilişkilendirildiği görülüyor. 
+Bunu kesinlikle değiştirirdim.
+"Çocuk karakter / Gelecek nesil temsilcisi" diyelim.
+Çocuk:
+hava kirliyse → öksürür
+sıcaklık yükselirse → sıcaktan rahatsız olur, 
+çevre gürültülüyse → rahatsız olur, 
+çevre yeşillenirse → mutlu olur, 
+kuşlar dönerse → kuş seslerinden söz eder, 
+su ve ekosistem iyileşirse → olumlu yorum yapar. 
+Ama açlık, düzenli yemek, balık yeme vb. bakım mekaniklerini çıkaralım.
+Çocuğun işlevi çevresel koşulların insan yaşamına ve gelecek nesillere etkisini göstermek olsun.
+12. HUD'a tek "kirlilik" değeri yerine 5 temel gösterge koyalım
+Bence oyunun sürdürülebilirlik tarafını en fazla güçlendirecek değişikliklerden biri bu olur:
+Hava Kalitesi | Su Kalitesi | Karbon Ayak İzi | Biyoçeşitlilik | Ekosistem Sağlığı
+Ayrıca Sıcaklık ayrı bir gösterge olabilir.
+Böylece oyuncu "kirlilik %40" gibi soyut tek bir değer yerine hangi sistemin neden bozulduğunu anlayabilir.
