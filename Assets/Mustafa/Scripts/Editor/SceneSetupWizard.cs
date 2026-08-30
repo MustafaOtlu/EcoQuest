@@ -248,7 +248,7 @@ public class SceneSetupWizard : EditorWindow
 
             Tile selectedTile = floorTile; // Varsayilan
 
-            switch (zone.biomeType)
+            switch (zone.BiomeType)
             {
                 case BiomeType.Glacier: selectedTile = snowTile ?? floorTile; break;
                 case BiomeType.Sunny: selectedTile = sandTile ?? floorTile; break;
