@@ -146,24 +146,45 @@ public class SceneSetupWizard : EditorWindow
     {
         if (Object.FindFirstObjectByType<Grid>() != null)
         {
-            Debug.LogWarning("Grid zaten mevcut.");
+            Debug.LogWarning("Grid zaten mevcut. Yeniden olusturmak icin eskisini silin.");
             return;
         }
 
         var gridGo = new GameObject("Grid");
         gridGo.AddComponent<Grid>();
 
-        string[] layers = { "Ground", "Terrain", "Objects", "Overlay" };
-        for (int i = 0; i < layers.Length; i++)
-        {
-            var tmGo = new GameObject(layers[i]);
-            tmGo.transform.SetParent(gridGo.transform);
-            var tm = tmGo.AddComponent<Tilemap>();
-            var tr = tmGo.AddComponent<TilemapRenderer>();
-            tr.sortingOrder = i;
-        }
+        // 1. Zemin_Alt (-10): Sadece cimen, su, toprak
+        CreateTilemapLayer(gridGo, "1_Zemin_Alt", -10, false);
+        
+        // 2. Zemin_Detay (-5): Yollar, kucuk taslar, cicekler
+        CreateTilemapLayer(gridGo, "2_Zemin_Detay", -5, false);
+        
+        // 3. Gecilmez_Objeler (0): Duvarlar, agac govdesi (Carpisma var)
+        CreateTilemapLayer(gridGo, "3_Gecilmez_Objeler", 0, true);
+        
+        // 4. Ust_Katman (20): Agac yapraklari, catilar (Oyuncunun onunde durur)
+        CreateTilemapLayer(gridGo, "4_Ust_Katman", 20, false);
 
         Undo.RegisterCreatedObjectUndo(gridGo, "Tilemap Grid Olustur");
+    }
+
+    void CreateTilemapLayer(GameObject parent, string name, int sortingOrder, bool hasCollider)
+    {
+        var tmGo = new GameObject(name);
+        tmGo.transform.SetParent(parent.transform);
+        var tm = tmGo.AddComponent<Tilemap>();
+        var tr = tmGo.AddComponent<TilemapRenderer>();
+        tr.sortingOrder = sortingOrder;
+
+        if (hasCollider)
+        {
+            var coll = tmGo.AddComponent<TilemapCollider2D>();
+            var rb = tmGo.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Static;
+            
+            // Player'in bu katmana carpabilmesi icin Default veya yeni bir layer atanabilir
+            tmGo.gameObject.layer = LayerMask.NameToLayer("Default");
+        }
     }
 
     void CreateBiomeZones()
@@ -209,10 +230,10 @@ public class SceneSetupWizard : EditorWindow
 
     void PaintBiomes()
     {
-        var ground = GameObject.Find("Grid/Ground")?.GetComponent<Tilemap>();
+        var ground = GameObject.Find("Grid/1_Zemin_Alt")?.GetComponent<Tilemap>();
         if (ground == null)
         {
-            Debug.LogError("Grid/Ground Tilemap bulunamadi.");
+            Debug.LogError("Grid/1_Zemin_Alt Tilemap bulunamadi.");
             return;
         }
 
