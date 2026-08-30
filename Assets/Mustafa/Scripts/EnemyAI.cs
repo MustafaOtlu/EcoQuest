@@ -62,7 +62,7 @@ public class EnemyAI : MonoBehaviour
                 if (dist <= attackRange)
                 {
                     currentState = State.Attacking;
-                    rb.velocity = Vector2.zero;
+                    rb.linearVelocity = Vector2.zero;
                     
                     if (Time.time >= lastAttackTime + attackCooldown)
                     {
@@ -78,7 +78,7 @@ public class EnemyAI : MonoBehaviour
             else
             {
                 currentState = State.Idle;
-                rb.velocity = Vector2.zero;
+                rb.linearVelocity = Vector2.zero;
             }
 
             yield return new WaitForSeconds(0.2f);
@@ -120,7 +120,7 @@ public class EnemyAI : MonoBehaviour
     void MoveTowards(Vector3 destination)
     {
         Vector2 dir = (destination - transform.position).normalized;
-        rb.velocity = dir * moveSpeed;
+        rb.linearVelocity = dir * moveSpeed;
         
         if (sr != null)
         {

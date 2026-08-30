@@ -34,6 +34,8 @@ public class SceneSetupWizard : EditorWindow
             CreateTilemapGrid();
         if (GUILayout.Button("Bolgeleri Olustur"))
             CreateBiomeZones();
+        if (GUILayout.Button("Tilemap Boya (Assetler Gerekli)"))
+            PaintBiomes();
         if (GUILayout.Button("BuildMode Manager Olustur"))
             CreateBuildModeManager();
     }
@@ -47,6 +49,7 @@ public class SceneSetupWizard : EditorWindow
         CreateTilemapGrid();
         CreateBiomeZones();
         CreateBuildModeManager();
+        PaintBiomes();
         Debug.Log("EcoQuest sahne kurulumu tamamlandi!");
     }
 
@@ -198,6 +201,74 @@ public class SceneSetupWizard : EditorWindow
         }
 
         Undo.RegisterCreatedObjectUndo(managerGo, "Bolgeler Olustur");
+    }
+
+    void PaintBiomes()
+    {
+        var ground = GameObject.Find("Grid/Ground")?.GetComponent<Tilemap>();
+        if (ground == null)
+        {
+            Debug.LogError("Grid/Ground Tilemap bulunamadi.");
+            return;
+        }
+
+        var bm = Object.FindFirstObjectByType<BiomeManager>();
+        if (bm == null)
+        {
+            Debug.LogError("BiomeManager bulunamadi.");
+            return;
+        }
+
+        // Yuklenmesi beklenen assetler (AssetIntegrationWizard uzerinden uretilmeli)
+        Tile floorTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Floor_Tile_1.asset");
+        Tile waterTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Water_Tile_1.asset");
+        Tile snowTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Floor_Tile_64.asset"); // Varsayimsal snow tile
+        Tile sandTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Floor_Tile_32.asset"); // Varsayimsal sand tile
+        Tile grassTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Floor_Tile_5.asset"); // Varsayimsal grass tile
+        Tile concreteTile = AssetDatabase.LoadAssetAtPath<Tile>("Assets/_Shared/Tiles/Floor_Tile_128.asset"); // Varsayimsal
+
+        if (floorTile == null || waterTile == null)
+        {
+            Debug.LogWarning("Zemin tile assetleri tam bulunamadi! Sadece varsayilan renkler kullanilacak.");
+        }
+
+        Undo.RecordObject(ground, "Bolgeleri Boya");
+        ground.ClearAllTiles();
+
+        var zones = Object.FindObjectsByType<BiomeZone>(FindObjectsSortMode.None);
+        foreach (var zone in zones)
+        {
+            var col = zone.GetComponent<BoxCollider2D>();
+            if (col == null) continue;
+
+            int minX = Mathf.FloorToInt(col.bounds.min.x);
+            int maxX = Mathf.CeilToInt(col.bounds.max.x);
+            int minY = Mathf.FloorToInt(col.bounds.min.y);
+            int maxY = Mathf.CeilToInt(col.bounds.max.y);
+
+            Tile selectedTile = floorTile; // Varsayilan
+
+            switch (zone.biomeType)
+            {
+                case BiomeType.Glacier: selectedTile = snowTile ?? floorTile; break;
+                case BiomeType.Sunny: selectedTile = sandTile ?? floorTile; break;
+                case BiomeType.Windy: selectedTile = grassTile ?? floorTile; break;
+                case BiomeType.City:
+                case BiomeType.Industrial: selectedTile = concreteTile ?? floorTile; break;
+                case BiomeType.FreshWater: selectedTile = waterTile ?? floorTile; break;
+            }
+
+            if (selectedTile == null) continue;
+
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int y = minY; y <= maxY; y++)
+                {
+                    ground.SetTile(new Vector3Int(x, y, 0), selectedTile);
+                }
+            }
+        }
+        Debug.Log("Harita boyandi!");
     }
 
     void CreateBuildModeManager()
