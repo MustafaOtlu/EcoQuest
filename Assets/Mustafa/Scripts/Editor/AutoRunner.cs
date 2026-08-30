@@ -23,5 +23,8 @@ public class AutoRunner
 
         var method2 = typeof(AssetIntegrationWizard).GetMethod("CreateBuildingData", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (method2 != null) method2.Invoke(wizard, null);
+
+        var method3 = typeof(AssetIntegrationWizard).GetMethod("CreateTiles", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (method3 != null) method3.Invoke(wizard, null);
     }
 }

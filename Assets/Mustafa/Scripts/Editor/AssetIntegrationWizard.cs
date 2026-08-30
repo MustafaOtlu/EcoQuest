@@ -24,6 +24,49 @@ public class AssetIntegrationWizard : EditorWindow
         {
             CreateBuildingData();
         }
+
+        if (GUILayout.Button("Tile (Zemin) Assetlerini Olustur"))
+        {
+            CreateTiles();
+        }
+    }
+
+    void CreateTiles()
+    {
+        string saveDir = "Assets/_Shared/Tiles";
+        if (!AssetDatabase.IsValidFolder("Assets/_Shared"))
+            AssetDatabase.CreateFolder("Assets", "_Shared");
+        if (!AssetDatabase.IsValidFolder("Assets/_Shared/Tiles"))
+            AssetDatabase.CreateFolder("Assets/_Shared", "Tiles");
+
+        string floorPath = "Assets/Kaynaklar/Ninja Adventure - Asset Pack/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetFloor.png";
+        string waterPath = "Assets/Kaynaklar/Ninja Adventure - Asset Pack/Ninja Adventure - Asset Pack/Backgrounds/Tilesets/TilesetWater.png";
+        
+        ConfigureTexture(floorPath, 16);
+        ConfigureTexture(waterPath, 16);
+
+        GenerateTilesFromTexture(floorPath, saveDir, "Floor");
+        GenerateTilesFromTexture(waterPath, saveDir, "Water");
+
+        Debug.Log("Zemin (Tile) Assetleri Olusturuldu!");
+    }
+
+    void GenerateTilesFromTexture(string texturePath, string saveDir, string prefix)
+    {
+        var objs = AssetDatabase.LoadAllAssetsAtPath(texturePath);
+        int i = 0;
+        foreach (var obj in objs)
+        {
+            if (obj is Sprite sprite)
+            {
+                var tile = ScriptableObject.CreateInstance<UnityEngine.Tilemaps.Tile>();
+                tile.sprite = sprite;
+                string path = $"{saveDir}/{prefix}_Tile_{i}.asset";
+                AssetDatabase.CreateAsset(tile, path);
+                i++;
+            }
+        }
+        AssetDatabase.SaveAssets();
     }
 
     void CreateBuildingData()
