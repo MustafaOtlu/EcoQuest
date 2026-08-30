@@ -620,6 +620,7 @@ GameObject:
   - component: {fileID: 599353254}
   - component: {fileID: 599353252}
   - component: {fileID: 599353253}
+  - component: {fileID: 599353256}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -771,7 +772,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 10
-  m_Sprite: {fileID: 1128584338}
+  m_Sprite: {fileID: 4723107735738678597, guid: 0dca263b8c70a1a4b89f64ab5131e2a2, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -782,6 +783,28 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!95 &599353256
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 599353250}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: c524c02b295e66549b56b697a0f13503, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &603622826
 GameObject:
   m_ObjectHideFlags: 0
@@ -1268,217 +1291,6 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
---- !u!213 &1128584338
-Sprite:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  m_Rect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 16
-    height: 16
-  m_Offset: {x: 0, y: 0}
-  m_Border: {x: 0, y: 0, z: 0, w: 0}
-  m_PixelsToUnits: 16
-  m_Pivot: {x: 0.5, y: 0.5}
-  m_Extrude: 0
-  m_IsPolygon: 0
-  m_AtlasName: 
-  m_PackingTag: 
-  m_RenderDataKey:
-    00000000000000000000000000000000: 0
-  m_AtlasTags: []
-  m_SpriteAtlas: {fileID: 0}
-  m_RD:
-    serializedVersion: 3
-    texture: {fileID: 1788454240}
-    alphaTexture: {fileID: 0}
-    secondaryTextures: []
-    m_SubMeshes:
-    - serializedVersion: 2
-      firstByte: 0
-      indexCount: 6
-      topology: 0
-      baseVertex: 0
-      firstVertex: 0
-      vertexCount: 4
-      localAABB:
-        m_Center: {x: 0, y: 0, z: 0}
-        m_Extent: {x: 0, y: 0, z: 0}
-    m_IndexBuffer: 000001000200020001000300
-    m_VertexData:
-      serializedVersion: 3
-      m_VertexCount: 4
-      m_Channels:
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 3
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 1
-        offset: 0
-        format: 0
-        dimension: 2
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      m_DataSize: 80
-      _typelessdata: 000000bf0000003f000000000000003f0000003f00000000000000bf000000bf000000000000003f000000bf00000000000000000000803f0000803f0000803f00000000000000000000803f00000000
-    m_Bindpose: []
-    textureRect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 16
-      height: 16
-    textureRectOffset: {x: 0, y: 0}
-    atlasRectOffset: {x: -1, y: -1}
-    settingsRaw: 64
-    uvTransform: {x: 16, y: 8, z: 16, w: 8}
-    downscaleMultiplier: 1
-  m_AtlasRD:
-    serializedVersion: 3
-    texture: {fileID: 1788454240}
-    alphaTexture: {fileID: 0}
-    secondaryTextures: []
-    m_SubMeshes:
-    - serializedVersion: 2
-      firstByte: 0
-      indexCount: 6
-      topology: 0
-      baseVertex: 0
-      firstVertex: 0
-      vertexCount: 4
-      localAABB:
-        m_Center: {x: 0, y: 0, z: 0}
-        m_Extent: {x: 0, y: 0, z: 0}
-    m_IndexBuffer: 000001000200020001000300
-    m_VertexData:
-      serializedVersion: 3
-      m_VertexCount: 4
-      m_Channels:
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 3
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 1
-        offset: 0
-        format: 0
-        dimension: 2
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      - stream: 0
-        offset: 0
-        format: 0
-        dimension: 0
-      m_DataSize: 80
-      _typelessdata: 000000bf0000003f000000000000003f0000003f00000000000000bf000000bf000000000000003f000000bf000000000000000000000000000000000000000000000000000000000000000000000000
-    m_Bindpose: []
-    textureRect:
-      serializedVersion: 2
-      x: 0
-      y: 0
-      width: 16
-      height: 16
-    textureRectOffset: {x: 0, y: 0}
-    atlasRectOffset: {x: -1, y: -1}
-    settingsRaw: 64
-    uvTransform: {x: 16, y: 8, z: 16, w: 8}
-    downscaleMultiplier: 1
-  m_PhysicsShape: []
-  m_Bones: []
-  m_ScriptableObjects: []
-  m_SpriteID: 
 --- !u!1 &1170730342
 GameObject:
   m_ObjectHideFlags: 0
@@ -2106,52 +1918,6 @@ Transform:
   - {fileID: 1256116355}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!28 &1788454240
-Texture2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: 
-  m_ImageContentsHash:
-    serializedVersion: 2
-    Hash: 00000000000000000000000000000000
-  m_IsAlphaChannelOptional: 0
-  serializedVersion: 3
-  m_Width: 16
-  m_Height: 16
-  m_CompleteImageSize: 1364
-  m_MipsStripped: 0
-  m_TextureFormat: 4
-  m_MipCount: 5
-  m_IsReadable: 1
-  m_IsPreProcessed: 0
-  m_IgnoreMipmapLimit: 1
-  m_MipmapLimitGroupName: 
-  m_StreamingMipmaps: 0
-  m_StreamingMipmapsPriority: 0
-  m_VTOnly: 0
-  m_AlphaIsTransparency: 0
-  m_ImageCount: 1
-  m_TextureDimension: 2
-  m_TextureSettings:
-    serializedVersion: 2
-    m_FilterMode: 0
-    m_Aniso: 1
-    m_MipBias: 0
-    m_WrapU: 0
-    m_WrapV: 0
-    m_WrapW: 0
-  m_LightmapFormat: 0
-  m_ColorSpace: 1
-  m_PlatformBlob: 
-  image data: 1364
-  _typelessdata: 1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff1a1a1aff1a1a1aff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff1a1a1aff1a1a1aff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff99664dff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff1a1a1aff1a1a1aff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff1a1a1aff1a1a1aff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff1a1a1aff1a1a1aff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff1a1a1aff1a1a1aff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff1a1a1aff1a1a1aff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff339933ff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff1a1a1aff392d26ff594033ff594033ff594033ff594033ff594033ff594033ff392d26ff594033ff99664dff99664dff99664dff99664dff99664dff99664dff594033ff334d73ff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff334d73ff334d73ff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff334d73ff334d73ff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff4d80ccff334d73ff265926ff339933ff339933ff339933ff339933ff339933ff339933ff265926ff265926ff339933ff339933ff339933ff339933ff339933ff339933ff265926ff203920ff265926ff265926ff265926ff265926ff265926ff265926ff203920ff614436ff795340ff795340ff614436ff40669fff4d80ccff4d80ccff40669fff366f65ff408c7fff408c7fff366f65ff276127ff2c792cff2c792cff276127ff595f78ff595f78ff32754dff32754dff456a62ff
-  m_StreamData:
-    serializedVersion: 2
-    offset: 0
-    size: 0
-    path: 
 --- !u!1 &1986207561
 GameObject:
   m_ObjectHideFlags: 0
