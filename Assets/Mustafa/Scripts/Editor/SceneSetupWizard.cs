@@ -186,14 +186,15 @@ public class SceneSetupWizard : EditorWindow
             go.transform.SetParent(managerGo.transform);
             go.transform.position = new Vector3(bPos.x, bPos.y, 0);
 
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = bSize;
+
             var zone = go.AddComponent<BiomeZone>();
             var serialized = new SerializedObject(zone);
             serialized.FindProperty("biomeType").enumValueIndex = (int)bType;
             serialized.FindProperty("gizmoColor").colorValue = bColor;
             serialized.ApplyModifiedProperties();
-
-            var col = go.GetComponent<BoxCollider2D>();
-            col.size = bSize;
         }
 
         Undo.RegisterCreatedObjectUndo(managerGo, "Bolgeler Olustur");

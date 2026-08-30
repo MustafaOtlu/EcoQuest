@@ -13,8 +13,10 @@ public class BiomeZone : MonoBehaviour
     {
         zoneCollider = GetComponent<BoxCollider2D>();
         if (zoneCollider == null)
+        {
             zoneCollider = gameObject.AddComponent<BoxCollider2D>();
-        zoneCollider.isTrigger = true;
+            zoneCollider.isTrigger = true;
+        }
     }
 
     public bool ContainsPoint(Vector2 point)
