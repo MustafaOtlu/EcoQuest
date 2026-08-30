@@ -18,6 +18,7 @@ public class PlayerController : MonoBehaviour
         rb.gravityScale = 0f;
         rb.freezeRotation = true;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
     }
 
     void Update()
