@@ -102,6 +102,10 @@ public class SceneSetupWizard : EditorWindow
         cam.orthographic = true;
         cam.orthographicSize = 8f;
         cam.transform.position = new Vector3(0, 0, -10);
+        
+        // 2D icin Skybox yerine Duz Renk (Solid Color) kullan
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.1f, 0.1f, 0.1f); // Koyu gri/siyah arka plan
 
         if (cam.GetComponent<CameraController>() == null)
         {
