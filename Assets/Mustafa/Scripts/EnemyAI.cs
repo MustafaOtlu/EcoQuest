@@ -188,7 +188,7 @@ public class EnemyAI : MonoBehaviour
     {
         // GDD: Dusman olunce cop birakir
         // Bilge'nin yazdigi WasteSpawner veya event tetiklenebilir
-        GameEvents.EnemyDefeated(data != null ? data.enemyType : EnemyType.TinMonster, transform.position);
+        GameEvents.EnemyDefeated(data != null ? data.enemyType : EnemyType.TinMonster);
         Destroy(gameObject);
     }
 }
