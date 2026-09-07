@@ -1,60 +1,53 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
-[RequireComponent(typeof(SpriteRenderer))]
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    Rigidbody2D rb;
-    SpriteRenderer spriteRenderer;
-    Animator animator;
-    Vector2 moveInput;
+    Rigidbody rb;
+    Vector3 moveInput;
     bool isBuildMode;
+    public float moveSpeed = 5f;
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        animator = GetComponent<Animator>();
-        rb.gravityScale = 0f;
+        rb = GetComponent<Rigidbody>();
+        rb.useGravity = true;
         rb.freezeRotation = true;
-        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     void Update()
     {
         if (isBuildMode)
         {
-            moveInput = Vector2.zero;
+            moveInput = Vector3.zero;
             return;
         }
 
-        moveInput = new Vector2(
+        moveInput = new Vector3(
             Input.GetAxisRaw("Horizontal"),
+            0,
             Input.GetAxisRaw("Vertical")
         ).normalized;
-
-        if (moveInput.x != 0)
-            spriteRenderer.flipX = moveInput.x < 0;
-
-        if (animator != null)
-        {
-            animator.SetFloat("Speed", moveInput.magnitude);
-            animator.SetFloat("Horizontal", moveInput.x);
-            animator.SetFloat("Vertical", moveInput.y);
-        }
     }
 
     void FixedUpdate()
     {
-        rb.linearVelocity = moveInput * GameConstants.PLAYER_MOVE_SPEED;
+        rb.linearVelocity = new Vector3(moveInput.x * moveSpeed, rb.linearVelocity.y, moveInput.z * moveSpeed);
+        
+        if (moveInput.magnitude > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(moveInput);
+            rb.MoveRotation(Quaternion.RotateTowards(transform.rotation, targetRotation, 720f * Time.fixedDeltaTime));
+        }
     }
 
     public void SetBuildMode(bool active)
     {
         isBuildMode = active;
         if (active)
-            rb.linearVelocity = Vector2.zero;
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
     }
 
     public bool IsBuildMode => isBuildMode;

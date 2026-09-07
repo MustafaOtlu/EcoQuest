@@ -1,8 +1,9 @@
 using UnityEngine;
+using UnityEngine.AI;
 using System.Collections;
 
 /// <summary>
-/// Temel Dusman Yapay Zekasi (Mustafa - Asama 3)
+/// Temel Dusman Yapay Zekasi (Mustafa - Asama 3 - 3D Guncellemesi)
 /// </summary>
 public class EnemyAI : MonoBehaviour
 {
@@ -23,22 +24,21 @@ public class EnemyAI : MonoBehaviour
     private Transform target;
     private PlacedBuilding targetBuilding;
     private float lastAttackTime;
-    private Rigidbody2D rb;
-    private SpriteRenderer sr;
+    private Rigidbody rb;
+    private Renderer rend;
 
     private enum State { Idle, Chasing, Attacking }
     private State currentState = State.Idle;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
-        sr = GetComponent<SpriteRenderer>();
+        rb = GetComponent<Rigidbody>();
+        rend = GetComponent<Renderer>();
         
         if (data != null)
         {
             currentHealth = data.maxHealth;
             moveSpeed = data.moveSpeed;
-            attackRange = 1.5f; // GDD veya Data'da yoksa sabit
             attackCooldown = data.attackInterval;
             detectRadius = data.detectionRange;
         }
@@ -58,11 +58,11 @@ public class EnemyAI : MonoBehaviour
             
             if (target != null)
             {
-                float dist = Vector2.Distance(transform.position, target.position);
+                float dist = Vector3.Distance(transform.position, target.position);
                 if (dist <= attackRange)
                 {
                     currentState = State.Attacking;
-                    rb.linearVelocity = Vector2.zero;
+                    if(rb != null) rb.linearVelocity = Vector3.zero;
                     
                     if (Time.time >= lastAttackTime + attackCooldown)
                     {
@@ -78,7 +78,7 @@ public class EnemyAI : MonoBehaviour
             else
             {
                 currentState = State.Idle;
-                rb.linearVelocity = Vector2.zero;
+                if(rb != null) rb.linearVelocity = Vector3.zero;
             }
 
             yield return new WaitForSeconds(0.2f);
@@ -87,24 +87,22 @@ public class EnemyAI : MonoBehaviour
 
     void FindTarget()
     {
-        // 1. Once Player'a bak
-        Collider2D playerCol = Physics2D.OverlapCircle(transform.position, detectRadius, playerLayer);
-        if (playerCol != null)
+        Collider[] playerCol = Physics.OverlapSphere(transform.position, detectRadius, playerLayer);
+        if (playerCol.Length > 0)
         {
-            target = playerCol.transform;
+            target = playerCol[0].transform;
             targetBuilding = null;
             return;
         }
 
-        // 2. Player yoksa binalara bak
-        Collider2D[] buildings = Physics2D.OverlapCircleAll(transform.position, detectRadius, buildingLayer);
+        Collider[] buildings = Physics.OverlapSphere(transform.position, detectRadius, buildingLayer);
         float closestDist = float.MaxValue;
         Transform bestTarget = null;
         PlacedBuilding bestBuilding = null;
 
         foreach (var col in buildings)
         {
-            float d = Vector2.Distance(transform.position, col.transform.position);
+            float d = Vector3.Distance(transform.position, col.transform.position);
             if (d < closestDist)
             {
                 closestDist = d;
@@ -119,44 +117,34 @@ public class EnemyAI : MonoBehaviour
 
     void MoveTowards(Vector3 destination)
     {
-        Vector2 dir = (destination - transform.position).normalized;
-        rb.linearVelocity = dir * moveSpeed;
+        Vector3 dir = (destination - transform.position);
+        dir.y = 0;
+        dir.Normalize();
         
-        if (sr != null)
-        {
-            sr.flipX = dir.x < 0;
-        }
+        if (rb != null)
+            rb.linearVelocity = new Vector3(dir.x * moveSpeed, rb.linearVelocity.y, dir.z * moveSpeed);
     }
 
     void Attack()
     {
         lastAttackTime = Time.time;
         
-        // Basit saldiri mantigi
         if (targetBuilding != null)
         {
             float damage = data != null ? data.attackDamage : 10f;
             targetBuilding.TakeDamage(damage);
-            Debug.Log($"{name} binaya saldirdi: {damage} hasar.");
-        }
-        else if (target != null && target.CompareTag("Player"))
-        {
-            // Player take damage
-            Debug.Log($"{name} oyuncuya saldirdi!");
         }
 
-        // Vurus animasyonu/rengi
         StartCoroutine(AttackEffect());
     }
 
     IEnumerator AttackEffect()
     {
-        if (sr != null)
+        if (rend != null)
         {
-            Color orig = sr.color;
-            sr.color = Color.red;
+            rend.material.color = Color.red;
             yield return new WaitForSeconds(0.1f);
-            sr.color = orig;
+            rend.material.color = Color.white;
         }
     }
 
@@ -175,19 +163,16 @@ public class EnemyAI : MonoBehaviour
 
     IEnumerator DamageEffect()
     {
-        if (sr != null)
+        if (rend != null)
         {
-            Color orig = sr.color;
-            sr.color = Color.white;
+            rend.material.color = Color.yellow;
             yield return new WaitForSeconds(0.1f);
-            sr.color = orig;
+            rend.material.color = Color.white;
         }
     }
 
     void Die()
     {
-        // GDD: Dusman olunce cop birakir
-        // Bilge'nin yazdigi WasteSpawner veya event tetiklenebilir
         GameEvents.EnemyDefeated(data != null ? data.enemyType : EnemyType.TinMonster);
         Destroy(gameObject);
     }
