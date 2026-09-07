@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f2bf4f0c343c92945a07b59d486f79ab
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 207703
+  packageName: THYRA | Low Poly Female Character
+  packageVersion: 1.0
+  assetPath: Assets/THYRA/Scripts/PlayerMovement.cs
+  uploadId: 465502
