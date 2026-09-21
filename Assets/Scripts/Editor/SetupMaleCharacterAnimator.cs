@@ -25,9 +25,9 @@ public class SetupMaleCharacterAnimator : EditorWindow
         blendTree.blendParameter = "Speed";
         
         // Load Animation Clips
-        AnimationClip idleClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Idle.fbx");
-        AnimationClip walkClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Walking.fbx");
-        AnimationClip runClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Running.fbx");
+        AnimationClip idleClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Idle Male.fbx");
+        AnimationClip walkClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Walking Male.fbx");
+        AnimationClip runClip = LoadAnimationClip("Assets/3D Assets/CHARACTER/MaleCharacter/Animasyon/Running Male.fbx");
         
         if (idleClip == null || walkClip == null || runClip == null)
         {
