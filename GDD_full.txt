@@ -1,0 +1,319 @@
+﻿Yap─▒lacaklar
+G├╝ne┼ş paneli, R├╝zgar tir├╝bini vb. Olanlar─▒n ger├ğek├ği etkilere g├Âre d├╝zenlenmeli.
+biyo i├ğin: Ku┼şlar, bal─▒klar vb. Ekosistem ,,, ekosistem oyuna etkisi eklenmesi.
+├çevre y├Ânetimi i├ğin (buzullar eklenecek): ├çevrenin b├Âlgelerde tam k├Ât├╝ olarak de─şil e┼şit da─ş─▒l─▒m (iyi k├Ât├╝ dengesi)
+
+Geri d├Ân├╝┼ş├╝m ile: g├╝bre, (Metaryellerin kullan─▒m─▒) (├Ârnek: Metal ile g├╝nel paneli vb.)
+YEP(Yenilenebilir Enerji Puan─▒) (S─▒n─▒rlay─▒c─▒ etken olarak kullan─▒labilir.) 
+
+Oyuncunun yapt─▒klar─▒n─▒n ├Âd├╝l ceza sistemi eklenmesi gerekiyor. 
+Fazla R├╝zgar tribini veya baraj yanl─▒┼ş kurulmas─▒ bize ceza gibi ┼şeyler vermeli.
+
+Karbon ayak izini neye g├Âre belirleriz. KA─░(Karbon ayak izi) puan─▒ olsun.
+Oyun D├Âng├╝s├╝ (Core Loop)
+Oyuncu, ├ğevresel sorunlarla kar┼ş─▒ kar┼ş─▒ya olan bir ┼şehirde ya┼şamaktad─▒r. Oyuncunun temel amac─▒, ┼şehirdeki hava, su, s─▒cakl─▒k, at─▒k ve ekosistem g├Âstergelerini takip ederek ├ğevresel dengeyi korumak ve gelecek nesiller i├ğin ya┼şanabilir bir ├ğevre olu┼şturmakt─▒r.
+Oyuncunun evinde bulunan ├ğocuk, gelecek nesilleri temsil eder ve ├ğevrede meydana gelen de─şi┼şimlerin sonu├ğlar─▒n─▒ oyuncuya g├Âr├╝n├╝r h├óle getirir. ├çocu─şun durumu do─şrudan ├ğevresel g├Âstergelerden etkilenir. ├ûrne─şin hava kirlili─şi artt─▒─ş─▒nda ├ğocuk ├Âks├╝rmeye ba┼şlayabilir; iklim de─şi┼şikli─şine ba─şl─▒ olarak s─▒cakl─▒k y├╝kseldi─şinde s─▒caktan rahats─▒z olabilir. ├çevresel ko┼şullar iyile┼şti─şinde ise ├ğocu─şun tepkileri de olumlu y├Ânde de─şi┼şir. ┼Şehir ye┼şillendi─şinde ve ekosistem iyile┼şti─şinde pencerenin ├Ân├╝ne gelen ku┼şlar─▒ izleyerek "Ku┼ş sesleri ne kadar g├╝zel!" gibi olumlu geri bildirimler verebilir.
+├çevredeki de─şi┼şim ayn─▒ zamanda pencereden g├Âr├╝len ┼şehir manzaras─▒na yans─▒r. Kirlilik artt─▒k├ğa ┼şehir daha gri, kirli ve cans─▒z g├Âr├╝n├╝rken; ├ğevresel g├Âstergeler iyile┼ştik├ğe bitki ├Ârt├╝s├╝ artar, su kaynaklar─▒ temizlenir ve canl─▒lar yeniden g├Âr├╝lmeye ba┼şlar. B├Âylece oyuncu kararlar─▒n─▒n sonu├ğlar─▒n─▒ hem g├Âstergelerden hem de g├Ârsel ├ğevreden takip edebilir.
+Oyuncu ┼şehirde ortaya ├ğ─▒kan dinamik ├ğevresel sorunlar─▒ ├ğ├Âzmek i├ğin at─▒klar─▒ toplar ve geri d├Ân├╝┼şt├╝r├╝r, yenilenebilir enerji sistemleri kurar, su kaynaklar─▒n─▒ temizler, a─şa├ğland─▒rma yapar ve ekipmanlar─▒n─▒ geli┼ştirir. Ancak ama├ğ yaln─▒zca kirlili─şi temizlemek de─şil, kaynaklar─▒ do─şru kullanarak ├ğevresel dengenin devaml─▒l─▒─ş─▒n─▒ sa─şlamakt─▒r.
+Su ekosisteminin urumunu oyuncuya g├Âstermek amac─▒yla basit bir bal─▒k tutma mekani─şi kullan─▒labilir. Kirli sularda bal─▒k pop├╝lasyonu azal─▒r veya sa─şl─▒ks─▒z bal─▒klarla kar┼ş─▒la┼ş─▒l─▒rken, su kalitesi y├╝kseldik├ğe bal─▒k ├ğe┼şitlili─şi ve pop├╝lasyonu artar. B├Âylece bal─▒k tutma mekani─şi yaln─▒zca yiyecek elde etmek i├ğin de─şil, su ekosisteminin sa─şl─▒─ş─▒n─▒ g├Âsteren bir mekanik olarak kullan─▒l─▒r.
+Temel oyun d├Âng├╝s├╝ ┼şu ┼şekilde i┼şler:
+
+├çevresel g├Âstergeleri takip et ÔåÆ Sorunu belirle ÔåÆ Kaynaklar─▒ ve uygun ├ğ├Âz├╝m├╝ se├ğ ÔåÆ M├╝dahale et ÔåÆ ├çevredeki de─şi┼şimi g├Âzlemle ÔåÆ ├çocu─şun ve ekosistemin tepkisini g├Âr ÔåÆ Kaynak/ekipmanlar─▒n─▒ geli┼ştir ÔåÆ Yeni ├ğevresel sorunlara haz─▒rlan.
+
+
+Burada ├Âzellikle de─şi┼ştirdi─şim iki ┼şey
+Birincisi, ├Â─şrencilerin yazd─▒─ş─▒ "yemek yedirmemiz gerekir, su i├ğirmemiz gerekir" k─▒sm─▒n─▒ ana mekanik yapmay─▒n. ├çocu─şun a├ğl─▒k/susuzluk bar─▒ olursa oyuncunun dikkati "s├╝rd├╝r├╝lebilir ├ğevre olu┼şturma"dan "├ğocu─şa bakma"ya kayar. ├çocuk daha ├ğok oyuncunun ├ğevresel kararlar─▒n─▒n insana ve gelecek nesillere etkisini g├Âsteren bir geri bildirim mekanizmas─▒ olsun.
+─░kincisi, "kirli sudan tutulan bal─▒─ş─▒ ├ğocu─şa yedirirsek zarar verir" fikrini de de─şi┼ştirmek daha iyi olur. Bunun yerine kirli su ÔåÆ bal─▒klar─▒n azalmas─▒/sa─şl─▒ks─▒zla┼şmas─▒ ÔåÆ temiz su ÔåÆ bal─▒klar─▒n ve biyolojik ├ğe┼şitlili─şin geri d├Ânmesi ba─şlant─▒s─▒ kurulursa ├ğevresel s├╝rd├╝r├╝lebilirlik a├ğ─▒s─▒ndan ├ğok daha anlaml─▒ olur.
+B├Âylece oyunun ana mesaj─▒ "├ğevreyi temizle ve ├ğocu─şu iyile┼ştir" de─şil, daha g├╝├ğl├╝ bi├ğimde "Bug├╝nk├╝ ├ğevresel kararlar─▒n gelecek nesillerin ya┼şam ko┼şullar─▒n─▒ belirler" olur. Bu, s├╝rd├╝r├╝lebilirlik temas─▒na ├ğok daha iyi oturur.
+
+YEP (Yenilenebilir Enerji puan─▒)
+Nedir: oyunlardaki xp mant─▒─ş─▒ ile ayn─▒ binalar─▒n kilidinin a├ğ─▒lmas─▒na veya s─▒n─▒rland─▒r─▒lmas─▒na yarar. Sadece bina de─şil silahlar─▒n da geli┼ştirilebilmesi i├ğin YEP gereklidir. Maksimum 24 veya 48 level olur. (bunun sebebi : 2,3,4,6,8 gibi say─▒lara ayn─▒ anda b├Âl├╝nmesi)
+Kazan─▒lan yerler: 
+Canavar alt etme
+Bina in┼şa etme
+Geri d├Ân├╝┼şt├╝rme
+A─şa├ğ dikme
+Ye┼şil alan (olabilir) : Ye┼şil alan saniye ba┼ş─▒ az miktarlarda YEP verir.
+
+D├╝┼şmanlar:
+Alev Ruhu: her binaya eriterek hasar verir ormanlar─▒ da ayr─▒ca yakar. Su ile sald─▒r─▒l─▒r. 
+
+
+
+
+
+Duman canavar─▒: ├ûzellikle G├╝ne┼ş paneline sald─▒r─▒r. Hasar vermez ama verim d├╝┼ş├╝r├╝r. Oyuncuya geldi─şi zaman ekran─▒ bulan─▒kla┼şt─▒r─▒r g├Âr├╝┼ş├╝n├╝ k─▒s─▒tlar.
+
+Teneke Canavar─▒:  Can─▒ ├ğok tur yava┼şt─▒r. Bacas─▒ndan duman canavar─▒ ├ğ─▒kart─▒r (ilerleyem a┼şama) her ┼şeye sald─▒r─▒r.
+
+
+
+Salya Canavar─▒: Suda bulunur. ├ûzellikle su hayvanlar─▒n─▒n zehirli olmas─▒na ve say─▒s─▒n─▒n azalmas─▒na yol a├ğarken ayn─▒ zamanda su ar─▒tmay─▒da olduk├ğa yava┼şlat─▒r. 
+
+Asit Ya─şmuru: Ekinlere, binalara Zarar verir. Ekinlerin Zararl─▒ olmas─▒na veya yok olmas─▒na sebep olur.
+
+Iklim canavar─▒: ─░klim canavar─▒ de─şerler (├ğevre kirlili─şi, karbon ayak izi gibi de─şerlerin k├Ât├╝ olma durumuna g├Âre g├╝├ğlenir.) Buzullar─▒ eriterek oradaki ekosisteme Zarar vermenin yan─▒ s─▒ra r├╝zgar, g├╝ne┼şli, ya─şmurlu alanlar─▒n yerlerinin de─şi┼şmesine sebep olarak G├╝ne┼ş ve R├╝zgar enerjisine b├╝y├╝k bir Zarar verir (boss) h├╝km├╝ndedir.
+Binalar/ ├£retilenler
+Kablolar: Elektrik ta┼ş─▒ma i├ğin  kullan─▒l─▒r. Her metre ba┼ş─▒na 1 metal par├ğa1 plastik par├ğa gerektirir.
+Borular: Suyu ta┼ş─▒mak i├ğin yap─▒l─▒r. Metre ba┼ş─▒ 1 plastik.
+R├╝zgar T├╝rbini: 7/24 elektrik ├╝retmek i├ğin kullan─▒l─▒r. 
+Gereksinimler:  1280x plastik ve iki kat─▒ metal (YEP 4. Seviyede a├ğ─▒l─▒k her 3 seviyede 2 tane ├╝retme izni verir.)
+Detaylar: G├╝nde 120 KWH elektrik ├╝retir. (Ger├ğekte g├╝ne┼ş enerjisinin 340 kat─▒)
+Tehditler:
+    Teneke canavar─▒ (Hasar verir)
+    Asit ya─şmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = ├╝retim maliyeti.
+
+G├╝ne┼ş Paneli: G├╝nd├╝zleri elektrik ├╝retmek i├ğin kullan─▒l─▒r.
+Gereksinimler:  128x plastik ve iki kat─▒ metal (YEP Her seviyede 2 tane ├╝retme izni verir.)
+Detaylar: G├╝nde 2KWH elektrik ├╝retir.
+Tehditler:
+   Teneke canavar─▒ (Hasar verir)
+   Asit ya─şmuru (Hasar verir.)
+   Alev ruhu (Eriterek zarar verir.)
+   Duman canavar─▒ (Verim d├╝┼ş├╝r├╝r.)
+   Fazla kurulumunda yer s─▒k─▒nt─▒s─▒ ya┼şan─▒r. 
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = ├╝retim maliyeti.
+
+Su Ar─▒tma Tesisi: Suyu Temizler.
+Gereksinimler:  64x/128x/256x plastic ve metal
+Detaylar:  (16m3/64m3/256m3) 1/4 olacak ┼şekilde su depolar
+YEP (4, 12, 24 levellere g├Âre k├╝├ğ├╝k orta ve b├╝y├╝k a├ğ─▒l─▒r. 8 tane ├╝retilebilir en fazla)
+Tehditler:
+    Teneke canavar─▒ (Hasar verir)
+    Asit ya─şmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Boyutuna oranla maksimum = ├╝retim maliyeti ┼şeklinde
+	S├╝rd├╝r├╝lebilirlikle ili┼şkisi: Temiz su kaynaklar─▒, Su tasarrufu, Su ar─▒t─▒m─▒
+
+Su Deposu: Suyun depolanmas─▒. 
+Gereksinimler:  64x/128x/256x plastik
+Detaylar:  (16m3/64m3/256m3) 1/4 olacak ┼şekilde su depolar
+YEP (4, 12, 24 levellere g├Âre k├╝├ğ├╝k orta ve b├╝y├╝k a├ğ─▒l─▒r. 8 tane ├╝retilebilir en fazla)
+Tehditler:
+    Teneke canavar─▒ (Hasar verir)
+    Asit ya─şmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = ├╝retim maliyeti.
+Geri D├Ân├╝┼ş├╝m Tesisi: Toplan─▒lan e┼şyalar─▒n geri d├Ân├╝┼şt├╝r├╝lmesinde kullan─▒l─▒r.
+Gereksinimler:  64x/128x/256x plastik ve iki kat─▒ metal (YEP 2/6/12 de kilitleri a├ğ─▒l─▒r.)
+Detaylar: D├Ân├╝┼ş├╝m i├ğin g├╝nl├╝k (3/9/27 kWh) harcar. En b├╝y├╝k olan geli┼ştirilebilir. Harcad─▒─ş─▒ enerji ve geli┼ştirme maliyeti 27x seviye(├╝s) olarak artar. Ayn─▒ ┼şekilde verim de artar.
+Tehditler:
+    Teneke canavar─▒ (Hasar verir)
+    Asit ya─şmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = ├╝retim maliyeti.
+
+Tarla alan─▒: Yemek/sebze ├╝retimi i├ğin yerekli alan.
+Gereksinimler:  24x/48x/64x plastik (B├╝y├╝kl├╝─şe g├Âre) YEP (Tarlalar a├ğ─▒kt─▒r ├╝retim s─▒n─▒r─▒ yoktur. YEP ile Tohumlar a├ğ─▒l─▒r. Her Tohumun/sebzenin farkl─▒ ├Âzellikleri vard─▒r.(ileride)
+
+Detaylar:  B├Âcekler ekine zarar verebilir. Onun i├ğin yanm─▒┼ş a─şa├ğlar veya yerdeki yaprak kal─▒nt─▒lar─▒n─▒n geri d├Ân├╝┼şt├╝r├╝lmesi ile ├Âzel g├╝bre ├╝retilir. ├£retilen bu g├╝bre b├Âcekleri uzak tutar.
+Her tohum her iklimde yeti┼şmeyece─şi i├ğin farkl─▒ yerlere iklimlere kurulmas─▒ gerekir.
+
+Tehditler:
+    Teneke canavar─▒ (Hasar verir)
+    Asit ya─şmuru (Hasar verir.)
+    Alev ruhu (Eriterek zarar verir.)
+    Salya canavar─▒ (Tohumlar─▒n b├╝y├╝mesini yava┼şlat─▒r ve b├╝y├╝yenlerde zehirleme ihtimali artar.)
+
+Tamir gereksinimleri: Tamir kaybedilen cana oranla malzeme harcar. Maksimum = ├╝retim maliyeti.
+Ekipmanlar
+
+
+Vakum silah─▒:
+	Temel i┼şlevi: Elektrik harcayarak e┼şyalar─▒ toplamaya yarar.
+	Geli┼ştirmeler ile: Su f─▒rlatmaya ba┼şlar. Silah─▒n deposu geli┼ştirilebilir. ├çekim alan─▒ ve uzakl─▒─ş─▒ artt─▒r─▒labilir.
+	Geli┼ştirmeler: plastik ve metal par├ğalar ile yap─▒l─▒r. YEP seviyesi her art─▒┼şta 3 geli┼ştirme yap─▒labilir. Geli┼ştirme i├ğin gereken malzemeler art─▒┼ş = c(kontrol say─▒s─▒ ba┼şlang─▒├ğ gereksinimi) * seviye(├╝s) olarak gerekir. Geli┼ştirmeler sonucu kullan─▒lan enerji artar.
+Not : Su f─▒rlat─▒rken e─şer temiz su ise t─▒kanmaz ama kirli su doldurulduysa t─▒kanma ihtimali olur. Alev ruhlar─▒ ile sava┼ş─▒rken suyun t─▒kanmas─▒ oyunu zorla┼şt─▒rmak i├ğin ideal.
+Ayr─▒ca duman ile veya ya─şmur bulutu ile sava┼ş─▒rken anti vakum ile onlar─▒ da─ş─▒tabilir ve hasar verebilir.
+Vakum silah─▒ se├ğili iken mod se├ğimi yap─▒l─▒r. (Vakum, Anti vakum, Su f─▒rlatma) (vakum ile su deposu dolumu yap─▒l─▒r)
+
+Tohum silah─▒ (Demir sapan):
+	Temel i┼şlevi: Elektrik harcayarak h─▒zl─▒ bir ┼şekilde tohum dikmeye yarar. Teneke canavar─▒ ile sava┼ş─▒rken Demir toplar f─▒rlatarak (ma─şazadan metal par├ğa kar┼ş─▒l─▒─ş─▒ sat─▒n al─▒n─▒r) sava┼ş─▒l─▒r.
+	Geli┼ştirmeler ile: Silah─▒n tohum deposu geli┼ştirilebilir. Tek seferde dikilen tohum say─▒s─▒ ve dikme uzakl─▒─ş─▒ artt─▒r─▒labilir.
+	Geli┼ştirmeler: plastik ve metal par├ğalar ile yap─▒l─▒r. YEP seviyesi her art─▒┼şta 3 geli┼ştirme yap─▒labilir. Geli┼ştirme i├ğin gereken malzemeler art─▒┼ş = c(kontrol say─▒s─▒ ba┼şlang─▒├ğ gereksinimi) * seviye(├╝s) olarak gerekir. Geli┼ştirmeler sonucu kullan─▒lan enerji artar.
+
+Geri D├Ân├╝┼ş├╝m silah─▒:
+	Temel i┼şlevi: Elektrik harcayarak e┼şyalar─▒ geri d├Ân├╝┼şt├╝r├╝r (yava┼şt─▒r).
+	Geli┼ştirmeler ile: Silah─▒n Tek seferde d├Ân├╝┼şt├╝rd├╝─ş├╝ malzeme geli┼ştirilebilir. D├Ân├╝┼şt├╝rme h─▒z─▒ da geli┼ştirilebilir. Daha b├╝y├╝k metalleri ve plastik par├ğalar d├Ân├╝┼şt├╝rmeni sa─şlar (kilidi a├ğ─▒l─▒r.)
+	Geli┼ştirmeler: plastik ve metal par├ğalar ile yap─▒l─▒r. YEP seviyesi her art─▒┼şta 3 geli┼ştirme yap─▒labilir. Geli┼ştirme i├ğin gereken malzemeler art─▒┼ş = c(kontrol say─▒s─▒ ba┼şlang─▒├ğ gereksinimi) * seviye(├╝s) olarak gerekir. Geli┼ştirmeler sonucu kullan─▒lan enerji artar.
+Denizdeki m├╝silaj (deniz salyas─▒) toplan─▒r ve geri d├Ân├╝┼şt├╝r├╝l├╝r. (bunun yap─▒lmas─▒ i├ğin Vakum geli┼ştirmesi gerekir ek enerji harcar.)
+
+Tarama cihaz─▒:
+	Temel i┼şlevi: Elektrik ile r├╝zg├ór─▒ vb. durumlar─▒n─▒ g├Âsterir.
+	(Geli┼ştirme yok)
+
+
+
+
+
+
+
+
+Malzemeler
+Metaller:
+	├╝retimi:
+Haz─▒r bulunabilir
+Metal ├ğ├Âplerin geri d├Ân├╝┼ş├╝m├╝ ile ├╝retilebilir. (Geri d├Ân├╝┼ş├╝m el d├Ân├╝┼şt├╝r├╝c├╝s├╝ ile az miktarlarda enerji harcayarak yapabilir. Ayr─▒ca Geri d├Ân├╝┼ş├╝m tesislerinde yap─▒labilir.)
+Teneke canavar─▒n─▒n yenilmesi ile elde edilebilir.
+Kullan─▒m:
+Bina Yap─▒mlar─▒nda
+Ekipman geli┼ştirmelerinde
+Tamirlerde
+Plastikler:
+	├╝retimi:
+Haz─▒r bulunabilir
+Plastik ├ğ├Âplerin geri d├Ân├╝┼ş├╝m├╝ ile ├╝retilebilir. (Geri d├Ân├╝┼ş├╝m el d├Ân├╝┼şt├╝r├╝c├╝s├╝ ile az miktarlarda enerji harcayarak yapabilir. Ayr─▒ca Geri d├Ân├╝┼ş├╝m tesislerinde yap─▒labilir.)
+Kullan─▒m:	
+Bina Yap─▒mlar─▒nda
+Ekipman geli┼ştirmelerinde
+Tamirlerde kullan─▒l─▒r.
+
+Demir top: Ma─şazadan sat─▒n al─▒n─▒r metal par├ğalar ile sat─▒n al─▒n─▒r. Demir sapan i├ğin Kullan─▒l─▒r.
+Tohumlar:  Demir sapan i├ğin mermi, hasar vermez sadece a─şa├ğ dikmek i├ğin kullan─▒l─▒r.
+B├╝y├╝k/K├╝├ğ├╝k Hava Filtresi: K├╝├ğ├╝k  Teneke canavar i├ğin (stan yedi─şi zaman filtre tak─▒larak etkisiz hale getirilir.) B├╝y├╝k  Haritada bulunan ve Filtresiz olan Fabrikalar─▒n.
+Harita
+B├Âlgeler: 
+Buzul (├╝st)
+R├╝zgarl─▒ alan (sol)
+┼Şehir (orta-├╝st)
+G├╝ne┼şli b├Âlge (orta-alt)
+sanayi b├Âlgesi (sa─ş-├╝st)
+Temiz Su Kayna─ş─▒ (G├Ârsel YZ ile olu┼şturuldu─şu i├ğin ben normalde 2 ayr─▒ g├Âl olmas─▒ (s─▒n─▒rl─▒ kaynak i├ğin) istemi┼ştim)
+(G├Ârsel temsili de─şi┼ştirebilirim)
+ 
+D├Ân├╝tler
+-Oyuncu yang─▒n olan yerde e─şer a─şa├ğland─▒rma yaparsa: kelebekler gelir. Ku┼şlar gelir (Ku┼şlar Tar─▒m i├ğin de ├Ânemli zararl─▒ b├Âceklerin yenmesi).
+-Oyuncu filtresiz bir fabrikay─▒ filtre takt─▒─ş─▒ zaman beyaz dumanlar ├ğ─▒kar.
+-Oyuncu Temizledi─şi suda bal─▒klar (temiz bal─▒klar ├ğo─şal─▒r)
+-Oyuncu karbon ayak izi fazla olursa buzullar erir s─▒cakl─▒k de─şerleri artar tar─▒m zorla┼ş─▒r ve yang─▒nlar artar.(alev ruhlar─▒ daha ├ğok ├ğ─▒kar.)
+-Hasta karakter:a
+	- ├ûks├╝r├╝k  kirli hava
+	- A─ş─▒t (ÔÇ£Eskiden ku┼şlar c─▒v─▒ldard─▒ÔÇØ)  Az a─şa├ğland─▒rma veya R├╝zgar t├╝rbini sorunu
+	- Pencere (ye┼şillik)  Temiz cevre ve iyi a─şa├ğland─▒rma
+	-Pencere (Kirlilik)  Kirli ├ğevre
+- Ses (Ku┼ş sesleri)  iyi planlama ve ye┼şil ├ğevre
+	- Hastan─▒n bitkin y├╝z├╝  Bal─▒k (yememesi) ve d├╝zenli beslenmemesi
+	-Hastan─▒n Terlemesi (Ate┼şinin ├ğ─▒kmas─▒)   S─▒cakl─▒k de─şerinin artmas─▒ (iklim de─şi┼şikli─şinde ger├ğekle┼şir.)
+	- Hastan─▒n konu┼şmas─▒ (ÔÇ£Ku┼şlar─▒n sesi ├ğok g├╝zelÔÇØ)  G├╝zel planlama  temiz ├ğevre.
+	-Hastan─▒n konu┼şmas─▒ (Eline sa─şl─▒k!)   D├╝zenli besleme
+
+-Oyuncu fazla g├╝ne┼ş paneli dikmesi fazla maliyet ve fazla yer kalmas─▒ sonucu planlamada zorluklar ├ğ─▒kart─▒r.
+- Oyuncu Gerekli binalar─▒ Gereksiz yerlere koyarsa enerji verimi d├╝┼şer.
+
+Kullan─▒c─▒ Aray├╝z├╝ (UI) Tasar─▒m ├ûnerileri
+Oyun ─░├ği HUD (Ana Ekran)
+
+─░n┼şa ve ├£retim (Crafting) Ekran─▒
+
+Envanter ve Yetenek (YEP) A─şac─▒
+
+
+
+
+
+
+
+
+D├╝zeltilecekler
+
+1. YEP sisteminin mant─▒─ş─▒n─▒ de─şi┼ştirelim
+┼Şu anda YEP, klasik XP gibi ├ğal─▒┼ş─▒yor ve canavar ├Âld├╝rmek, bina in┼şa etmek, geri d├Ân├╝┼şt├╝rmek, a─şa├ğ dikmek YEP kazand─▒r─▒yor. Hatta ye┼şil alan─▒n saniye ba┼ş─▒na YEP vermesi d├╝┼ş├╝n├╝lm├╝┼ş. 
+Burada problem ┼şu: "Ne kadar ├ğok bina kurarsan o kadar s├╝rd├╝r├╝lebilirsin" mesaj─▒ ├ğ─▒kabilir.
+Bunun yerine YEP'i "S├╝rd├╝r├╝lebilirlik Puan─▒" veya "Ekolojik Denge Puan─▒" yapabilirsiniz. Puan;
+su kalitesinin iyile┼şmesi, 
+karbon ayak izinin azalmas─▒, 
+biyo├ğe┼şitlili─şin artmas─▒, 
+at─▒klar─▒n geri d├Ân├╝┼şt├╝r├╝lmesi, 
+yenilenebilir enerji oran─▒n─▒n y├╝kselmesi 
+ile kazan─▒ls─▒n.
+Sadece bina kurmak puan vermesin. Binan─▒n ├ğevreye sa─şlad─▒─ş─▒ olumlu sonu├ğ puan versin.
+2- Canavar alt etme yerine ├ğevresel tehdidi giderme
+├û─şrenciler h├ól├ó oyunu biraz fazla sava┼ş oyununa g├Ât├╝rm├╝┼şler. "Canavar alt etme", "silah", "hasar verme", "mermi" vb. ifadeler ├ğok fazla. ├ûrne─şin tohum silah─▒yla Teneke Canavar─▒'na demir top f─▒rlat─▒l─▒yor. 
+Bunu de─şi┼ştirirdim.
+├ûrne─şin:
+Teneke Canavar─▒ ÔåÆ geri d├Ân├╝┼şt├╝r├╝lerek etkisizle┼ştirilir.
+Duman Canavar─▒ ÔåÆ filtre ve temiz enerjiyle etkisizle┼ştirilir.
+Salya Canavar─▒ ÔåÆ su ar─▒tma ve at─▒k temizli─şiyle azalt─▒l─▒r.
+Alev Ruhu ÔåÆ su y├Ânetimi + yang─▒n ├Ânleme sistemiyle kontrol edilir.
+B├Âylece ├ğevresel probleme uygun s├╝rd├╝r├╝lebilir ├ğ├Âz├╝m├╝ se├ğme oyunun ana mekani─şine d├Ân├╝┼ş├╝r.
+3- R├╝zg├ór t├╝rbini k─▒sm─▒ d├╝zeltilmeli
+"R├╝zg├ór T├╝rbini: 7/24 elektrik ├╝retmek i├ğin kullan─▒l─▒r."
+Bu yanl─▒┼ş. R├╝zg├ór yoksa elektrik ├╝retemez.
+├£stelik a┼şa─ş─▒da "Tarama cihaz─▒ r├╝zg├ór─▒ vb. durumlar─▒ g├Âsterir" denmi┼ş. 
+Bu asl─▒nda ├ğok g├╝zel bir mekanik f─▒rsat─▒.
+┼Ş├Âyle yapal─▒m:
+R├╝zg├ór t├╝rbinleri yaln─▒zca yeterli r├╝zg├ór bulunan b├Âlgelerde verimli ├ğal─▒┼ş─▒r. Oyuncu tarama cihaz─▒yla r├╝zg├ór potansiyelini belirleyerek t├╝rbinleri uygun alanlara yerle┼ştirir. Yanl─▒┼ş konumland─▒r─▒lan t├╝rbinlerin enerji verimlili─şi d├╝┼şer.
+B├Âylece oyuncu sadece t├╝rbin kur de─şil, do─şru yere t├╝rbin kur ├Â─şrenir.
+4- G├╝ne┼ş panelinde de ayn─▒ sistemi kullanal─▒m
+G├╝ne┼ş panelinin yaln─▒zca g├╝nd├╝z elektrik ├╝retti─şi belirtilmi┼ş. Bu iyi.
+Ama bunu daha da geli┼ştirebiliriz:
+G├╝ne┼şlenme s├╝resi ÔåÆ panel verimi
+olsun.
+B├Âylece tarama cihaz─▒yla oyuncu;
+r├╝zg├ór ÔåÆ t├╝rbin
+g├╝ne┼şlenme ÔåÆ g├╝ne┼ş paneli
+e┼şle┼ştirmesi yapar.
+
+5. "Fazla g├╝ne┼ş paneli ÔåÆ yer s─▒k─▒nt─▒s─▒" daha anlaml─▒ hale getirilmeli
+┼Şu an yaln─▒zca:
+"Fazla kurulumunda yer s─▒k─▒nt─▒s─▒ ya┼şan─▒r."
+Bunu s├╝rd├╝r├╝lebilirlik karar─▒na ├ğevirebiliriz:
+Enerji ├╝retimi i├ğin kullan─▒lan alan artt─▒k├ğa ye┼şil alan veya tar─▒m alan─▒ azalabilir. Oyuncu enerji ihtiyac─▒ ile arazi kullan─▒m─▒n─▒ dengeler.
+Bu ├ğok daha g├╝├ğl├╝ bir s├╝rd├╝r├╝lebilirlik mekani─şi olur.
+Oyuncuya ┼şu ikilemi ya┼şatm─▒┼ş oluruz:
+Daha fazla temiz enerji mi?  Daha fazla tar─▒m/ye┼şil alan m─▒?
+─░┼şte bu ger├ğek bir s├╝rd├╝r├╝lebilirlik karar─▒d─▒r.
+6. Su sistemi ├ğok iyi bir f─▒rsat, geni┼şletelim
+Su ar─▒tma tesisi ve su deposu eklenmi┼ş. Ayr─▒ca temiz su, su tasarrufu ve su ar─▒t─▒m─▒yla s├╝rd├╝r├╝lebilirlik ili┼şkisi a├ğ─▒k├ğa kurulmu┼ş. 
+Burada s─▒n─▒rl─▒ su kayna─ş─▒ fikrini mutlaka korurdum.
+Oyuncunun;
+Temiz su kayna─ş─▒ ÔåÆ ar─▒tma ÔåÆ depolama ÔåÆ kullan─▒m
+zincirini y├Ânetmesi sa─şlanabilir.
+Su;
+tar─▒m, 
+yang─▒n s├Ând├╝rme, 
+a─şa├ğland─▒rma, 
+karakterin ihtiyac─▒ 
+aras─▒nda payla┼şt─▒r─▒labilir.
+B├Âylece oyuncu ger├ğek anlamda kaynak y├Ânetimi yapar.
+7. Bal─▒k mekani─şinin yeni hali ├ğok daha iyi
+├ûnceki versiyonda "kirli bal─▒─ş─▒ ├ğocu─şa yedirme" vard─▒. ┼Şimdi Salya Canavar─▒'n─▒n su hayvanlar─▒n─▒ zehirlemesi ve say─▒lar─▒n─▒ azaltmas─▒ yaz─▒lm─▒┼ş. Ayr─▒ca su temizlendi─şinde temiz bal─▒klar─▒n ├ğo─şalmas─▒ geri bildirim olarak eklenmi┼ş. 
+Bu hali daha iyi.
+Hatta bal─▒─ş─▒ ├ğocu─şa yedirme zorunlulu─şunu tamamen ├ğ─▒karabilirsiniz.
+Bal─▒klar su ekosisteminin sa─şl─▒k g├Âstergesi olsun:
+9. Biyo├ğe┼şitlilik mekanik haline getirilmeli
+├û─şrenciler kelebeklerin ve ku┼şlar─▒n geri gelmesini eklemi┼ş. Ayr─▒ca ku┼şlar─▒n tar─▒mdaki zararl─▒ b├Âceklerle ili┼şkilendirilmesi d├╝┼ş├╝n├╝lm├╝┼ş. 
+Bu ├ğok iyi ama sadece g├Ârsel d├Ân├╝t olarak kalmas─▒n.
+├ûrne─şin:
+A─şa├ğland─▒rma Ôåæ ÔåÆ ku┼ş/kelebek Ôåæ ÔåÆ biyo├ğe┼şitlilik Ôåæ
+ve
+Ku┼ş pop├╝lasyonu Ôåæ ÔåÆ baz─▒ zararl─▒ b├Âcekler Ôåô ÔåÆ tar─▒msal verim Ôåæ
+┼şeklinde sistemler birbirine ba─şlans─▒n.
+10. ─░klim Canavar─▒ fikri iyi ama neden-sonu├ğ zinciri daha net olmal─▒
+Burada en g├╝├ğl├╝ fikirlerden biri var. ├û─şrenciler karbon ayak izi y├╝kseldi─şinde buzullar─▒n erimesini, s─▒cakl─▒─ş─▒n artmas─▒n─▒, tar─▒m─▒n zorla┼şmas─▒n─▒ ve yang─▒nlar─▒n ├ğo─şalmas─▒n─▒ d├╝┼ş├╝nm├╝┼şler. 
+Bunu oyunun ana s├╝rd├╝r├╝lebilirlik sistemi haline getirebiliriz:
+Fosil/kirletici faaliyetler Ôåæ ÔåÆ Karbon ayak izi Ôåæ ÔåÆ S─▒cakl─▒k Ôåæ ÔåÆ Buzullar Ôåô ÔåÆ Su dengesi bozulur ÔåÆ Tar─▒m verimi Ôåô ÔåÆ Yang─▒n riski Ôåæ
+Oyuncu yaln─▒zca tek tek canavarlarla sava┼şmaz; bir ├ğevresel karar─▒n ba┼şka bir sistemi nas─▒l etkiledi─şini g├Âr├╝r.
+11. ├çocuk karakteri kals─▒n ama "hasta karakter" demeyelim
+Dok├╝man─▒n sonunda h├ól├ó "Hasta karakter" yaz─▒yor ve bitkin y├╝z├╝n "bal─▒k yememesi ve d├╝zenli beslenmemesi" ile ili┼şkilendirildi─şi g├Âr├╝l├╝yor. 
+Bunu kesinlikle de─şi┼ştirirdim.
+"├çocuk karakter / Gelecek nesil temsilcisi" diyelim.
+├çocuk:
+hava kirliyse ÔåÆ ├Âks├╝r├╝r
+s─▒cakl─▒k y├╝kselirse ÔåÆ s─▒caktan rahats─▒z olur, 
+├ğevre g├╝r├╝lt├╝l├╝yse ÔåÆ rahats─▒z olur, 
+├ğevre ye┼şillenirse ÔåÆ mutlu olur, 
+ku┼şlar d├Ânerse ÔåÆ ku┼ş seslerinden s├Âz eder, 
+su ve ekosistem iyile┼şirse ÔåÆ olumlu yorum yapar. 
+Ama a├ğl─▒k, d├╝zenli yemek, bal─▒k yeme vb. bak─▒m mekaniklerini ├ğ─▒karal─▒m.
+├çocu─şun i┼şlevi ├ğevresel ko┼şullar─▒n insan ya┼şam─▒na ve gelecek nesillere etkisini g├Âstermek olsun.
+12. HUD'a tek "kirlilik" de─şeri yerine 5 temel g├Âsterge koyal─▒m
+Bence oyunun s├╝rd├╝r├╝lebilirlik taraf─▒n─▒ en fazla g├╝├ğlendirecek de─şi┼şikliklerden biri bu olur:
+Hava Kalitesi | Su Kalitesi | Karbon Ayak ─░zi | Biyo├ğe┼şitlilik | Ekosistem Sa─şl─▒─ş─▒
+Ayr─▒ca S─▒cakl─▒k ayr─▒ bir g├Âsterge olabilir.
+B├Âylece oyuncu "kirlilik %40" gibi soyut tek bir de─şer yerine hangi sistemin neden bozuldu─şunu anlayabilir.
+
+
+
