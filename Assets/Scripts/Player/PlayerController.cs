@@ -20,7 +20,6 @@ public class PlayerController : MonoBehaviour
 
     private CharacterController controller;
     private Animator animator;
-    private PlayerInput playerInput;
 
     private Vector2 moveInput;
     private Vector2 lookInput;
@@ -36,11 +35,9 @@ public class PlayerController : MonoBehaviour
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         
-        // Hide and lock cursor
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // Default to Third Person if camera is assigned
         if (playerCamera != null && thirdPersonTarget != null)
         {
             playerCamera.transform.position = thirdPersonTarget.position;
@@ -50,29 +47,35 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        HandleCameraToggle();
+        HandleInput();
         HandleMovement();
-        HandleCameraLook();
     }
 
-    private void HandleCameraToggle()
+    void LateUpdate()
     {
-        // V tuşuna basıldığında kamera açısını değiştir
+        // Kameranın pürüzsüz takip etmesi için LateUpdate kullanıyoruz
+        HandleCameraLook();
+        HandleCameraFollow();
+    }
+
+    private void HandleInput()
+    {
         if (Keyboard.current != null && Keyboard.current.vKey.wasPressedThisFrame)
         {
             isFirstPerson = !isFirstPerson;
         }
+    }
 
+    private void HandleCameraFollow()
+    {
         if (playerCamera == null) return;
 
         Transform targetPos = isFirstPerson && firstPersonTarget != null ? firstPersonTarget : thirdPersonTarget;
         
         if (targetPos != null)
         {
-            // Smoothly move camera to target position
             playerCamera.transform.position = Vector3.SmoothDamp(playerCamera.transform.position, targetPos.position, ref cameraVelocity, cameraSmoothTime);
             
-            // In first person, match rotation exactly. In 3rd person, look at the player slightly ahead
             if (isFirstPerson)
             {
                 playerCamera.transform.rotation = targetPos.rotation;
@@ -86,11 +89,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovement()
     {
-        // Calculate speed
         float targetSpeed = isRunning ? runSpeed : walkSpeed;
         if (moveInput == Vector2.zero) targetSpeed = 0f;
 
-        // Calculate direction relative to camera
         Vector3 moveDirection = Vector3.zero;
         
         if (playerCamera != null)
@@ -109,17 +110,14 @@ public class PlayerController : MonoBehaviour
             moveDirection = new Vector3(moveInput.x, 0f, moveInput.y);
         }
 
-        // Apply gravity
         if (controller.isGrounded && velocity.y < 0)
         {
             velocity.y = -2f;
         }
         velocity.y += gravity * Time.deltaTime;
 
-        // Move Character
         controller.Move((moveDirection * targetSpeed + velocity) * Time.deltaTime);
 
-        // Rotate Character
         if (moveDirection != Vector3.zero && !isFirstPerson)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
@@ -127,7 +125,6 @@ public class PlayerController : MonoBehaviour
         }
         else if (isFirstPerson)
         {
-            // 1. Şahısta karakter her zaman kameranın baktığı yöne döner
             Vector3 camForward = playerCamera.transform.forward;
             camForward.y = 0;
             if (camForward != Vector3.zero)
@@ -136,14 +133,12 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Update Animator Blend Tree Parameter (0 = Idle, 0.5 = Walk, 1.0 = Run)
         float currentSpeedPercent = 0f;
         if (moveInput != Vector2.zero)
         {
             currentSpeedPercent = isRunning ? 1.0f : 0.5f;
         }
         
-        // Smoothly blend animation
         float currentAnimSpeed = animator.GetFloat("Speed");
         animator.SetFloat("Speed", Mathf.Lerp(currentAnimSpeed, currentSpeedPercent, Time.deltaTime * 10f));
     }
@@ -152,25 +147,22 @@ public class PlayerController : MonoBehaviour
     {
         if (playerCamera == null) return;
 
-        // Rotate Character and Camera based on mouse input
         float mouseX = lookInput.x * mouseSensitivity;
         float mouseY = lookInput.y * mouseSensitivity;
 
         cameraPitch -= mouseY;
-        cameraPitch = Mathf.Clamp(cameraPitch, -80f, 60f); // Sınırlandır
+        cameraPitch = Mathf.Clamp(cameraPitch, -80f, 60f);
 
         if (isFirstPerson)
         {
-            // 1. Şahıs görünümünde kamerayı yukarı/aşağı oynat
             if (firstPersonTarget != null)
             {
                 firstPersonTarget.localRotation = Quaternion.Euler(cameraPitch, 0f, 0f);
             }
-            // Sağa/Sola dönüşü HandleMovement içinde karakteri döndürerek hallediyoruz
+            transform.Rotate(Vector3.up * mouseX);
         }
         else
         {
-            // 3. Şahıs kamerası için hedefin etrafında dönme (Basit bir Orbit)
             if (thirdPersonTarget != null)
             {
                 transform.Rotate(Vector3.up * mouseX);
@@ -179,7 +171,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // --- Input System Events (SendMessages) ---
     public void OnMove(InputValue value)
     {
         moveInput = value.Get<Vector2>();
@@ -192,7 +183,6 @@ public class PlayerController : MonoBehaviour
 
     public void OnSprint(InputValue value)
     {
-        // Note: Make sure there's an action named "Sprint" (Button type) in your Input Actions
         isRunning = value.isPressed;
     }
 }
