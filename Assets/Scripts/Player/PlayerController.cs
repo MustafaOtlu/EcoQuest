@@ -151,7 +151,7 @@ public class PlayerController : MonoBehaviour
         float mouseY = lookInput.y * mouseSensitivity;
 
         cameraPitch -= mouseY;
-        cameraPitch = Mathf.Clamp(cameraPitch, -80f, 60f);
+        float minPitch = isFirstPerson ? -60f : -80f; float maxPitch = isFirstPerson ? 30f : 60f; cameraPitch = Mathf.Clamp(cameraPitch, minPitch, maxPitch);
 
         if (isFirstPerson)
         {
