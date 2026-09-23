@@ -15,7 +15,7 @@ public class PlayerController : MonoBehaviour
     public GameObject firstPersonCamera; // 1. Şahıs Virtual Kamerası
 
     private CharacterController controller;
-    private Animator animator;
+    public Animator characterAnimator;
 
     private Vector2 moveInput;
     private bool isRunning;
@@ -27,7 +27,7 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        animator = GetComponentInChildren<Animator>();
+        if (characterAnimator == null) characterAnimator = GetComponentInChildren<Animator>();
         
         if (Camera.main != null)
         {
@@ -115,11 +115,11 @@ public class PlayerController : MonoBehaviour
         }
 
         // --- ANİMASYON ---
-        if (animator != null)
+        if (characterAnimator != null)
         {
             float currentSpeedPercent = moveInput != Vector2.zero ? (isRunning ? 1.0f : 0.5f) : 0f;
-            float currentAnimSpeed = animator.GetFloat("Speed");
-            animator.SetFloat("Speed", Mathf.Lerp(currentAnimSpeed, currentSpeedPercent, Time.deltaTime * 10f));
+            float currentAnimSpeed = characterAnimator.GetFloat("Speed");
+            characterAnimator.SetFloat("Speed", Mathf.Lerp(currentAnimSpeed, currentSpeedPercent, Time.deltaTime * 10f));
         }
     }
 
