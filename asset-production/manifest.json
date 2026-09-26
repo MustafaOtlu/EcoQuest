@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "project": "EcoQuest",
+  "project_path": "C:/GameProjects/EcoQuest",
+  "status": "blocked_before_paid_submission",
+  "engine": "Unity 6000.0.74f1 / URP",
+  "units": "meters",
+  "style": "Stylized textured low-poly 3D, readable from the elevated gameplay camera; match the existing FieldStation art rather than the older 2D GDD.",
+  "style_evidence": "Documentation/Images/FieldStation.png visually inspected; Documentation/FreeAssets.md read.",
+  "palette": {"green": "#328970", "wood": "#A77651", "metal": "#586574", "accent": "#D38B43"},
+  "budgets": {
+    "leonardo": {"limit": 200, "unit": "API tokens", "spent_this_task": 0, "reserved": 0, "remaining": 200, "account_api_paid_tokens_observed": 9062, "quote_status": "API returned cost:null; no generation submitted"},
+    "meshy": {"limit": 100, "unit": "credits", "spent_this_task": 0, "reserved": 0, "remaining": 100, "verified_estimate_per_asset": 15, "verified_estimate_total": 30, "pricing_source": "https://docs.meshy.ai/en/api/pricing"}
+  },
+  "journal": "asset-production/journal.jsonl",
+  "credentials": {"source": "existing ignored local environment file", "values_logged": false},
+  "constraints": {"leonardo_images_per_asset": 1, "review_saved_image_before_meshy": true, "automatic_topups": false, "retry_ambiguous_paid_submission": false},
+  "blockers": [
+    "Sandbox command and browser startup fails: helper_unknown_error: setup refresh had errors. Approved escalated shell access works.",
+    "Leonardo v1 pricing-calculator returns calculateProductionApiServiceCost.cost=null for validated 768x768 single-image requests; cannot verify token charge. Browser calculator unavailable due environment startup failure."
+  ],
+  "assets": [
+    {
+      "id": "portable-environment-filter",
+      "name": "Taşınabilir çevre filtresi",
+      "category": "equipment",
+      "purpose": "Portable environmental air filtration equipment",
+      "route": "Leonardo reference -> saved-image visual review -> Meshy Smart Topology T2",
+      "route_reason": "User explicitly requested Leonardo and Meshy production for this selected asset.",
+      "reuse_source": null,
+      "target_faces": 1500,
+      "target_height_m": 0.65,
+      "prompt": "Single portable environmental air filter for a stylized low-poly ecological game. Compact sturdy green metal canister, broad dark intake grille, short cylindrical replaceable filter housing, one thick integrated carrying handle and small amber status indicator. Chunky readable proportions, muted teal green, slate grey metal and restrained warm orange accents. Textured matte painted surfaces, simple clean construction. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, extra props, collage, pedestal, smoke or scenery.",
+      "reference": {"status": "not_generated", "request_id": null, "file": null, "review": null},
+      "model": {"status": "not_submitted", "model_type": "smart-topology", "ai_model": "meshy-t2", "should_texture": true, "texture_resolution": "2k", "request_id": null},
+      "cost_reservations": [],
+      "files": [],
+      "review_findings": [],
+      "integration_status": "pending_generation"
+    },
+    {
+      "id": "organic-compost-bin",
+      "name": "Organik kompost kutusu",
+      "category": "facilities",
+      "purpose": "Organic waste composting container for the field station",
+      "route": "Leonardo reference -> saved-image visual review -> Meshy Smart Topology T2",
+      "route_reason": "User explicitly requested Leonardo and Meshy production for this selected asset.",
+      "reuse_source": null,
+      "target_faces": 1500,
+      "target_height_m": 1.0,
+      "prompt": "Single organic compost bin for a stylized low-poly ecological game, a sturdy square wooden slat container with dark muted green corner frame, closed green hinged lid with one chunky handle, narrow horizontal ventilation slots and a clearly defined closed lower front compost access hatch. Warm natural brown wood, muted teal green fittings, matte textured surfaces, chunky clean readable proportions matching simple stylized survival game props. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, loose rubbish, plants, tools, extra props, collage, pedestal or scenery.",
+      "reference": {"status": "not_generated", "request_id": null, "file": null, "review": null},
+      "model": {"status": "not_submitted", "model_type": "smart-topology", "ai_model": "meshy-t2", "should_texture": true, "texture_resolution": "2k", "request_id": null},
+      "cost_reservations": [],
+      "files": [],
+      "review_findings": [],
+      "integration_status": "pending_generation"
+    }
+  ]
+}
