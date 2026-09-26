@@ -16,11 +16,27 @@ public sealed class PlantedSeed : MonoBehaviour
     private Vector3 baseScale, basePosition;
     private Renderer plantRenderer;
     private MaterialPropertyBlock tint;
+    private Transform cropVisual;
+    private Renderer[] cropRenderers;
+    public static PlantedSeed Create(Vector3 groundPosition)
+    {
+        var root = new GameObject("Eco Crop");
+        root.transform.position = groundPosition;
+        var visual = EcoWorldArt.Spawn("Cabbage", groundPosition, root.transform);
+        if (visual == null) { Destroy(root); return null; }
+        visual.name = "Crop Visual";
+        var collider = root.AddComponent<CapsuleCollider>();
+        collider.radius = 0.16f; collider.height = 0.35f; collider.center = Vector3.up * 0.175f;
+        return root.AddComponent<PlantedSeed>();
+    }
     private void Awake()
     {
         baseScale = transform.localScale; basePosition = transform.position;
         plantRenderer = GetComponent<Renderer>();
         tint = new MaterialPropertyBlock();
+        cropVisual = transform.Find("Crop Visual");
+        if (cropVisual != null) cropRenderers = cropVisual.GetComponentsInChildren<Renderer>();
+        UpdateVisual();
     }
     private void Update() => Simulate(Time.deltaTime);
     public void Simulate(float seconds)
@@ -38,6 +54,21 @@ public sealed class PlantedSeed : MonoBehaviour
             float previous = dryTime; dryTime += seconds;
             health = Mathf.Max(0f, health - (Mathf.Max(0f, dryTime - 15f) - Mathf.Max(0f, previous - 15f)) * 0.02f);
         }
+        UpdateVisual();
+    }
+    private void UpdateVisual()
+    {
+        if (cropVisual != null)
+        {
+            // The imported visual grows around its soil-level pivot; interaction collider stays reachable.
+            cropVisual.localScale = Vector3.one * Mathf.Lerp(0.25f, 1f, growth);
+            Color multiplier = IsWithered ? new Color(0.45f, 0.28f, 0.12f) : contaminated ? new Color(0.75f, 0.65f, 0.35f) : Color.white;
+            foreach (var renderer in cropRenderers)
+            {
+                tint.SetColor("_BaseColor", multiplier); tint.SetColor("_Color", multiplier); renderer.SetPropertyBlock(tint);
+            }
+            return;
+        }
         transform.localScale = Vector3.Scale(baseScale, new Vector3(1f + growth * 2f, 1f + growth * 4f, 1f + growth * 2f));
         transform.position = basePosition + Vector3.up * (baseScale.y * growth * 4f);
         if (plantRenderer != null)
@@ -53,6 +84,7 @@ public sealed class PlantedSeed : MonoBehaviour
         moisture = Mathf.Clamp01(moisture + amount);
         if (!clean) contaminated = true;
         dryTime = 0f;
+        UpdateVisual();
     }
     public bool TryHarvest(out int seeds, out int food)
     {
@@ -70,6 +102,6 @@ public sealed class PlantedSeed : MonoBehaviour
     public bool Fertilize()
     {
         if (IsWithered || harvested || IsMature) return false;
-        growth = Mathf.Min(1f, growth + 0.2f); health = Mathf.Min(1f, health + 0.25f); return true;
+        growth = Mathf.Min(1f, growth + 0.2f); health = Mathf.Min(1f, health + 0.25f); UpdateVisual(); return true;
     }
 }

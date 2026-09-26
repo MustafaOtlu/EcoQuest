@@ -19,6 +19,7 @@ public sealed class EnemyBrain : MonoBehaviour
     private Vector3 home, patrolGoal;
     private float gravitySpeed, nextDecision, nextAttack, attackStarted, lastSeen;
     private bool delivered;
+    private Vector3 knockbackVelocity;
     private static readonly int Speed = Animator.StringToHash("Speed");
     private static readonly int Attack = Animator.StringToHash("Attack");
     private bool Ranged => projectilePrefab != null;
@@ -28,6 +29,7 @@ public sealed class EnemyBrain : MonoBehaviour
     {
         motor = GetComponent<CharacterController>();
         home = transform.position; Health = maximumHealth;
+        gameObject.AddComponent<EnemyHealthBar>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
         State = Behaviour.Idle; nextDecision = Time.time + Random.Range(1f, 3f);
@@ -36,7 +38,7 @@ public sealed class EnemyBrain : MonoBehaviour
     private void Update()
     {
         if (State == Behaviour.Dead) return;
-        bool available = player != null && !player.IsDead;
+        bool available = player != null && !player.IsRecovering;
         float distance = available ? Vector3.Distance(transform.position, player.transform.position) : float.PositiveInfinity;
         bool visible = available && distance < detectionRange && CanSeePlayer();
         if (visible) lastSeen = Time.time;
@@ -100,19 +102,25 @@ public sealed class EnemyBrain : MonoBehaviour
         else direction = Vector3.zero;
         if (motor.isGrounded && gravitySpeed < 0f) gravitySpeed = -2f;
         gravitySpeed = Mathf.Max(-25f, gravitySpeed - 20f * Time.deltaTime);
-        motor.Move((direction * speed + Vector3.up * gravitySpeed) * Time.deltaTime);
+        // Let a hit briefly overcome pursuit so a chasing enemy actually recoils.
+        if (knockbackVelocity.sqrMagnitude > 0.01f) direction = Vector3.zero;
+        motor.Move((direction * speed + knockbackVelocity + Vector3.up * gravitySpeed) * Time.deltaTime);
+        knockbackVelocity = Vector3.MoveTowards(knockbackVelocity, Vector3.zero, 8f * Time.deltaTime);
         if (animator != null)
             animator.SetFloat(Speed, Mathf.Clamp01(Flat(motor.velocity).magnitude / Mathf.Max(0.01f, chaseSpeed)), 0.15f, Time.deltaTime);
     }
     private Vector3 Steer(Vector3 direction)
     {
         // Collision-aware local steering works on the current unbaked test scene.
+        // Cover the body above step height, not only eye level, so low crates are avoided.
+        Vector3 feet = transform.TransformPoint(motor.center - Vector3.up * (motor.height * 0.5f));
+        Vector3 lowerProbe = feet + Vector3.up * (motor.stepOffset + motor.radius + 0.03f);
         for (int i = 0; i < 5; i++)
         {
             float angle = i == 0 ? 0 : (i % 2 == 0 ? -1 : 1) * ((i + 1) / 2) * 45f;
             Vector3 candidate = Quaternion.Euler(0, angle, 0) * direction;
             bool blocked = false;
-            foreach (var hit in Physics.SphereCastAll(Eye, motor.radius, candidate, motor.radius + 0.5f, ~0, QueryTriggerInteraction.Ignore))
+            foreach (var hit in Physics.CapsuleCastAll(lowerProbe, Eye, motor.radius, candidate, motor.radius + 0.5f, ~0, QueryTriggerInteraction.Ignore))
                 if (!hit.transform.IsChildOf(transform)) { blocked = true; break; }
             if (blocked) continue;
             Vector3 ahead = transform.position + candidate * (motor.radius + 0.5f) + Vector3.up * 0.5f;
@@ -156,7 +164,35 @@ public sealed class EnemyBrain : MonoBehaviour
         }
         State = Behaviour.Dead; motor.enabled = false;
         if (animator != null) animator.enabled = false;
+        SpawnLoot();
         Destroy(gameObject, 0.2f); // No death clip was supplied.
+    }
+
+    private void SpawnLoot()
+    {
+        int metal = species == Species.Tin ? 6 : 0;
+        int plastic = species == Species.Slime ? 5 : species == Species.Acid ? 3 : species == Species.Smoke ? 2 : species == Species.Flame ? 2 : 0;
+        if (metal == 0 && plastic == 0) return;
+        int pieces = metal > 0 ? 2 : 1;
+        int metalPerPiece = metal > 0 ? Mathf.CeilToInt(metal / (float)pieces) : 0;
+        for (int i = 0; i < pieces; i++)
+        {
+            Vector3 position = transform.position + Vector3.up * 0.18f + transform.right * (i == 0 ? -0.22f : 0.22f);
+            var drop = EcoWorldArt.Spawn(metal > 0 ? "MetalScrap" : "PlasticScrap", position);
+            if (drop == null) continue;
+            drop.name = species + " loot";
+            var amountMetal = Mathf.Min(metalPerPiece, Mathf.Max(0, metal - i * metalPerPiece));
+            var amountPlastic = i == 0 ? plastic : 0;
+            drop.AddComponent<EnemyLootDrop>().Initialize(position, amountMetal, amountPlastic);
+        }
+    }
+    public void ApplyKnockback(Vector3 direction, float force)
+    {
+        if (State == Behaviour.Dead || !motor.enabled || force <= 0f) return;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.001f) return;
+        knockbackVelocity += direction.normalized * Mathf.Clamp(force, 0f, 2.5f);
+        knockbackVelocity = Vector3.ClampMagnitude(knockbackVelocity, 2.5f);
     }
     private static Vector3 Flat(Vector3 value) { value.y = 0f; return value; }
 }

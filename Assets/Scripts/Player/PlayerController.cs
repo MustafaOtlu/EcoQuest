@@ -51,7 +51,7 @@ public class PlayerController : MonoBehaviour
             SetCursorLocked(true);
 
         bool hasControl = Application.isFocused && Cursor.lockState == CursorLockMode.Locked
-            && (vitals == null || !vitals.IsDead);
+            && (vitals == null || !vitals.IsRecovering);
         if (hasControl && firstPersonCamera != null)
         {
             Vector2 look = lookAction.ReadValue<Vector2>();
