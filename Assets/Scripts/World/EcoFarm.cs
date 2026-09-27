@@ -9,7 +9,7 @@ public sealed class EcoFarm : MonoBehaviour
     public float moisturePerLitre = 0.04f;
     public float irrigationPerSecond = 4;
     private EcoWaterNode water;
-    private void Awake() => water = GetComponent<EcoWaterNode>();
+    private void Awake() { water = GetComponent<EcoWaterNode>(); GetComponent<PlantingSurface>().allowTrees = false; }
     private void Update() => Simulate(Time.deltaTime);
     public bool Contains(PlantedSeed plant)
     {

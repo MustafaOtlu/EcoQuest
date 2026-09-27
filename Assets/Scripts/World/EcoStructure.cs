@@ -24,8 +24,17 @@ public sealed class EcoStructure : MonoBehaviour
     private int InvestmentMultiplier => tier * (tier + 1) / 2;
     private EcoPowerNode power;
     private void Awake() => power = GetComponent<EcoPowerNode>();
-    private void OnEnable() => Active.Add(this);
-    private void OnDisable() => Active.Remove(this);
+    private void OnEnable() { Active.Add(this); EcoNavigation.MarkDirty(); }
+    private void OnDisable() { Active.Remove(this); EcoNavigation.MarkDirty(); }
+    private void Update() => SimulateEcology(Time.deltaTime);
+    public void SimulateEcology(float seconds)
+    {
+        if (!isActiveAndEnabled || !EcoRegion.Valid(seconds) || !playerBuilt || integrity <= 0 || (buildingId != "wind" && buildingId != "recycling")) return;
+        var region = EcoRegion.At(transform.position);
+        if (region == null || !region.sensitiveHabitat) return;
+        region.vegetation = Mathf.Max(0, region.vegetation - seconds * 0.0005f);
+        region.AddPollution(0, 0, seconds * 0.015f, 0);
+    }
     public void ReceiveDamage(float amount)
     {
         if (amount <= 0 || float.IsNaN(amount) || float.IsInfinity(amount)) return;

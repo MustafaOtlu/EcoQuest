@@ -4,7 +4,7 @@ using UnityEngine;
 public sealed class EnemyBrain : MonoBehaviour
 {
     public enum Species { Tin, Flame, Acid, Slime, Smoke }
-    public enum Behaviour { Idle, Patrol, Chase, Attack, Return, Dead }
+    public enum Behaviour { Idle, Patrol, Chase, Attack, Return, Dead, Stunned }
     public Species species;
     public Animator animator;
     public GameObject projectilePrefab;
@@ -14,7 +14,14 @@ public sealed class EnemyBrain : MonoBehaviour
     public float patrolRadius = 2f;
     public Behaviour State { get; private set; }
     public float Health { get; private set; }
+    public bool IsStunned => State != Behaviour.Dead && species == Species.Tin && Time.time < stunnedUntil;
+    public float StunRemaining => IsStunned ? stunnedUntil - Time.time : 0;
+    public bool FilterInstalled { get; private set; }
+    private float stunnedUntil;
+    private bool animationPausedByStun;
     private CharacterController motor;
+    private EcoEnemyPath route;
+    private Vector3 lastKnownPosition;
     private PlayerVitals player;
     private Vector3 home, patrolGoal;
     private float gravitySpeed, nextDecision, nextAttack, attackStarted, lastSeen;
@@ -28,6 +35,7 @@ public sealed class EnemyBrain : MonoBehaviour
     private void Awake()
     {
         motor = GetComponent<CharacterController>();
+        EcoNavigation.Ignore(gameObject); route = gameObject.AddComponent<EcoEnemyPath>();
         home = transform.position; Health = maximumHealth;
         gameObject.AddComponent<EnemyHealthBar>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
@@ -38,10 +46,22 @@ public sealed class EnemyBrain : MonoBehaviour
     private void Update()
     {
         if (State == Behaviour.Dead) return;
+        if (IsStunned)
+        {
+            State = Behaviour.Stunned;
+            if (animator != null) { animator.SetFloat(Speed, 0); animator.speed = 0; }
+            if (motor.isGrounded && gravitySpeed < 0) gravitySpeed = -2;
+            gravitySpeed = Mathf.Max(-25, gravitySpeed - 20 * Time.deltaTime);
+            motor.Move((knockbackVelocity + Vector3.up * gravitySpeed) * Time.deltaTime);
+            knockbackVelocity = Vector3.MoveTowards(knockbackVelocity, Vector3.zero, 8 * Time.deltaTime);
+            return;
+        }
+        if (animationPausedByStun) { animationPausedByStun = false; if (animator != null) animator.speed = 1; }
+        if (State == Behaviour.Stunned) State = Behaviour.Chase;
         bool available = player != null && !player.IsRecovering;
         float distance = available ? Vector3.Distance(transform.position, player.transform.position) : float.PositiveInfinity;
         bool visible = available && distance < detectionRange && CanSeePlayer();
-        if (visible) lastSeen = Time.time;
+        if (visible) { lastSeen = Time.time; lastKnownPosition = player.transform.position; }
         Vector3 direction = Vector3.zero;
         float speed = moveSpeed;
         if (State == Behaviour.Attack)
@@ -60,14 +80,14 @@ public sealed class EnemyBrain : MonoBehaviour
             direction = home - transform.position;
             if (Flat(direction).magnitude < 0.5f) { State = Behaviour.Idle; nextDecision = Time.time + 2f; }
         }
-        else if (available && (visible || (State == Behaviour.Chase && Time.time - lastSeen < 3f)))
+        else if (available && (visible || (State == Behaviour.Chase && Time.time - lastSeen < 10f)))
         {
             if (Vector3.Distance(home, transform.position) > leashRange || Vector3.Distance(home, player.transform.position) > leashRange + 5f)
                 State = Behaviour.Return;
             else
             {
                 State = Behaviour.Chase;
-                Vector3 toPlayer = Flat(player.transform.position - transform.position);
+                Vector3 toPlayer = Flat((visible ? player.transform.position : lastKnownPosition) - transform.position);
                 Face(toPlayer);
                 speed = chaseSpeed;
                 if (visible && distance <= attackRange && Time.time >= nextAttack)
@@ -96,7 +116,10 @@ public sealed class EnemyBrain : MonoBehaviour
         if (direction.magnitude < 0.2f) direction = Vector3.zero;
         if (State != Behaviour.Attack && direction != Vector3.zero)
         {
-            direction = Steer(direction.normalized);
+            Vector3 goal = State == Behaviour.Return ? home : State == Behaviour.Patrol ? patrolGoal
+                : available && Vector3.Dot(direction, player.transform.position - transform.position) > 0 ? (visible ? player.transform.position : lastKnownPosition)
+                : transform.position + direction.normalized * 3;
+            direction = Steer(route.Direction(goal, direction.normalized));
             if (State != Behaviour.Chase) Face(direction);
         }
         else direction = Vector3.zero;
@@ -153,19 +176,42 @@ public sealed class EnemyBrain : MonoBehaviour
     }
     public void TakeDamage(float amount)
     {
-        if (State == Behaviour.Dead || amount <= 0f) return;
+        if (State == Behaviour.Dead || !EcoRegion.Valid(amount)) return;
         Health = Mathf.Max(0f, Health - amount);
         if (Health > 0f)
         {
             // Continuous weapon damage must not cancel and restart the attack windup every frame.
-            if (State != Behaviour.Attack) State = Behaviour.Chase;
+            if (State != Behaviour.Attack && !IsStunned) State = Behaviour.Chase;
             lastSeen = Time.time;
+            if (player != null) lastKnownPosition = player.transform.position;
             return;
         }
+        Defeat();
+    }
+    public void StunFromMetal(float seconds = 5)
+    {
+        if (species != Species.Tin || State == Behaviour.Dead || !EcoRegion.Valid(seconds)) return;
+        stunnedUntil = Mathf.Max(stunnedUntil, Time.time + Mathf.Min(seconds, 5));
+        State = Behaviour.Stunned; delivered = true; nextAttack = Mathf.Max(nextAttack, stunnedUntil + 0.4f);
+        animationPausedByStun = true;
+        if (animator != null) { animator.ResetTrigger(Attack); animator.speed = 0; }
+    }
+    public bool InstallFilter(PlayerWeaponSystem user)
+    {
+        if (user == null || !user.CanOperate || !isActiveAndEnabled || State == Behaviour.Dead || FilterInstalled) return false;
+        if (Vector3.Distance(user.transform.position, motor.bounds.ClosestPoint(user.transform.position)) > 3) return false;
+        if (!IsStunned) { user.ShowFeedback("Teneke'yi önce demir topla sersemlet."); return false; }
+        if (!user.UseAirFilter(false)) { user.ShowFeedback("Marketten küçük hava filtresi alman gerekiyor."); return false; }
+        FilterInstalled = true; Health = 0; Defeat(); user.Progression.Award(12);
+        user.ShowFeedback("Küçük filtre takıldı • Teneke etkisiz hale geldi • +12 YEP"); return true;
+    }
+    private void Defeat()
+    {
+        if (State == Behaviour.Dead) return;
         State = Behaviour.Dead; motor.enabled = false;
         if (animator != null) animator.enabled = false;
         SpawnLoot();
-        Destroy(gameObject, 0.2f); // No death clip was supplied.
+        gameObject.AddComponent<EnemyDefeatMotion>();
     }
 
     private void SpawnLoot()

@@ -25,7 +25,7 @@ public static class EcoBuildingCatalog
         new Entry("recycling", "Geri dönüşüm", "RecyclingFacility", 16, 8, 2),
         new Entry("farm", "Tarla", "Farm", 2, 4, 1)
     };
-    public static int Limit(int index, int level) => index == 0 ? level * 2 : index == 1 ? level < 4 ? 0 : ((level - 4) / 3 + 1) * 2 : 8;
+    public static int Limit(int index, int level) => Entries[index].Id == "farm" ? int.MaxValue : index == 0 ? level * 2 : index == 1 ? level < 4 ? 0 : ((level - 4) / 3 + 1) * 2 : 8;
     public static int Find(string id)
     {
         for (int i = 0; i < Entries.Length; i++) if (Entries[i].Id == id) return i;

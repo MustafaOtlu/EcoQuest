@@ -12,6 +12,8 @@ public sealed class EnemySceneSetup : MonoBehaviour
     {
         if (player == null) { Debug.LogError("Enemy setup needs a Player reference.", this); return; }
         if (player.GetComponent<PlayerVitals>() == null) player.gameObject.AddComponent<PlayerVitals>();
+        EcoNavigation.Ignore(player.gameObject);
+        if (FindFirstObjectByType<EcoNavigation>() == null) new GameObject("Eco navigation").AddComponent<EcoNavigation>();
         for (int i = 0; i < enemyPrefabs.Length; i++)
         {
             if (enemyPrefabs[i] == null) continue;

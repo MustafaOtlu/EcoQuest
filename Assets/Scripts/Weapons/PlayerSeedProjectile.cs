@@ -5,9 +5,10 @@ public sealed class PlayerSeedProjectile : MonoBehaviour
     private Transform owner;
     private PlayerWeaponSystem weapons;
     private Vector3 velocity;
+    private EcoCropCatalog.Kind seedKind;
     private float life = 4f;
     public void Launch(Transform shooter, PlayerWeaponSystem source, Vector3 direction)
-    { owner = shooter; weapons = source; velocity = direction.normalized * 18f; }
+    { owner = shooter; weapons = source; seedKind = source != null ? source.SelectedSeed : EcoCropCatalog.Kind.Cabbage; velocity = direction.normalized * (source != null && source.Upgrades != null ? source.Upgrades.SeedVelocity : 18f); }
     private void Update()
     {
         Vector3 step = velocity * Time.deltaTime;
@@ -19,7 +20,7 @@ public sealed class PlayerSeedProjectile : MonoBehaviour
         }
         if (nearest.HasValue)
         {
-            if (weapons != null) weapons.TryPlant(nearest.Value);
+            if (weapons != null) weapons.TryPlant(nearest.Value, seedKind);
             Destroy(gameObject); return;
         }
         transform.position += step;

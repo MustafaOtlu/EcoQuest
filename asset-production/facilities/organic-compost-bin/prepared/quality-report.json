@@ -1,0 +1,59 @@
+{
+  "triangles": 1486,
+  "vertices": 2376,
+  "mesh_count": 1,
+  "material_count": 1,
+  "primitives": [
+    {
+      "vertices": 2376,
+      "triangles": 1486,
+      "material_index": 0,
+      "normals_present": true,
+      "uv_present": true,
+      "degenerate_triangles": 0,
+      "nonunit_normals": 0
+    }
+  ],
+  "embedded_images": [
+    {
+      "width": 2048,
+      "height": 2048,
+      "format": "JPEG"
+    }
+  ],
+  "raw_bounds_min": [
+    -0.4521484971046448,
+    0.0,
+    -0.4892575144767761
+  ],
+  "raw_bounds_max": [
+    0.4521484971046448,
+    1.0,
+    0.4892575144767761
+  ],
+  "nodes": [
+    {
+      "name": "organic-compost-bin",
+      "mesh": 0,
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "engine_import_verified": false
+}

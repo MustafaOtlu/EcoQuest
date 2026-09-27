@@ -37,7 +37,7 @@ public sealed class EcoBuildController : MonoBehaviour
 
     public void SetBuildMode(bool active)
     {
-        active &= weapons != null && weapons.CanOperate;
+        active &= weapons != null && weapons.CanOperate && !EcoMarketUI.BlocksGameplay;
         if (active == IsBuilding) return;
         IsBuilding = active; cableStart = null; pipeStart = null;
         if (active) { weapons.StopCharging(); weapons.holder.Unequip(); Select(Selection); }
@@ -74,6 +74,7 @@ public sealed class EcoBuildController : MonoBehaviour
     private void Update()
     {
         if (weapons == null) return;
+        if (EcoMarketUI.BlocksGameplay) return;
         if (!weapons.CanOperate) { SetBuildMode(false); return; }
         if (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked) return;
         var keys = Keyboard.current; var mouse = Mouse.current;
@@ -186,7 +187,10 @@ public sealed class EcoBuildController : MonoBehaviour
         foreach (var obstacle in Physics.OverlapBox(position + Vector3.up * (height * 0.5f + 0.03f), new Vector3(entry.Footprint.x * 0.48f, height * 0.5f, entry.Footprint.y * 0.48f), rotation, ~(1 << 2), QueryTriggerInteraction.Ignore))
             if (obstacle.GetComponentInParent<EcoStructure>() != null || (obstacle is not TerrainCollider && obstacle.GetComponent<PlantingSurface>() == null))
             { reason = "Başka bir nesneyle veya oyuncuyla çakışıyor."; return false; }
-        reason = "Sol tık: kur • R: döndür • T: tamir • X: sök"; return true;
+        reason = "Sol tık: kur • R: döndür • T: tamir • X: sök";
+        string warning = EcoRegion.PlacementWarning(entry.Id, position);
+        if (warning.Length > 0) reason += "\n" + warning;
+        return true;
     }
     public bool TryPlace(int index, Vector3 position, Quaternion rotation)
     {

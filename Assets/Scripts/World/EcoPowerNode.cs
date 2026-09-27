@@ -34,7 +34,7 @@ public sealed class EcoPowerNode : MonoBehaviour
             if (checkShade)
                 foreach (var hit in Physics.RaycastAll(SocketPosition + Vector3.up * 0.1f, clock.SunDirection, 100f, ~0, QueryTriggerInteraction.Ignore))
                     if (!hit.transform.IsChildOf(transform)) return 0f;
-            return ratedPower * clock.SolarFactor * solarExposure * condition;
+            return ratedPower * clock.SolarFactor * solarExposure * condition * (EcoRegion.At(transform.position)?.SolarTransmission ?? 1);
         }
         if (kind == Kind.Wind)
         {

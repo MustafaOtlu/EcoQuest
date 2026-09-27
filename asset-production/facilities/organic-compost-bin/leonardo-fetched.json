@@ -1,0 +1,60 @@
+﻿{
+    "generations_by_pk":  {
+                              "generated_images":  [
+                                                       {
+                                                           "url":  "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/3ffc4e70-25e4-4580-846d-9676423769f0/segments/1:1:1/Phoenix_10_Single_organic_compost_bin_for_a_stylized_lowpoly_e_0.jpg",
+                                                           "nsfw":  false,
+                                                           "id":  "9208c4c4-a61b-47b2-9568-aaee82a796cf",
+                                                           "likeCount":  0,
+                                                           "motionMP4URL":  null,
+                                                           "threeDUrl":  null,
+                                                           "urls":  {
+                                                                        "asset":  "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/3ffc4e70-25e4-4580-846d-9676423769f0/segments/1:1:1/Phoenix_10_Single_organic_compost_bin_for_a_stylized_lowpoly_e_0.jpg",
+                                                                        "thumbnail":  null
+                                                                    },
+                                                           "generated_image_variation_generics":  [
+
+                                                                                                  ]
+                                                       }
+                                                   ],
+                              "modelId":  "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
+                              "motion":  false,
+                              "motionModel":  null,
+                              "motionStrength":  null,
+                              "prompt":  "Single organic compost bin for a stylized low-poly ecological game, a sturdy square wooden slat container with dark muted green corner frame, closed green hinged lid with one chunky handle, narrow horizontal ventilation slots and a clearly defined closed lower front compost access hatch. Warm natural brown wood, muted teal green fittings, matte textured surfaces, chunky clean readable proportions matching simple stylized survival game props. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, loose rubbish, plants, tools, extra props, collage, pedestal or scenery.",
+                              "negativePrompt":  "",
+                              "imageHeight":  768,
+                              "imageToVideo":  null,
+                              "imageWidth":  768,
+                              "inferenceSteps":  15,
+                              "seed":  2147483637,
+                              "ultra":  false,
+                              "public":  false,
+                              "scheduler":  "EULER_DISCRETE",
+                              "sdVersion":  "PHOENIX",
+                              "status":  "COMPLETE",
+                              "presetStyle":  null,
+                              "initStrength":  null,
+                              "guidanceScale":  3,
+                              "id":  "3ffc4e70-25e4-4580-846d-9676423769f0",
+                              "createdAt":  "2026-09-26T18:53:55.063",
+                              "promptMagic":  false,
+                              "promptMagicVersion":  null,
+                              "promptMagicStrength":  null,
+                              "photoReal":  false,
+                              "photoRealStrength":  null,
+                              "fantasyAvatar":  null,
+                              "is3d":  false,
+                              "outputType":  "IMAGE",
+                              "prompt_moderations":  [
+                                                         {
+                                                             "moderationClassification":  [
+
+                                                                                          ]
+                                                         }
+                                                     ],
+                              "generation_elements":  [
+
+                                                      ]
+                          }
+}

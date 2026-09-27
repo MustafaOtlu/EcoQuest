@@ -61,7 +61,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         float accepted = Mathf.Min(Mathf.Max(0, amount), RequestElectricity(seconds));
         if (accepted <= 0) return 0;
         float litres = accepted / electricityPerLitre;
-        if (kind == Kind.Intake) return Add(source.cleanWater ? Fluid.Clean : Fluid.Dirty, litres) * electricityPerLitre;
+        if (kind == Kind.Intake) return Add(source.IsClean ? Fluid.Clean : Fluid.Dirty, litres) * electricityPerLitre;
         dirtyWater = Mathf.Max(0, dirtyWater - litres); cleanWater += litres;
         return accepted;
     }

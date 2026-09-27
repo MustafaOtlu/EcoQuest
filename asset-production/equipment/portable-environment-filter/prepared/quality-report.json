@@ -1,0 +1,59 @@
+{
+  "triangles": 1520,
+  "vertices": 2232,
+  "mesh_count": 1,
+  "material_count": 1,
+  "primitives": [
+    {
+      "vertices": 2232,
+      "triangles": 1520,
+      "material_index": 0,
+      "normals_present": true,
+      "uv_present": true,
+      "degenerate_triangles": 0,
+      "nonunit_normals": 0
+    }
+  ],
+  "embedded_images": [
+    {
+      "width": 2048,
+      "height": 2048,
+      "format": "JPEG"
+    }
+  ],
+  "raw_bounds_min": [
+    -0.23042012751102448,
+    0.0,
+    -0.21074235439300537
+  ],
+  "raw_bounds_max": [
+    0.23042012751102448,
+    0.6499999761581421,
+    0.21074235439300537
+  ],
+  "nodes": [
+    {
+      "name": "portable-environment-filter",
+      "mesh": 0,
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "engine_import_verified": false
+}

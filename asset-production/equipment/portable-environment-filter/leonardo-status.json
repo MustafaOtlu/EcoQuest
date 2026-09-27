@@ -1,0 +1,54 @@
+{
+  "generations_by_pk": {
+    "generated_images": [
+      {
+        "url": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/2e0bccc9-c390-493d-be2c-03c2de3cfa02/segments/1:1:1/Phoenix_10_Single_portable_environmental_air_filter_for_a_styl_0.jpg",
+        "nsfw": false,
+        "id": "7f487b2e-4bb1-42ca-ad6a-ef6dae41880e",
+        "likeCount": 0,
+        "motionMP4URL": null,
+        "threeDUrl": null,
+        "urls": {
+          "asset": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/2e0bccc9-c390-493d-be2c-03c2de3cfa02/segments/1:1:1/Phoenix_10_Single_portable_environmental_air_filter_for_a_styl_0.jpg",
+          "thumbnail": null
+        },
+        "generated_image_variation_generics": []
+      }
+    ],
+    "modelId": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
+    "motion": false,
+    "motionModel": null,
+    "motionStrength": null,
+    "prompt": "Single portable environmental air filter for a stylized low-poly ecological game. Compact sturdy green metal canister, broad dark intake grille, short cylindrical replaceable filter housing, one thick integrated carrying handle and small amber status indicator. Chunky readable proportions, muted teal green, slate grey metal and restrained warm orange accents. Textured matte painted surfaces, simple clean construction. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, extra props, collage, pedestal, smoke or scenery.",
+    "negativePrompt": "",
+    "imageHeight": 768,
+    "imageToVideo": null,
+    "imageWidth": 768,
+    "inferenceSteps": 15,
+    "seed": 2147483637,
+    "ultra": false,
+    "public": false,
+    "scheduler": "EULER_DISCRETE",
+    "sdVersion": "PHOENIX",
+    "status": "COMPLETE",
+    "presetStyle": null,
+    "initStrength": null,
+    "guidanceScale": 3,
+    "id": "2e0bccc9-c390-493d-be2c-03c2de3cfa02",
+    "createdAt": "2026-09-26T18:48:39.914",
+    "promptMagic": false,
+    "promptMagicVersion": null,
+    "promptMagicStrength": null,
+    "photoReal": false,
+    "photoRealStrength": null,
+    "fantasyAvatar": null,
+    "is3d": false,
+    "outputType": "IMAGE",
+    "prompt_moderations": [
+      {
+        "moderationClassification": []
+      }
+    ],
+    "generation_elements": []
+  }
+}

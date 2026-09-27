@@ -45,6 +45,7 @@ public static class BuildEcoPowerArt
                 var hit = leaves.AddComponent<BoxCollider>(); hit.center = Vector3.up * 0.08f; hit.size = new Vector3(0.4f, 0.16f, 0.4f);
                 var resource = leaves.AddComponent<RecyclableResource>(); resource.metal = resource.plastic = 0; resource.organic = 3; resource.processingSeconds = 2;
             }
+            SetupEcoEnvironment.Bind(root);
             PrefabUtility.SaveAsPrefabAsset(root, Output + "PowerStarter.prefab");
         }
         finally { Object.DestroyImmediate(root); }

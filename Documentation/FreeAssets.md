@@ -1,5 +1,7 @@
 # Ücretsiz saha görselleri
 
+27 Eylül eklemesi: Aynı yerel CC0 arşivlerden Food Kit `carrot.fbx` ve `tomato.fbx`, Survival Kit `fish.fbx` içe aktarıldı. Yeni indirme yapılmadı; mevcut palet ve lisanslar kullanılır. Güncel tarım/balıkçılık `FarmingAndWildlife.md` içindedir. Tezgâh artık markettir; aşağıdaki ilk saha kurulum notları tarihsel başlangıç durumudur.
+
 Bu değişiklik, boş test alanını oynanış noktaları anlaşılır bir saha istasyonuna dönüştürmek için Kenney'nin iki paketinden seçilmiş 14 modeli kullanır. Paketlerin kaynak dosyaları `Assets/ThirdParty/Kenney` altındadır. Tam arşivler veya kullanılmayan yüzlerce model Assets'e eklenmez.
 
 ![Saha istasyonunun Unity test görüntüsü](Images/FieldStation.png)

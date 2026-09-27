@@ -49,9 +49,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
             barLabels[i]=Label(bar,labels[i],new Vector2(8,0),new Vector2(284,25),15,TextAnchor.MiddleLeft);
         }
         weather=Label(left,"",new Vector2(14,-143),new Vector2(300,27),16,TextAnchor.MiddleLeft);
-        var bag = Panel("Materials",root.transform,new Vector2(1,1),new Vector2(-24,-24),new Vector2(330,205),new Vector2(1,1));
+        var bag = Panel("Materials",root.transform,new Vector2(1,1),new Vector2(-24,-24),new Vector2(330,235),new Vector2(1,1));
         Label(bag,"KAYNAKLAR",new Vector2(14,-10),new Vector2(274,28),20,TextAnchor.MiddleLeft);
-        inventory=Label(bag,"",new Vector2(14,-43),new Vector2(302,150),18,TextAnchor.UpperLeft);
+        inventory=Label(bag,"",new Vector2(14,-43),new Vector2(302,180),18,TextAnchor.UpperLeft);
         var objectivePanel=Panel("Objective",root.transform,new Vector2(0.5f,1),new Vector2(0,-24),new Vector2(520,44),new Vector2(0.5f,1));
         objective=Label(objectivePanel,"",new Vector2(10,-5),new Vector2(500,34),18,TextAnchor.MiddleCenter);
         var dock=Panel("Toolbelt",root.transform,new Vector2(0.5f,0),new Vector2(0,24),new Vector2(824,112),new Vector2(0.5f,0));
@@ -72,9 +72,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         var modePanel=Panel("Mode",root.transform,new Vector2(0.5f,0),new Vector2(0,145),new Vector2(760,68),new Vector2(0.5f,0));
         mode=Label(modePanel,"",new Vector2(12,-4),new Vector2(736,29),21,TextAnchor.MiddleCenter);
         instructions=Label(modePanel,"",new Vector2(12,-34),new Vector2(736,25),16,TextAnchor.MiddleCenter);
-        var hint=Panel("Context",root.transform,new Vector2(0.5f,0.5f),new Vector2(0,-108),new Vector2(640,72),new Vector2(0.5f,0.5f));
+        var hint=Panel("Context",root.transform,new Vector2(0.5f,0.5f),new Vector2(0,-108),new Vector2(640,88),new Vector2(0.5f,0.5f));
         hint.GetComponent<Image>().color=new Color(0,0,0,0);
-        context=Label(hint,"",Vector2.zero,new Vector2(640,72),20,TextAnchor.MiddleCenter);
+        context=Label(hint,"",Vector2.zero,new Vector2(640,88),20,TextAnchor.MiddleCenter);
         var note=Panel("Feedback",root.transform,new Vector2(0.5f,1),new Vector2(0,-82),new Vector2(660,55),new Vector2(0.5f,1));
         note.GetComponent<Image>().color=new Color(0,0,0,0);
         feedback=Label(note,"",Vector2.zero,new Vector2(660,55),22,TextAnchor.MiddleCenter);
@@ -88,6 +88,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private void Update()
     {
         if(weapons==null || canvas==null)return;
+        canvas.enabled=!EcoMarketUI.IsOpen;
         for(int i=0;i<5;i++)
         {
             bool selected=(weapons.Builder!=null&&weapons.Builder.IsBuilding?weapons.Builder.Selection%5:(int)weapons.Selected)==i;
@@ -107,16 +108,18 @@ public sealed class EcoQuestHUD : MonoBehaviour
         for(int i=0;i<3;i++)
         { fills[i].rectTransform.sizeDelta=new Vector2(300*Mathf.Clamp01(values[i]/Mathf.Max(1,maxima[i])),25);barLabels[i].text=labels[i]+"   "+Mathf.CeilToInt(values[i])+" / "+maxima[i]; }
         inventory.text="Metal  "+weapons.Metal+"     Plastik  "+weapons.Plastic+"\nÜrün  "+weapons.Food+"     Gübre  "+weapons.Compost
+            +"\nBalık  "+weapons.CleanFish+" temiz / "+weapons.DirtyFish+" kirli"
+            +"\nFiltre  "+weapons.SmallFilters+" küçük / "+weapons.LargeFilters+" büyük"
             +"\nHam atık  "+(weapons.CollectedMetalScrap+weapons.CollectedPlasticScrap)+"     Organik  "+weapons.CollectedOrganicWaste
             + (weapons.Progression!=null ? "\nYEP • Seviye "+weapons.Progression.Level+"\n"+(weapons.Progression.Level==EcoProgression.MaximumLevel?"En yüksek seviye":weapons.Progression.LevelProgress+" / "+weapons.Progression.LevelRequirement) : "");
-        slotCounts[0].text=Mathf.CeilToInt(weapons.Water)+" su";slotCounts[1].text=weapons.Seeds+" tohum / "+weapons.MetalAmmo+" top";
+        slotCounts[0].text=Mathf.CeilToInt(weapons.Water)+" su";slotCounts[1].text=weapons.SeedCount(weapons.SelectedSeed)+" "+EcoCropCatalog.Get(weapons.SelectedSeed).Name+" / "+weapons.MetalAmmo+" top";
         slotCounts[2].text=(weapons.CollectedMetalScrap+weapons.CollectedPlasticScrap+weapons.CollectedOrganicWaste)+" atık";slotCounts[3].text="Analiz";slotCounts[4].text="Etkileşim";
         string[] modes={"Toplama","Anti-vakum","Su"};
-        mode.text=names[(int)weapons.Selected]+(weapons.Selected==PlayerWeaponSystem.Tool.Vacuum?"  •  "+modes[(int)weapons.Mode]:weapons.Selected==PlayerWeaponSystem.Tool.SeedGun?"  •  "+(weapons.MetalMode?"Demir top":"Tohum ekimi"):"");
+        mode.text=names[(int)weapons.Selected]+(weapons.Selected==PlayerWeaponSystem.Tool.Vacuum?"  •  "+modes[(int)weapons.Mode]:weapons.Selected==PlayerWeaponSystem.Tool.SeedGun?"  •  "+(weapons.MetalMode?"Demir top":EcoCropCatalog.Get(weapons.SelectedSeed).Name+" • "+EcoCropCatalog.Get(weapons.SelectedSeed).Climate):"");
         instructions.text=weapons.Selected==PlayerWeaponSystem.Tool.Hands?"[E] Etkileşim   •   [1–5 / Tekerlek] Silah seç"
             :weapons.Selected==PlayerWeaponSystem.Tool.Scanner?"[Sol fare] Tara   •   [1–5 / Tekerlek] Silah seç"
             :weapons.Selected==PlayerWeaponSystem.Tool.Recycler?"[Sol fare] Geri dönüştür   •   [R] Atıkları işle / gübrele"
-            :"[Sol fare] Kullan   •   [Q] Mod değiştir"+(weapons.Selected==PlayerWeaponSystem.Tool.SeedGun&&weapons.MetalMode?"   •   [R] Mermi hazırla":"");
+            :"[Sol fare] Kullan   •   [Q] Mod değiştir"+(weapons.Selected==PlayerWeaponSystem.Tool.SeedGun?(weapons.MetalMode?"   •   Mühimmat: Market":"   •   [R] Tohum türü"):"");
         context.text=weapons.Selected==PlayerWeaponSystem.Tool.Scanner&&!string.IsNullOrEmpty(weapons.LastScan)?weapons.LastScan:weapons.ContextHint();
         bool building=weapons.Builder!=null&&weapons.Builder.IsBuilding;
         for(int i=0;i<5;i++)

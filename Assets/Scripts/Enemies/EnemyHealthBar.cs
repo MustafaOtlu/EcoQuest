@@ -44,7 +44,8 @@ public sealed class EnemyHealthBar : MonoBehaviour
         // Sprite-less Images ignore fillAmount, so resize the left-anchored rectangle.
         float fraction = Mathf.Clamp01(enemy.Health / Mathf.Max(1f, enemy.maximumHealth));
         fill.rectTransform.sizeDelta = new Vector2(98f * fraction, 8f);
-        canvas.enabled = enemy.State != EnemyBrain.Behaviour.Dead && enemy.Health < enemy.maximumHealth;
+        fill.color = enemy.IsStunned ? new Color(0.15f, 0.75f, 0.9f) : new Color(0.85f, 0.18f, 0.12f);
+        canvas.enabled = enemy.State != EnemyBrain.Behaviour.Dead && (enemy.Health < enemy.maximumHealth || enemy.IsStunned);
     }
 
     private static Image MakeImage(Transform parent, Color color, Vector2 position, Vector2 size)

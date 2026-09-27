@@ -1,5 +1,7 @@
 # Silahlar, ekim ve HUD
 
+27 Eylül: Tohum modunda R lahana/havuç/domates/ağaç arasında geçer; türler YEP seviyeleriyle açılır. Gübre 120 saniye böcek koruması verir. 5 ile elleri seçip doğal su kıyısında E kullanmak balık tutar. Ayrıntılar `FarmingAndWildlife.md` içindedir.
+
 MainScene'de WeaponHolder üzerindeki PlayerWeaponSystem ve EcoQuestHUD birlikte çalışır. HUD beş slotu, seçili modu, can/enerji/su, mühimmat, tohum ve malzemeleri gösterir. Hedefin üzerinde sulama/hasat/geri dönüşüm ipuçları çıkar. UI bağımsız uGUI bileşenleriyle oluşturulur; kamera sallanmasından etkilenmez.
 
 | Girdi | İşlev |
@@ -9,8 +11,8 @@ MainScene'de WeaponHolder üzerindeki PlayerWeaponSystem ve EcoQuestHUD birlikte
 | Fare tekerleği | Beş slot arasında geçiş |
 | Sol fare basılı | Seçili aracı kullan |
 | Q | Vakum veya Tohum Silahında mod değiştir |
-| E | Yakındaki olgun bitkiyi hasat et; geri dönüşüm silahıyla kurumuş bitkiyi gübreye çevir |
-| R | Demir top modunda 1 metalden 5 mermi; geri dönüşümde hedef bitkiye gübre veya ham atıkları işle |
+| E | Marketi aç; şarj/su/tesisle etkileş; olgun bitkiyi hasat et; geri dönüşümle kurumuş bitkiyi gübreye çevir |
+| R | Geri dönüşümde hedef bitkiye gübre veya ham atıkları işle; demir top marketten alınır |
 | Esc / oyun alanına tıklama | İmleci bırak / FPS kontrolüne dön |
 | F5 / F9 | Envanter ve kaynak kaydını oluştur / yükle |
 
@@ -20,7 +22,9 @@ Tohum Silahı: HUD'da Tohum ekimi / Demir top modları görünür. Q bu iki mod 
 
 Bitki döngüsü: yeni tohumun suyu azdır. Yeterli suyla yaklaşık 60 saniyede olgunlaşır; büyürken su tüketir. Susuzlukta büyüme durur; 15 saniyelik toleranstan sonra sağlığı azalır. Temiz hasat 3 tohum ve 1 ürün verir. Kirli sulanmış bitki daha yavaş büyür, 1 tohum verir ve yenebilir ürün vermez. Kuruyan bitki geri dönüşümle 1 gübre verir; gübre başka bir bitkiye %20 büyüme ve sağlık desteği sağlar. PlantedSeed.Create, Kenney lahana modelini toprak seviyesindeki kökü sabit kalacak biçimde büyütür. Etkileşim collider'ı filiz küçükken de sulamayı kolaylaştırır; kirlenme ve kuruma modelin rengini değiştirir.
 
-Geri Dönüşüm: Salya'yı temizler, RecyclableResource içeren nesneleri işlem süresi sonunda malzemeye dönüştürür. Vakumla toplanan ham atıklar R ile enerji karşılığında işlenir. Tarayıcı, düşman tür/can/durum, su temizliği, bitki ve atık bilgilerini verir; çevre/rüzgâr simülasyonu henüz yoktur.
+Geri Dönüşüm: Salya'yı temizler, RecyclableResource içeren nesneleri işlem süresi sonunda malzemeye dönüştürür. Vakumla toplanan ham atıklar R ile enerji karşılığında işlenir. Tarayıcı, düşman tür/can/durum, su temizliği, bitki, atık ve tesis bilgilerini verir; bölgesel çevre analizi sıradaki aşamadır.
+
+Tezgâh marketi ve ekipman geliştirmeleri MarketAndUpgrades.md içinde açıklanmıştır. Dokuz geliştirme gerçek kapasite, erişim, işlem hızı ve tüketimi değiştirir. Temel değerler geliştirilmemiş silahlar içindir. Saha istasyonunda üç kademe kilitli büyük atık da bulunur. Bölgesel çevre sistemi sıradadır; gün/gece ve değişen rüzgâr elektrik sistemine zaten bağlıdır.
 
 Saha istasyonu: MainScene için Eco Field Station prefabı su varili, altı ayrı metal/plastik atık, dört ekim yatağı ve çalışma tezgâhı içerir. Başlangıcın sağ ve arka tarafına yerleştirilir; dış kenarlarda ağaç, kaya, çit ve otlar bulunur. Ekim yatakları ve mevcut Plane ekim yüzeyidir. Eski sahnelerde EcoPracticeArea aynı istasyonu yalnızca sahnede zaten yoksa oluşturur; artık ilkel su silindiri ve üç küp üretmez. Yeni su/atık nesnelerinin ilgili bileşeni ve trigger olmayan collider'ı bulunmalıdır. Model kaynakları, yerleşim ve yeniden oluşturma bilgileri FreeAssets.md içindedir.
 

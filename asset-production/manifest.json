@@ -2,23 +2,52 @@
   "schema_version": 1,
   "project": "EcoQuest",
   "project_path": "C:/GameProjects/EcoQuest",
-  "status": "blocked_before_paid_submission",
+  "status": "production_complete_engine_import_pending",
   "engine": "Unity 6000.0.74f1 / URP",
   "units": "meters",
   "style": "Stylized textured low-poly 3D, readable from the elevated gameplay camera; match the existing FieldStation art rather than the older 2D GDD.",
   "style_evidence": "Documentation/Images/FieldStation.png visually inspected; Documentation/FreeAssets.md read.",
-  "palette": {"green": "#328970", "wood": "#A77651", "metal": "#586574", "accent": "#D38B43"},
+  "palette": {
+    "green": "#328970",
+    "wood": "#A77651",
+    "metal": "#586574",
+    "accent": "#D38B43"
+  },
   "budgets": {
-    "leonardo": {"limit": 200, "unit": "API tokens", "spent_this_task": 0, "reserved": 0, "remaining": 200, "account_api_paid_tokens_observed": 9062, "quote_status": "API returned cost:null; no generation submitted"},
-    "meshy": {"limit": 100, "unit": "credits", "spent_this_task": 0, "reserved": 0, "remaining": 100, "verified_estimate_per_asset": 15, "verified_estimate_total": 30, "pricing_source": "https://docs.meshy.ai/en/api/pricing"}
+    "leonardo": {
+      "limit": 200,
+      "unit": "API tokens",
+      "spent_this_task": 18,
+      "reserved": 0,
+      "remaining": 182,
+      "account_api_paid_tokens_observed": 9062,
+      "quote_status": "Live quote unavailable; provider USD charge and observed API-token balance deltas recorded separately.",
+      "last_reconciled_balance": 9044,
+      "provider_reported_total_usd": 0.027
+    },
+    "meshy": {
+      "limit": 100,
+      "unit": "credits",
+      "spent_this_task": 30.0,
+      "reserved": 0,
+      "remaining": 70.0,
+      "verified_estimate_per_asset": 15,
+      "verified_estimate_total": 30,
+      "pricing_source": "https://docs.meshy.ai/en/api/pricing"
+    }
   },
   "journal": "asset-production/journal.jsonl",
-  "credentials": {"source": "existing ignored local environment file", "values_logged": false},
-  "constraints": {"leonardo_images_per_asset": 1, "review_saved_image_before_meshy": true, "automatic_topups": false, "retry_ambiguous_paid_submission": false},
-  "blockers": [
-    "Sandbox command and browser startup fails: helper_unknown_error: setup refresh had errors. Approved escalated shell access works.",
-    "Leonardo v1 pricing-calculator returns calculateProductionApiServiceCost.cost=null for validated 768x768 single-image requests; cannot verify token charge. Browser calculator unavailable due environment startup failure."
-  ],
+  "credentials": {
+    "source": "existing ignored local environment file",
+    "values_logged": false
+  },
+  "constraints": {
+    "leonardo_images_per_asset": 1,
+    "review_saved_image_before_meshy": true,
+    "automatic_topups": false,
+    "retry_ambiguous_paid_submission": false
+  },
+  "blockers": [],
   "assets": [
     {
       "id": "portable-environment-filter",
@@ -31,12 +60,214 @@
       "target_faces": 1500,
       "target_height_m": 0.65,
       "prompt": "Single portable environmental air filter for a stylized low-poly ecological game. Compact sturdy green metal canister, broad dark intake grille, short cylindrical replaceable filter housing, one thick integrated carrying handle and small amber status indicator. Chunky readable proportions, muted teal green, slate grey metal and restrained warm orange accents. Textured matte painted surfaces, simple clean construction. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, extra props, collage, pedestal, smoke or scenery.",
-      "reference": {"status": "not_generated", "request_id": null, "file": null, "review": null},
-      "model": {"status": "not_submitted", "model_type": "smart-topology", "ai_model": "meshy-t2", "should_texture": true, "texture_resolution": "2k", "request_id": null},
+      "reference": {
+        "status": "COMPLETE",
+        "request_id": "2e0bccc9-c390-493d-be2c-03c2de3cfa02",
+        "file": "asset-production\\equipment\\portable-environment-filter\\references\\reference.jpg",
+        "review": "Saved 768x768 image inspected: full silhouette and carrying handle visible, grille and amber indicators readable, isolated plain background, no text or extraneous props. Slightly weathered texture fits equipment palette; accept as 3D reference.",
+        "request_key": "portable-environment-filter:leonardo:1",
+        "reservation": 100,
+        "payload": {
+          "modelId": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
+          "prompt": "Single portable environmental air filter for a stylized low-poly ecological game. Compact sturdy green metal canister, broad dark intake grille, short cylindrical replaceable filter housing, one thick integrated carrying handle and small amber status indicator. Chunky readable proportions, muted teal green, slate grey metal and restrained warm orange accents. Textured matte painted surfaces, simple clean construction. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, extra props, collage, pedestal, smoke or scenery.",
+          "num_images": 1,
+          "width": 768,
+          "height": 768,
+          "public": false,
+          "alchemy": false,
+          "enhancePrompt": false,
+          "contrast": 3,
+          "ultra": false
+        },
+        "submission_response": "asset-production\\equipment\\portable-environment-filter\\leonardo-submission.json",
+        "url": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/2e0bccc9-c390-493d-be2c-03c2de3cfa02/segments/1:1:1/Phoenix_10_Single_portable_environmental_air_filter_for_a_styl_0.jpg",
+        "actual_cost": 9,
+        "cost_basis": "Observed API-token balance delta across the only known outstanding submission; concurrent external account activity cannot be excluded.",
+        "reported_cost": {
+          "amount": "0.0135",
+          "unit": "DOLLARS"
+        },
+        "review_status": "accepted"
+      },
+      "model": {
+        "status": "SUCCEEDED",
+        "model_type": "smart-topology",
+        "ai_model": "meshy-t2",
+        "should_texture": true,
+        "texture_resolution": "2k",
+        "request_id": "01a0df10-e302-76ff-b29e-e0ea522cec83",
+        "request_key": "portable-environment-filter:meshy:1",
+        "reservation": 15,
+        "payload": {
+          "image_url": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/2e0bccc9-c390-493d-be2c-03c2de3cfa02/segments/1:1:1/Phoenix_10_Single_portable_environmental_air_filter_for_a_styl_0.jpg",
+          "model_type": "smart-topology",
+          "ai_model": "meshy-t2",
+          "target_polycount": 1500,
+          "should_texture": true,
+          "texture_resolution": "2k",
+          "target_formats": [
+            "glb",
+            "fbx"
+          ],
+          "multi_view_thumbnails": true
+        },
+        "submission_response": "asset-production\\equipment\\portable-environment-filter\\meshy-submission.json",
+        "actual_cost": 15.0,
+        "geometry_review": {
+          "triangles": 1520,
+          "vertices": 2232,
+          "mesh_count": 1,
+          "material_count": 1,
+          "primitives": [
+            {
+              "vertices": 2232,
+              "triangles": 1520,
+              "material_index": 0,
+              "normals_present": true,
+              "uv_present": true,
+              "degenerate_triangles": 0,
+              "nonunit_normals": 0
+            }
+          ],
+          "embedded_images": [
+            {
+              "width": 2048,
+              "height": 2048,
+              "format": "JPEG"
+            }
+          ],
+          "raw_bounds_min": [
+            -0.35351601243019104,
+            -0.5,
+            -0.32226601243019104
+          ],
+          "raw_bounds_max": [
+            0.3554689884185791,
+            0.5,
+            0.32617199420928955
+          ],
+          "nodes": [
+            {
+              "mesh": 0,
+              "matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "engine_import_verified": false,
+          "external_textures": [
+            {
+              "file": "texture-0-base_color.png",
+              "size": [
+                2048,
+                2048
+              ]
+            }
+          ]
+        },
+        "quality_report": "asset-production\\equipment\\portable-environment-filter\\quality-report.json",
+        "prepared_geometry_review": {
+          "triangles": 1520,
+          "vertices": 2232,
+          "mesh_count": 1,
+          "material_count": 1,
+          "primitives": [
+            {
+              "vertices": 2232,
+              "triangles": 1520,
+              "material_index": 0,
+              "normals_present": true,
+              "uv_present": true,
+              "degenerate_triangles": 0,
+              "nonunit_normals": 0
+            }
+          ],
+          "embedded_images": [
+            {
+              "width": 2048,
+              "height": 2048,
+              "format": "JPEG"
+            }
+          ],
+          "raw_bounds_min": [
+            -0.23042012751102448,
+            0.0,
+            -0.21074235439300537
+          ],
+          "raw_bounds_max": [
+            0.23042012751102448,
+            0.6499999761581421,
+            0.21074235439300537
+          ],
+          "nodes": [
+            {
+              "name": "portable-environment-filter",
+              "mesh": 0,
+              "matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "engine_import_verified": false
+        }
+      },
       "cost_reservations": [],
-      "files": [],
-      "review_findings": [],
-      "integration_status": "pending_generation"
+      "files": [
+        "asset-production\\equipment\\portable-environment-filter\\references\\reference.jpg",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\model.glb",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\model.fbx",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\preview.png",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\view-back.png",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\view-front.png",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\view-left.png",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\view-right.png",
+        "asset-production\\equipment\\portable-environment-filter\\raw\\texture-0-base_color.png",
+        "asset-production\\equipment\\portable-environment-filter\\prepared\\base_color.jpg",
+        "asset-production\\equipment\\portable-environment-filter\\prepared\\portable-environment-filter.glb",
+        "asset-production\\equipment\\portable-environment-filter\\prepared\\portable-environment-filter.mtl",
+        "asset-production\\equipment\\portable-environment-filter\\prepared\\portable-environment-filter.obj",
+        "asset-production\\equipment\\portable-environment-filter\\prepared\\quality-report.json"
+      ],
+      "review_findings": [
+        "Saved Leonardo reference inspected before Meshy submission.",
+        "Downloaded front, back and both side previews inspected.",
+        "Silhouette, handle and base preserved; 2K embedded texture and UVs verified.",
+        "Raw provider previews can crop framing; raw geometry bounds are complete.",
+        "Static prop; moving lid or filter cartridge is not separately rigged.",
+        "Back panel has an inferred decorative marking not specified in the reference."
+      ],
+      "integration_status": "prepared_and_reviewed_engine_import_pending",
+      "prepared_model": "asset-production\\equipment\\portable-environment-filter\\prepared\\portable-environment-filter.glb"
     },
     {
       "id": "organic-compost-bin",
@@ -49,12 +280,215 @@
       "target_faces": 1500,
       "target_height_m": 1.0,
       "prompt": "Single organic compost bin for a stylized low-poly ecological game, a sturdy square wooden slat container with dark muted green corner frame, closed green hinged lid with one chunky handle, narrow horizontal ventilation slots and a clearly defined closed lower front compost access hatch. Warm natural brown wood, muted teal green fittings, matte textured surfaces, chunky clean readable proportions matching simple stylized survival game props. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, loose rubbish, plants, tools, extra props, collage, pedestal or scenery.",
-      "reference": {"status": "not_generated", "request_id": null, "file": null, "review": null},
-      "model": {"status": "not_submitted", "model_type": "smart-topology", "ai_model": "meshy-t2", "should_texture": true, "texture_resolution": "2k", "request_id": null},
+      "reference": {
+        "status": "COMPLETE",
+        "request_id": "3ffc4e70-25e4-4580-846d-9676423769f0",
+        "file": "asset-production\\facilities\\organic-compost-bin\\references\\reference.jpg",
+        "review": "Saved 768x768 image inspected: complete wooden bin silhouette, green closed lid with thick handle, ventilation slats, corner brackets and feet visible; plain background without text or extra props. Front access panel is less distinct than requested but container is clearly readable; accept as static compost prop.",
+        "request_key": "organic-compost-bin:leonardo:1",
+        "reservation": 100,
+        "payload": {
+          "modelId": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
+          "prompt": "Single organic compost bin for a stylized low-poly ecological game, a sturdy square wooden slat container with dark muted green corner frame, closed green hinged lid with one chunky handle, narrow horizontal ventilation slots and a clearly defined closed lower front compost access hatch. Warm natural brown wood, muted teal green fittings, matte textured surfaces, chunky clean readable proportions matching simple stylized survival game props. Entire standalone object visible with generous margin, three-quarter front view, plain pale grey background, soft even lighting. No text, logos, characters, loose rubbish, plants, tools, extra props, collage, pedestal or scenery.",
+          "num_images": 1,
+          "width": 768,
+          "height": 768,
+          "public": false,
+          "alchemy": false,
+          "enhancePrompt": false,
+          "contrast": 3,
+          "ultra": false
+        },
+        "submission_response": "asset-production\\facilities\\organic-compost-bin\\leonardo-submission.json",
+        "url": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/3ffc4e70-25e4-4580-846d-9676423769f0/segments/1:1:1/Phoenix_10_Single_organic_compost_bin_for_a_stylized_lowpoly_e_0.jpg",
+        "actual_cost": 9,
+        "cost_basis": "Observed API-token balance delta across the only known outstanding submission; concurrent external account activity cannot be excluded.",
+        "reported_cost": {
+          "amount": "0.0135",
+          "unit": "DOLLARS"
+        },
+        "review_status": "accepted"
+      },
+      "model": {
+        "status": "SUCCEEDED",
+        "model_type": "smart-topology",
+        "ai_model": "meshy-t2",
+        "should_texture": true,
+        "texture_resolution": "2k",
+        "request_id": "01a0df12-33d0-75a3-b08c-202c69294424",
+        "request_key": "organic-compost-bin:meshy:1",
+        "reservation": 15,
+        "payload": {
+          "image_url": "https://cdn.leonardo.ai/users/c09b2dc3-1f0e-464e-a689-4146067aa4ca/generations/3ffc4e70-25e4-4580-846d-9676423769f0/segments/1:1:1/Phoenix_10_Single_organic_compost_bin_for_a_stylized_lowpoly_e_0.jpg",
+          "model_type": "smart-topology",
+          "ai_model": "meshy-t2",
+          "target_polycount": 1500,
+          "should_texture": true,
+          "texture_resolution": "2k",
+          "target_formats": [
+            "glb",
+            "fbx"
+          ],
+          "multi_view_thumbnails": true
+        },
+        "submission_response": "asset-production\\facilities\\organic-compost-bin\\meshy-submission.json",
+        "actual_cost": 15.0,
+        "geometry_review": {
+          "triangles": 1488,
+          "vertices": 2376,
+          "mesh_count": 1,
+          "material_count": 1,
+          "primitives": [
+            {
+              "vertices": 2376,
+              "triangles": 1488,
+              "material_index": 0,
+              "normals_present": true,
+              "uv_present": true,
+              "degenerate_triangles": 2,
+              "nonunit_normals": 6
+            }
+          ],
+          "embedded_images": [
+            {
+              "width": 2048,
+              "height": 2048,
+              "format": "JPEG"
+            }
+          ],
+          "raw_bounds_min": [
+            -0.45117199420928955,
+            -0.5,
+            -0.4882810115814209
+          ],
+          "raw_bounds_max": [
+            0.453125,
+            0.5,
+            0.49023398756980896
+          ],
+          "nodes": [
+            {
+              "mesh": 0,
+              "matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "engine_import_verified": false,
+          "external_textures": [
+            {
+              "file": "texture-0-base_color.png",
+              "size": [
+                2048,
+                2048
+              ]
+            }
+          ]
+        },
+        "quality_report": "asset-production\\facilities\\organic-compost-bin\\quality-report.json",
+        "prepared_geometry_review": {
+          "triangles": 1486,
+          "vertices": 2376,
+          "mesh_count": 1,
+          "material_count": 1,
+          "primitives": [
+            {
+              "vertices": 2376,
+              "triangles": 1486,
+              "material_index": 0,
+              "normals_present": true,
+              "uv_present": true,
+              "degenerate_triangles": 0,
+              "nonunit_normals": 0
+            }
+          ],
+          "embedded_images": [
+            {
+              "width": 2048,
+              "height": 2048,
+              "format": "JPEG"
+            }
+          ],
+          "raw_bounds_min": [
+            -0.4521484971046448,
+            0.0,
+            -0.4892575144767761
+          ],
+          "raw_bounds_max": [
+            0.4521484971046448,
+            1.0,
+            0.4892575144767761
+          ],
+          "nodes": [
+            {
+              "name": "organic-compost-bin",
+              "mesh": 0,
+              "matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "engine_import_verified": false
+        }
+      },
       "cost_reservations": [],
-      "files": [],
-      "review_findings": [],
-      "integration_status": "pending_generation"
+      "files": [
+        "asset-production\\facilities\\organic-compost-bin\\references\\reference.jpg",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\model.glb",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\model.fbx",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\preview.png",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\view-back.png",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\view-front.png",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\view-left.png",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\view-right.png",
+        "asset-production\\facilities\\organic-compost-bin\\raw\\texture-0-base_color.png",
+        "asset-production\\facilities\\organic-compost-bin\\prepared\\base_color.jpg",
+        "asset-production\\facilities\\organic-compost-bin\\prepared\\organic-compost-bin.glb",
+        "asset-production\\facilities\\organic-compost-bin\\prepared\\organic-compost-bin.mtl",
+        "asset-production\\facilities\\organic-compost-bin\\prepared\\organic-compost-bin.obj",
+        "asset-production\\facilities\\organic-compost-bin\\prepared\\quality-report.json"
+      ],
+      "review_findings": [
+        "Saved Leonardo reference inspected before Meshy submission.",
+        "Downloaded front, back and both side previews inspected.",
+        "Silhouette, handle and base preserved; 2K embedded texture and UVs verified.",
+        "Raw provider previews can crop framing; raw geometry bounds are complete.",
+        "Static prop; moving lid or filter cartridge is not separately rigged.",
+        "Side slats have some uneven reconstructed geometry; suitable for a small gameplay prop, close-up quality requires engine review.",
+        "Removed two zero-area triangles and normalized six invalid normals locally."
+      ],
+      "integration_status": "prepared_and_reviewed_engine_import_pending",
+      "prepared_model": "asset-production\\facilities\\organic-compost-bin\\prepared\\organic-compost-bin.glb"
     }
   ]
 }

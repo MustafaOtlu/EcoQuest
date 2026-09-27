@@ -45,12 +45,12 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (!EcoMarketUI.BlocksGameplay && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             SetCursorLocked(false);
-        else if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        else if (!EcoMarketUI.BlocksGameplay && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             SetCursorLocked(true);
 
-        bool hasControl = Application.isFocused && Cursor.lockState == CursorLockMode.Locked
+        bool hasControl = !EcoMarketUI.BlocksGameplay && Application.isFocused && Cursor.lockState == CursorLockMode.Locked
             && (vitals == null || !vitals.IsRecovering);
         if (hasControl && firstPersonCamera != null)
         {

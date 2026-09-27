@@ -31,6 +31,8 @@ public static class BuildEcoArt
         Model("MetalScrap", "Food", "soda-can-crushed", 0.23f, food, true);
         Model("PlasticScrap", "Food", "soda-bottle", 0.32f, food, true);
         Model("Cabbage", "Food", "cabbage", 0.38f, food, false);
+        Model("Carrot", "Food", "carrot", 0.4f, food, false);
+        Model("Tomato", "Food", "tomato", 0.38f, food, false);
         var water = Solid("Water", shader, new Color(0.08f, 0.55f, 0.75f));
         var soil = Solid("Soil", shader, new Color(0.22f, 0.12f, 0.07f));
         var edging = Solid("GardenEdge", shader, new Color(0.36f, 0.25f, 0.14f));
@@ -66,7 +68,7 @@ public static class BuildEcoArt
             {
                 var center = new Vector3(6.1f + (i % 2) * 2.3f, 0.05f, -1.7f - (i / 2) * 2.3f);
                 var bed = Primitive(station.transform, "Planting Bed " + (i + 1), center, new Vector3(1.9f, 0.1f, 1.9f), soil, true);
-                bed.AddComponent<PlantingSurface>();
+                bed.AddComponent<PlantingSurface>().allowTrees = false;
                 for(int side=0;side<2;side++)
                 {
                     Primitive(station.transform, "Bed edging", center + new Vector3(side==0?-1:1, 0, 0), new Vector3(0.1f,0.15f,2.1f), edging, false);
@@ -80,10 +82,12 @@ public static class BuildEcoArt
             {
                 var tree=Place(station,"Tree",pos,20+pos.x*7);
                 var trunk=tree.AddComponent<CapsuleCollider>();trunk.radius=0.18f;trunk.height=2;trunk.center=Vector3.up;
+                var habitatTree=tree.AddComponent<EcoVegetation>();habitatTree.foliage=tree.GetComponentsInChildren<Renderer>();
                 Place(station,"GrassPatch",pos+new Vector3(0.6f,0.01f,0.3f),0);
                 Place(station,"Grass",pos+new Vector3(-0.7f,0.01f,0.5f),33);
                 Place(station,"Rock",pos+new Vector3(0.8f,0.01f,-1),70);
             }
+            SetupEcoMarket.Bind(station);
             PrefabUtility.SaveAsPrefabAsset(station, Output + "FieldStation.prefab");
         }
         finally { UnityEngine.Object.DestroyImmediate(station); }
@@ -106,7 +110,7 @@ public static class BuildEcoArt
         if(mat==null){mat=new Material(shader);AssetDatabase.CreateAsset(mat,path);}
         mat.shader=shader;mat.SetColor("_BaseColor",color);mat.SetFloat("_Smoothness",0.15f);return mat;
     }
-    private static void Model(string name,string pack,string file,float height,Material mat,bool collide)
+    public static void Model(string name,string pack,string file,float height,Material mat,bool collide)
     {
         string path="Assets/ThirdParty/Kenney/"+pack+"/Models/"+file+".fbx";
         var importer=(ModelImporter)AssetImporter.GetAtPath(path);

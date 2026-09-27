@@ -29,7 +29,7 @@ public sealed class ResourceProgressionCheck : MonoBehaviour
         foreach (var component in camera.GetComponents<Behaviour>()) if (component is not Camera) component.enabled = false;
         var progression = weapon.Progression;
         Check(progression != null && progression.Level == 1 && progression.Experience == 0, "New player starts with level-one YEP progression");
-        var scraps = FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None);
+        var scraps = FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None).Where(s => s.requiredRecyclerRank == 0).ToArray();
         Check(scraps.Count(s => s.organic > 0) == 3, "MainScene supplies three modeled organic waste piles");
         int totalMetal = scraps.Sum(s => s.metal), totalPlastic = scraps.Sum(s => s.plastic), totalOrganic = scraps.Sum(s => s.organic);
         weapon.SelectTool(0); while (weapon.Mode != PlayerWeaponSystem.VacuumMode.Collect) weapon.CycleMode();

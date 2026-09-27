@@ -1476,6 +1476,8 @@ MonoBehaviour:
   <CollectedPlasticScrap>k__BackingField: 0
   <CollectedOrganicWaste>k__BackingField: 0
   <ProcessedOrganicRemainder>k__BackingField: 0
+  <SmallFilters>k__BackingField: 0
+  <LargeFilters>k__BackingField: 0
   <LastScan>k__BackingField: 
   <Food>k__BackingField: 0
   <Compost>k__BackingField: 0

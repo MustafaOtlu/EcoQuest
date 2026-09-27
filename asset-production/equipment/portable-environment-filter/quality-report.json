@@ -1,0 +1,67 @@
+{
+  "triangles": 1520,
+  "vertices": 2232,
+  "mesh_count": 1,
+  "material_count": 1,
+  "primitives": [
+    {
+      "vertices": 2232,
+      "triangles": 1520,
+      "material_index": 0,
+      "normals_present": true,
+      "uv_present": true,
+      "degenerate_triangles": 0,
+      "nonunit_normals": 0
+    }
+  ],
+  "embedded_images": [
+    {
+      "width": 2048,
+      "height": 2048,
+      "format": "JPEG"
+    }
+  ],
+  "raw_bounds_min": [
+    -0.35351601243019104,
+    -0.5,
+    -0.32226601243019104
+  ],
+  "raw_bounds_max": [
+    0.3554689884185791,
+    0.5,
+    0.32617199420928955
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "engine_import_verified": false,
+  "external_textures": [
+    {
+      "file": "texture-0-base_color.png",
+      "size": [
+        2048,
+        2048
+      ]
+    }
+  ]
+}
