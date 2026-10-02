@@ -35,6 +35,9 @@ public sealed class EnemyBrain : MonoBehaviour
     private void Awake()
     {
         motor = GetComponent<CharacterController>();
+        // Preserve small per-frame steps even when the runtime runs without a frame cap.
+        motor.minMoveDistance = 0f;
+        player = FindFirstObjectByType<PlayerVitals>();
         EcoNavigation.Ignore(gameObject); route = gameObject.AddComponent<EcoEnemyPath>();
         home = transform.position; Health = maximumHealth;
         gameObject.AddComponent<EnemyHealthBar>();
