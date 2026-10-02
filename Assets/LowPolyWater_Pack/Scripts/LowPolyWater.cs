@@ -40,7 +40,7 @@ namespace LowPolyWater
             mesh.uv = uv;
             mesh.triangles = triangles;
             mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+            RefreshBounds();
             filter.sharedMesh = mesh;
         }
         private void Update()
@@ -57,7 +57,15 @@ namespace LowPolyWater
             }
             mesh.vertices = vertices;
             mesh.RecalculateNormals();
+            RefreshBounds();
+        }
+        private void RefreshBounds()
+        {
             mesh.RecalculateBounds();
+            // A small margin keeps boundary vertices inside the box despite floating-point rounding.
+            var bounds = mesh.bounds;
+            bounds.Expand(0.01f);
+            mesh.bounds = bounds;
         }
         private void OnDestroy()
         {

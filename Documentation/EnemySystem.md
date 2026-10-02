@@ -10,7 +10,7 @@ MainScene'deki Enemys nesnesinin EnemySceneSetup bileşeni, Play başladığınd
 | SlimeMonster | Yakın takip | Yakın saldırı, 12 hasar ve 1,5 saniye yavaşlama | 90 | 5 plastik |
 | SmokeCreature | Görüş baskısı | Yakında 2,5 saniyelik duman perdesi, doğrudan hasar yok | 55 | 2 plastik |
 
-Düşmanlar çevrelerinde devriye gezer, görüş alanındaki oyuncuyu takip eder, saldırı klibinin yaklaşık %45'inde vuruşu uygular ve bekleme süresinden sonra yeniden saldırır. Oyuncu menzilden kaçarsa veya araya duvar girerse vuruş iptal olur. Uzaktan saldıranlar mesafeyi korur. Oyuncuyu kaybeden veya başlangıç noktasından çok uzaklaşan düşman geri döner. Yere basma, basamaklar ve çarpışmalar CharacterController ile; basit engel ve uçurum kaçınması fizik sorgularıyla yapılır. Bu sistem NavMesh tabanlı tam rota bulma değildir.
+Düşmanlar çevrelerinde devriye gezer, görüş alanındaki oyuncuyu takip eder, saldırı klibinin yaklaşık %45'inde vuruşu uygular ve bekleme süresinden sonra yeniden saldırır. Oyuncu menzilden kaçarsa veya araya duvar girerse vuruş iptal olur. Uzaktan saldıranlar mesafeyi korur. Oyuncuyu kaybeden veya başlangıç noktasından çok uzaklaşan düşman geri döner. EcoNavigation sahne collider'larından çalışma sırasında NavMesh hazırlar; EcoEnemyPath engellerin çevresinden rota hesaplar. Yere basma, basamaklar ve çarpışmalar CharacterController ile; yakın engel ve uçurum kaçınması fizik sorgularıyla yapılır. Yapı ekleme/sökme rotayı yeniler; doğal su yüzeyleri kara rotalarından çıkarılır.
 
 Düşman saldırıları sırasında hedefe uzanan çizgi gösterilmez; uzaktan saldıranların fiziksel mermileri ve saldırı animasyonları görünür. Oyuncunun kendi silah akışları bu değişiklikten etkilenmez. Demir top isabeti yaşayan düşmanı kısa mesafe geri iter; CharacterController hareketi duvarla sınırlar. Hasar alan düşmanın can barı kameraya dönük olarak collider'ın üzerinde görünür ve kalan cana göre soldan kısalır.
 
@@ -28,6 +28,10 @@ PlayerVitals, oyuncuya 100 karakter enerjisi, geçici yavaşlama ve duman perdes
 
 Ek hareket kontrolünde beş gerçek düşman prefabının her biri düz zeminde ve 10 cm basamakta ilerledi, 45 cm kutunun çevresinden fiziksel olarak geçti ve normal takip hızındayken darbe yönünde oyuncudan uzaklaştı. Toplam 35 hareket kontrolü geçti. Bu yerel engel kaçınması, karmaşık kapalı koridorlarda tam rota bulma garantisi vermez.
 ## Güncel silah bağlantısı
+
+Teneke demir top isabetinde en fazla beş saniye sersemler; saldırı hazırlığı kesilir ve hareketi durur. Bu sırada üç metre içinden E ile küçük hava filtresi takılabilir. Filtre marketten alınır, bir kez tüketilir ve Teneke'yi etkisizleştirir; 12 YEP ve toplam 6 metal ganimet yalnız bir kez verilir. Süre dolunca animasyon/hareket yeniden çalışır. Diğer türlere aynı filtre işlemi uygulanmaz.
+
+2 Ekim 2026: NavigationCheck 7; TinFilterCheck 17; WeaponRuntimeCheck 39 kontrolden geçti. Rota testinde 23.915 kareden 23.573'ünün normal hareket eşiğinin altında kaldığı görüldü. EnemyBrain'in hareket eşiğini sıfırlamasıyla düşman aynı on saniyelik test içinde U engelinin açık ucundan çıktı ve oyuncuya ulaştı. Testin süre ve başarı koşulları değiştirilmedi. Düşmanların çevre/yapı hedefleri, doğma kuralları ve iklim canavarı bu doğrulamanın kapsamında henüz tamamlanmış değildir.
 
 Oyuncu silahları artık EnemyBrain.TakeDamage ile bağlıdır; kullanım ve HUD ayrıntıları PlayerWeapons.md içindedir. Sürekli su/anti-vakum hasarı düşmanın saldırı hazırlığını her karede sıfırlamaz.
 

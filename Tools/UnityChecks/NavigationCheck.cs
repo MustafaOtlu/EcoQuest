@@ -28,19 +28,30 @@ public sealed class NavigationCheck : MonoBehaviour
         var navObject = new GameObject("Runtime navigation"); navObject.transform.position = new Vector3(80, 0, 80); var navigation = navObject.AddComponent<EcoNavigation>(); navigation.worldSize = new Vector3(30, 10, 30);
         var enemyObject = new GameObject("Maze enemy"); enemyObject.transform.position = new Vector3(80, 0.03f, 82);
         var motor = enemyObject.AddComponent<CharacterController>(); motor.radius = 0.35f; motor.height = 1.6f; motor.center = Vector3.up * 0.8f;
+        float initialMinMoveDistance = motor.minMoveDistance;
         var enemy = enemyObject.AddComponent<EnemyBrain>(); enemy.species = EnemyBrain.Species.Slime; enemy.detectionRange = 30; enemy.leashRange = 40; enemy.chaseSpeed = 4; enemy.attackRange = 1.2f; enemy.patrolRadius = 0;
+        report += "SETUP minMoveDistance before brain=" + initialMinMoveDistance + ", after=" + motor.minMoveDistance + "\n";
         float deadline = Time.time + 15;
         while (!navigation.Ready && Time.time < deadline) yield return null;
         Check(navigation.Ready, "Runtime navigation is built from scene colliders");
         Check(NavMesh.SamplePosition(enemy.transform.position, out _, 1, NavMesh.AllAreas), "Enemy stands on a valid navigable surface");
         yield return null;
         enemy.TakeDamage(1); float maximumZ = enemy.transform.position.z; deadline = Time.time + 10; float nextDebug = 0;
+        int frames = 0, subthresholdFrames = 0;
+        float totalDelta = 0, minimumDelta = float.PositiveInfinity, maximumDelta = 0, distanceMoved = 0;
+        Vector3 previousPosition = enemy.transform.position;
         while (Vector3.Distance(enemy.transform.position, target.transform.position) > 1.5f && Time.time < deadline)
         {
+            frames++; totalDelta += Time.deltaTime;
+            minimumDelta = Mathf.Min(minimumDelta, Time.deltaTime); maximumDelta = Mathf.Max(maximumDelta, Time.deltaTime);
+            if (enemy.chaseSpeed * Time.deltaTime < initialMinMoveDistance) subthresholdFrames++;
+            Vector3 movement = enemy.transform.position - previousPosition; movement.y = 0;
+            distanceMoved += movement.magnitude; previousPosition = enemy.transform.position;
             maximumZ = Mathf.Max(maximumZ, enemy.transform.position.z);
-            if (Time.time >= nextDebug) { nextDebug = Time.time + 1; report += "TRACE " + enemy.transform.position + " " + enemy.State + " route=" + enemy.GetComponent<EcoEnemyPath>().HasRoute + "\n"; }
+            if (Time.time >= nextDebug) { nextDebug = Time.time + 1; report += "TRACE " + enemy.transform.position + " " + enemy.State + " route=" + enemy.GetComponent<EcoEnemyPath>().HasRoute + " velocity=" + motor.velocity + " delta=" + Time.deltaTime + " collisions=" + motor.collisionFlags + "\n"; }
             yield return null;
         }
+        report += "TIMING frames=" + frames + ", delta min/mean/max=" + minimumDelta + "/" + (totalDelta / Mathf.Max(1, frames)) + "/" + maximumDelta + ", steps below original movement threshold=" + subthresholdFrames + ", horizontal distance=" + distanceMoved + "\n";
         Check(maximumZ > 86, "Enemy leaves the open end of the U instead of pushing into the blocking wall (max Z " + maximumZ + ", final " + enemy.transform.position + ")");
         Check(Vector3.Distance(enemy.transform.position, target.transform.position) < 1.5f, "Enemy completes the route around a concave obstacle and reaches the player");
         enemy.enabled = false;

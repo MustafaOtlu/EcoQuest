@@ -111,7 +111,7 @@ public sealed class LowPolyWaterCheck : MonoBehaviour
             if (!Finite(vertex)) throw new Exception("Zero wave length created an invalid vertex");
         Check(true, "Zero wave length is safe");
         foreach (var vertex in mesh.vertices)
-            if (!mesh.bounds.Contains(vertex)) throw new Exception("Water vertex lies outside its culling bounds");
+            if (!mesh.bounds.Contains(vertex)) throw new Exception("Water vertex " + vertex + " lies outside its culling bounds " + mesh.bounds);
         Check(true, "Animated bounds contain all wave vertices");
         var camera = Camera.main;
         Check(camera != null, "Demo camera loads without obsolete or missing components");
