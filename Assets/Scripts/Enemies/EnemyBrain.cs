@@ -23,6 +23,11 @@ public sealed class EnemyBrain : MonoBehaviour
     private EcoEnemyPath route;
     private Vector3 lastKnownPosition;
     private PlayerVitals player;
+    public MonoBehaviour EcologyTarget => ecologyTarget != null && ecologyTarget.IsAlive ? ecologyTarget.Component : null;
+    private EnemyEcoTarget ecologyTarget, attackEcologyTarget;
+    private PlayerVitals attackPlayer;
+    private bool chasingPlayer;
+    private float nextEcologyDecision, provokedUntil = -1;
     private Vector3 home, patrolGoal;
     private float gravitySpeed, nextDecision, nextAttack, attackStarted, lastSeen;
     private bool delivered;
@@ -61,20 +66,30 @@ public sealed class EnemyBrain : MonoBehaviour
         }
         if (animationPausedByStun) { animationPausedByStun = false; if (animator != null) animator.speed = 1; }
         if (State == Behaviour.Stunned) State = Behaviour.Chase;
-        bool available = player != null && !player.IsRecovering;
+        bool available = player != null && player.isActiveAndEnabled && !player.IsRecovering;
         float distance = available ? Vector3.Distance(transform.position, player.transform.position) : float.PositiveInfinity;
         bool visible = available && distance < detectionRange && CanSeePlayer();
-        if (visible) { lastSeen = Time.time; lastKnownPosition = player.transform.position; }
+        bool close = available && distance <= Mathf.Min(2.5f, detectionRange);
+        if (visible || close) { lastSeen = Time.time; lastKnownPosition = player.transform.position; }
+        bool pursuePlayer = available && (visible || close || Time.time < provokedUntil || (chasingPlayer && Time.time - lastSeen < 10f));
         Vector3 direction = Vector3.zero;
         float speed = moveSpeed;
         if (State == Behaviour.Attack)
         {
-            if (available) Face(player.transform.position - transform.position);
+            if (attackEcologyTarget != null && attackEcologyTarget.IsAlive) Face(attackEcologyTarget.AimPoint(Eye) - Eye);
+            else if (attackPlayer != null) Face(attackPlayer.transform.position - transform.position);
             float elapsed = Time.time - attackStarted;
             if (!delivered && elapsed >= windup)
             {
                 delivered = true;
-                if (available && distance <= attackRange + 0.3f && CanSeePlayer()) DeliverAttack();
+                if (attackEcologyTarget != null)
+                {
+                    if (attackEcologyTarget.IsAlive && Vector3.Distance(Eye, attackEcologyTarget.AimPoint(Eye)) <= attackRange + 0.3f
+                        && attackEcologyTarget.VisibleFrom(Eye, transform)) DeliverAttack(attackEcologyTarget.AimPoint(Eye), attackEcologyTarget, null);
+                }
+                else if (attackPlayer != null && attackPlayer.isActiveAndEnabled && !attackPlayer.IsRecovering
+                    && Vector3.Distance(transform.position, attackPlayer.transform.position) <= attackRange + 0.3f && CanSee(attackPlayer))
+                    DeliverAttack(attackPlayer.AimPoint, null, attackPlayer);
             }
             if (elapsed >= attackDuration) State = Behaviour.Chase;
         }
@@ -83,28 +98,36 @@ public sealed class EnemyBrain : MonoBehaviour
             direction = home - transform.position;
             if (Flat(direction).magnitude < 0.5f) { State = Behaviour.Idle; nextDecision = Time.time + 2f; }
         }
-        else if (available && (visible || (State == Behaviour.Chase && Time.time - lastSeen < 10f)))
+        else if (pursuePlayer)
         {
             if (Vector3.Distance(home, transform.position) > leashRange || Vector3.Distance(home, player.transform.position) > leashRange + 5f)
                 State = Behaviour.Return;
             else
             {
                 State = Behaviour.Chase;
+                chasingPlayer = true; ecologyTarget = null;
                 Vector3 toPlayer = Flat((visible ? player.transform.position : lastKnownPosition) - transform.position);
                 Face(toPlayer);
                 speed = chaseSpeed;
                 if (visible && distance <= attackRange && Time.time >= nextAttack)
                 {
-                    State = Behaviour.Attack; attackStarted = Time.time; delivered = false;
-                    nextAttack = Time.time + attackDuration + cooldown;
-                    if (animator != null) animator.SetTrigger(Attack);
+                    BeginAttack(null, player);
                 }
                 else if (!visible || distance > (Ranged ? preferredRange : attackRange * 0.8f)) direction = toPlayer;
                 else if (Ranged && distance < preferredRange * 0.65f) direction = -toPlayer;
             }
         }
+        else if (FindEcologyTarget())
+        {
+            chasingPlayer = false; State = Behaviour.Chase; speed = chaseSpeed;
+            Vector3 aim = ecologyTarget.AimPoint(Eye); Face(aim - Eye);
+            bool canHit = Vector3.Distance(Eye, aim) <= attackRange && ecologyTarget.VisibleFrom(Eye, transform);
+            if (canHit && Time.time >= nextAttack) BeginAttack(ecologyTarget, null);
+            else if (!canHit) direction = ecologyTarget.ApproachPosition - transform.position;
+        }
         else
         {
+            chasingPlayer = false;
             if (State == Behaviour.Chase) State = Behaviour.Return;
             else if (Time.time >= nextDecision)
             {
@@ -120,6 +143,7 @@ public sealed class EnemyBrain : MonoBehaviour
         if (State != Behaviour.Attack && direction != Vector3.zero)
         {
             Vector3 goal = State == Behaviour.Return ? home : State == Behaviour.Patrol ? patrolGoal
+                : !chasingPlayer && ecologyTarget != null ? ecologyTarget.ApproachPosition
                 : available && Vector3.Dot(direction, player.transform.position - transform.position) > 0 ? (visible ? player.transform.position : lastKnownPosition)
                 : transform.position + direction.normalized * 3;
             direction = Steer(route.Direction(goal, direction.normalized));
@@ -154,11 +178,30 @@ public sealed class EnemyBrain : MonoBehaviour
         }
         return Vector3.zero;
     }
-    private bool CanSeePlayer()
+    private bool FindEcologyTarget()
     {
-        Vector3 delta = player.AimPoint - Eye;
+        if (Vector3.Distance(home, transform.position) > leashRange) { ecologyTarget = null; State = Behaviour.Return; return false; }
+        if (Time.time >= nextEcologyDecision)
+        {
+            nextEcologyDecision = Time.time + 1f;
+            ecologyTarget = EnemyEcoTarget.Select(species, home, leashRange, transform.position, Eye, attackRange, transform);
+        }
+        return ecologyTarget != null && ecologyTarget.IsAlive;
+    }
+    private void BeginAttack(EnemyEcoTarget target, PlayerVitals playerTarget)
+    {
+        attackEcologyTarget = target; attackPlayer = playerTarget;
+        State = Behaviour.Attack; attackStarted = Time.time; delivered = false;
+        nextAttack = Time.time + attackDuration + cooldown;
+        if (animator != null) animator.SetTrigger(Attack);
+    }
+    private bool CanSeePlayer() => CanSee(player);
+    private bool CanSee(PlayerVitals target)
+    {
+        if (target == null) return false;
+        Vector3 delta = target.AimPoint - Eye;
         foreach (var hit in Physics.RaycastAll(Eye, delta.normalized, delta.magnitude, ~0, QueryTriggerInteraction.Ignore))
-            if (!hit.transform.IsChildOf(transform) && !hit.transform.IsChildOf(player.transform)) return false;
+            if (!hit.transform.IsChildOf(transform) && !hit.transform.IsChildOf(target.transform)) return false;
         return true;
     }
     private void Face(Vector3 direction)
@@ -167,15 +210,17 @@ public sealed class EnemyBrain : MonoBehaviour
         if (direction.sqrMagnitude > 0.001f)
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(direction), 180f * Time.deltaTime);
     }
-    private void DeliverAttack()
+    private void DeliverAttack(Vector3 aim, EnemyEcoTarget target, PlayerVitals playerTarget)
     {
         if (Ranged)
         {
-            Vector3 origin = Eye + transform.forward * (motor.radius + 0.15f);
-            var shot = Instantiate(projectilePrefab, origin, Quaternion.LookRotation(player.AimPoint - origin));
-            shot.GetComponent<EnemyProjectile>().Launch(transform, player.AimPoint - origin, projectileSpeed, damage, species == Species.Acid ? 2f : 0f);
+            Vector3 direction = (aim - Eye).normalized;
+            // Begin the sweep at the eye; spawning beyond the capsule can skip a nearby wall or target.
+            var shot = Instantiate(projectilePrefab, Eye, Quaternion.LookRotation(direction));
+            shot.GetComponent<EnemyProjectile>().Launch(transform, direction, projectileSpeed, damage, species == Species.Acid ? 2f : 0f, species);
         }
-        else player.ReceiveHit(species == Species.Smoke ? 0f : damage, species == Species.Slime ? 1.5f : 0f, species == Species.Smoke ? 2.5f : 0f);
+        else if (target != null) target.ApplyImpact(species, damage);
+        else if (playerTarget != null) playerTarget.ReceiveHit(species == Species.Smoke ? 0f : damage, species == Species.Slime ? 1.5f : 0f, species == Species.Smoke ? 2.5f : 0f);
     }
     public void TakeDamage(float amount)
     {
@@ -186,6 +231,7 @@ public sealed class EnemyBrain : MonoBehaviour
             // Continuous weapon damage must not cancel and restart the attack windup every frame.
             if (State != Behaviour.Attack && !IsStunned) State = Behaviour.Chase;
             lastSeen = Time.time;
+            provokedUntil = Time.time + 10f;
             if (player != null) lastKnownPosition = player.transform.position;
             return;
         }

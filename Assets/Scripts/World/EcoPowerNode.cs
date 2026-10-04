@@ -16,6 +16,9 @@ public sealed class EcoPowerNode : MonoBehaviour
     public float NetworkDemand { get; internal set; }
     public float NetworkStored { get; internal set; }
     public float NetworkCapacity { get; internal set; }
+    public float SmokeRemaining { get; private set; }
+    public float EfficiencyMultiplier => kind == Kind.Solar && SmokeRemaining > 0f ? smokeEfficiency : 1f;
+    private float smokeEfficiency = 1f;
     public bool Operational => isActiveAndEnabled && condition > 0f;
     public Vector3 SocketPosition => transform.TransformPoint(port);
     public string DisplayName => kind switch
@@ -24,6 +27,19 @@ public sealed class EcoPowerNode : MonoBehaviour
         Kind.Charger => "Şarj istasyonu", _ => "Elektrikli tesis"
     };
     private void OnEnable() => Active.Add(this);
+    private void Update() => Simulate(Time.deltaTime);
+    public void Simulate(float seconds)
+    {
+        if (!EcoRegion.Valid(seconds)) return;
+        SmokeRemaining = Mathf.Max(0f, SmokeRemaining - seconds);
+        if (SmokeRemaining <= 0f) smokeEfficiency = 1f;
+    }
+    public void ApplySmoke(float seconds = 8f, float efficiency = 0.5f)
+    {
+        if (kind != Kind.Solar || !EcoRegion.Valid(seconds) || !EcoRegion.Finite(efficiency) || efficiency < 0f || efficiency >= 1f) return;
+        smokeEfficiency = SmokeRemaining > 0f ? Mathf.Min(smokeEfficiency, efficiency) : efficiency;
+        SmokeRemaining = Mathf.Max(SmokeRemaining, Mathf.Min(seconds, 30f));
+    }
     private void OnDisable() { Active.Remove(this); DeliveredPower = NetworkGeneration = NetworkDemand = NetworkStored = NetworkCapacity = 0f; }
     public float Generation(EcoWorldClock clock)
     {
@@ -34,7 +50,7 @@ public sealed class EcoPowerNode : MonoBehaviour
             if (checkShade)
                 foreach (var hit in Physics.RaycastAll(SocketPosition + Vector3.up * 0.1f, clock.SunDirection, 100f, ~0, QueryTriggerInteraction.Ignore))
                     if (!hit.transform.IsChildOf(transform)) return 0f;
-            return ratedPower * clock.SolarFactor * solarExposure * condition * (EcoRegion.At(transform.position)?.SolarTransmission ?? 1);
+            return ratedPower * clock.SolarFactor * solarExposure * condition * (EcoRegion.At(transform.position)?.SolarTransmission ?? 1) * EfficiencyMultiplier;
         }
         if (kind == Kind.Wind)
         {
@@ -70,5 +86,6 @@ public sealed class EcoPowerNode : MonoBehaviour
     public string Describe() => DisplayName + "\nÜretim " + NetworkGeneration.ToString("0.0")
         + " • Tüketim " + NetworkDemand.ToString("0.0") + " /sn • Depo "
         + NetworkStored.ToString("0") + "/" + NetworkCapacity.ToString("0")
-        + (Operational ? "" : " • Devre dışı");
+        + (Operational ? "" : " • Devre dışı")
+        + (SmokeRemaining > 0f ? "\nDuman: verim %" + (EfficiencyMultiplier * 100f).ToString("0") + " • " + SmokeRemaining.ToString("0.0") + " sn" : "");
 }

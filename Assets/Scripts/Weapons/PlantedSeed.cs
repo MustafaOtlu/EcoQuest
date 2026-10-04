@@ -12,10 +12,14 @@ public sealed class PlantedSeed : MonoBehaviour
     [Range(0f, 1f)] public float growth;
     [Range(0f, 1f)] public float health = 1f;
     public bool contaminated;
+    public float SlimeRemaining { get; private set; }
+    public float GrowthMultiplier => SlimeRemaining > 0f ? 0.5f : 1f;
+    public float ContaminationExposure { get; private set; }
     public bool IsMature => growth >= 1f && !IsWithered;
     public bool IsWithered => health <= 0f;
     public string Status => EcoCropCatalog.Get(kind).Name + " • " + (IsWithered ? "Kurumuş bitki" : IsMature ? "Hasada hazır"
-        : !ClimateSuitable ? "İklim uygun değil (" + EcoCropCatalog.Get(kind).Climate + ")" : moisture < 0.2f ? "Su gerekiyor" : pests > 0.25f ? "Böcek zararı • Organik gübre uygula" : "Büyüyor");
+        : !ClimateSuitable ? "İklim uygun değil (" + EcoCropCatalog.Get(kind).Climate + ")" : moisture < 0.2f ? "Su gerekiyor" : pests > 0.25f ? "Böcek zararı • Organik gübre uygula" : "Büyüyor")
+        + (SlimeRemaining > 0f ? "\nSalgı: büyüme %50 • " + SlimeRemaining.ToString("0.0") + " sn" : "");
     private float dryTime;
     private bool harvested;
     private Vector3 baseScale, basePosition;
@@ -47,7 +51,10 @@ public sealed class PlantedSeed : MonoBehaviour
     private void Update() => Simulate(Time.deltaTime);
     public void Simulate(float seconds)
     {
-        if (harvested || IsWithered || !EcoRegion.Valid(seconds)) return;
+        if (!EcoRegion.Valid(seconds)) return;
+        float growthTime = seconds - Mathf.Min(seconds, SlimeRemaining) * 0.5f;
+        SlimeRemaining = Mathf.Max(0f, SlimeRemaining - seconds);
+        if (harvested || IsWithered) return;
         var region = EcoRegion.At(transform.position);
         float unprotected = Mathf.Max(0, seconds - Mathf.Max(pestProtectionRemaining, 45 - age));
         age += seconds;
@@ -63,7 +70,7 @@ public sealed class PlantedSeed : MonoBehaviour
         if (moisture >= 0.2f)
         {
             dryTime = 0f;
-            if (ClimateSuitable) growth = Mathf.Min(1f, growth + seconds / Mathf.Max(1f, growthSeconds) * (contaminated ? 0.5f : 1f) * (1 - pests * 0.7f));
+            if (ClimateSuitable) growth = Mathf.Min(1f, growth + growthTime / Mathf.Max(1f, growthSeconds) * (contaminated ? 0.5f : 1f) * (1 - pests * 0.7f));
             health = Mathf.Clamp01(health + seconds * (ClimateSuitable ? 0.015f : -0.006f));
         }
         else
@@ -88,6 +95,21 @@ public sealed class PlantedSeed : MonoBehaviour
     {
         if (harvested || !EcoRegion.Valid(amount)) return;
         health = Mathf.Max(0, health - amount); UpdateVisual();
+    }
+    public void ApplyAcid(float damage)
+    {
+        if (harvested || IsWithered || !EcoRegion.Valid(damage)) return;
+        contaminated = true; ContaminationExposure = 2f;
+        health = Mathf.Max(0f, health - Mathf.Min(damage, 1f));
+        UpdateVisual();
+    }
+    public void ApplySlime(float seconds = 8f)
+    {
+        if (harvested || IsWithered || !EcoRegion.Valid(seconds)) return;
+        SlimeRemaining = Mathf.Max(SlimeRemaining, Mathf.Min(seconds, 30f));
+        ContaminationExposure = Mathf.Min(2f, ContaminationExposure + 1f);
+        if (ContaminationExposure >= 2f) contaminated = true;
+        UpdateVisual();
     }
     private void UpdateVisual()
     {

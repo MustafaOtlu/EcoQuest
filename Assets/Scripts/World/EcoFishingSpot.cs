@@ -21,6 +21,11 @@ public sealed class EcoFishingSpot : MonoBehaviour
         Fisher = player; CatchProgress = 0; player.ShowFeedback("Olta atıldı • 3 saniye bekle. E: iptal"); return true;
     }
     private void Update() { Simulate(Time.deltaTime); Animate(); }
+    public void Poison(float amount)
+    {
+        if (!EcoRegion.Valid(amount) || !EcoRegion.Finite(population)) return;
+        population = Mathf.Max(0f, Mathf.Clamp(population, 0f, 12f) - Mathf.Min(amount, 12f));
+    }
     public void Simulate(float seconds)
     {
         if (!isActiveAndEnabled || !EcoRegion.Valid(seconds)) return;

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 // Scene-only setup: keeps the original placement markers and spawns reusable rigged prefabs.
@@ -8,16 +9,20 @@ public sealed class EnemySceneSetup : MonoBehaviour
     public GameObject[] enemyPrefabs;
     public Transform[] placementMarkers;
     public Vector3[] additionalPositions;
+    public bool enableRegionalSpawning = true;
     private void Awake()
     {
         if (player == null) { Debug.LogError("Enemy setup needs a Player reference.", this); return; }
         if (player.GetComponent<PlayerVitals>() == null) player.gameObject.AddComponent<PlayerVitals>();
         EcoNavigation.Ignore(player.gameObject);
         if (FindFirstObjectByType<EcoNavigation>() == null) new GameObject("Eco navigation").AddComponent<EcoNavigation>();
+        if (enemyPrefabs == null) return;
         for (int i = 0; i < enemyPrefabs.Length; i++)
         {
             if (enemyPrefabs[i] == null) continue;
-            Transform marker = i < placementMarkers.Length ? placementMarkers[i] : null;
+            Transform marker = placementMarkers != null && i < placementMarkers.Length ? placementMarkers[i] : null;
+            // An incomplete placement list must not create an enemy at an unintended origin.
+            if (marker == null && (additionalPositions == null || i >= additionalPositions.Length)) continue;
             Vector3 position = marker != null ? marker.position : additionalPositions[i];
             if (marker != null) marker.gameObject.SetActive(false);
             // Snap feet onto the terrain/plane instead of keeping the static FBX pivot height.
@@ -25,6 +30,20 @@ public sealed class EnemySceneSetup : MonoBehaviour
                 position.y = hit.point.y + 0.03f;
             var instance = Instantiate(enemyPrefabs[i], position, Quaternion.identity, transform);
             instance.name = enemyPrefabs[i].name;
+        }
+    }
+    private IEnumerator Start()
+    {
+        if (!enableRegionalSpawning || player == null || enemyPrefabs == null) yield break;
+        // Regions can be supplied by the starter prefab; wait for its initialization and navigation.
+        yield return null;
+        while (EcoNavigation.Current != null && !EcoNavigation.Current.Ready) yield return null;
+        foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID))
+        {
+            if (region.GetComponent<EcoEnemySpawnZone>() != null) continue;
+            var zone = region.gameObject.AddComponent<EcoEnemySpawnZone>();
+            zone.enemyPrefabs = enemyPrefabs;
+            zone.player = player;
         }
     }
 }
