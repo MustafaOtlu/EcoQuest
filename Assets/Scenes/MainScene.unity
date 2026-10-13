@@ -849,6 +849,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 344388892}
     m_Modifications:
     - target: {fileID: 1837797024780286839, guid: d8588b23aaf98004d9d0289848332533, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1837797024780286839, guid: d8588b23aaf98004d9d0289848332533, type: 3}
       propertyPath: m_LocalRotation.x
       value: -0
       objectReference: {fileID: 0}
@@ -865,7 +869,9 @@ PrefabInstance:
       value: PowerStarter (1)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 547649564050581517, guid: d8588b23aaf98004d9d0289848332533, type: 3}
+    - {fileID: 5620805751200633289, guid: d8588b23aaf98004d9d0289848332533, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d8588b23aaf98004d9d0289848332533, type: 3}
@@ -3519,7 +3525,13 @@ PrefabInstance:
       value: -0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 3113345245389533326, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
+    - {fileID: 7134947160623836962, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
+    - {fileID: 3342464383437492203, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
+    - {fileID: 359451063260175166, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
+    - {fileID: 6949156261292914961, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
+    - {fileID: 6248887622953824977, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 46b3b0772684f7b4286381e6e570363e, type: 3}
@@ -7740,7 +7752,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkSpeed: 3
-  runSpeed: 6
+  runSpeed: 120
   gravity: -9.81
   mouseSensitivity: 0.1
   gamepadLookSpeed: 150
