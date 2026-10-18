@@ -11,7 +11,14 @@ public sealed class WorldSpaceLabel : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (view == null) view = Camera.main;
+        if (view == null || !view.isActiveAndEnabled)
+        {
+            view = Camera.main;
+            if (view == null || !view.isActiveAndEnabled)
+            {
+                if (Camera.allCamerasCount > 0) view = Camera.allCameras[0];
+            }
+        }
         if (view == null) return;
         canvas.worldCamera = view;
         transform.rotation = view.transform.rotation;

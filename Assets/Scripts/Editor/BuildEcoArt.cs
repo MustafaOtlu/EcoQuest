@@ -125,6 +125,7 @@ public static class BuildEcoArt
         bounds=WorldBounds(root);model.transform.localPosition-=new Vector3(bounds.center.x,bounds.min.y,bounds.center.z);
         bounds=WorldBounds(root);
         if(collide){var collider=root.AddComponent<BoxCollider>();collider.center=bounds.center;collider.size=bounds.size;}
+        else if(name=="Tree"){var trunk=root.AddComponent<CapsuleCollider>();trunk.radius=0.25f;trunk.height=Mathf.Max(2f,bounds.size.y);trunk.center=new Vector3(0,trunk.height*0.5f,0);}
         PrefabUtility.SaveAsPrefabAsset(root,Output+name+".prefab");UnityEngine.Object.DestroyImmediate(root);
     }
     private static Bounds WorldBounds(GameObject go)
