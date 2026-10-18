@@ -1,5 +1,7 @@
 # Bölgesel çevre, fabrika ve yangın
 
+18 Ekim güncellemesi: yağmurun ürün/yangın etkileri ve düşmanların çevre hedefleri bağlandı. Yeni MainScene'de mekanik alanları `alan` grubuyla taşınmış durumdadır; aşağıdaki eski dünya koordinatları ilk deneme yerleşimine aittir. Güncel ayrıntılar: [AtmosphereAndPresentation.md](AtmosphereAndPresentation.md).
+
 27 Eylül 2026 — yol haritasının 7. aşaması. Son harita yerleşimi değil; mevcut MainScene'deki PowerStarter üzerinden mekanik deneme alanları eklenir. Sahnede kullanıcı nesneleri taşınmaz.
 
 ## Oynama

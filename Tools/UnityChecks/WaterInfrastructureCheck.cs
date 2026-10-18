@@ -23,9 +23,12 @@ public sealed class WaterInfrastructureCheck : MonoBehaviour
         Application.logMessageReceived += OnLog;
         yield return null; yield return null;
         foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None)) enemy.enabled = false;
-        var power = FindFirstObjectByType<EcoPowerGrid>(); power.enabled = false; power.clock.enabled = false;
+        var power = EcoWorldClock.Current.GetComponent<EcoPowerGrid>();
+        foreach (var grid in FindObjectsByType<EcoPowerGrid>(FindObjectsSortMode.None)) grid.enabled = false;
+        foreach (var worldClock in FindObjectsByType<EcoWorldClock>(FindObjectsSortMode.None)) worldClock.enabled = false;
         var waterGrid = FindFirstObjectByType<EcoWaterGrid>();
-        Check(waterGrid != null, "MainScene includes the water simulation alongside electricity"); waterGrid.enabled = false;
+        Check(waterGrid != null, "MainScene includes the water simulation alongside electricity");
+        foreach (var grid in FindObjectsByType<EcoWaterGrid>(FindObjectsSortMode.None)) grid.enabled = false;
         fixture = new GameObject("Water calculation fixtures");
         var a = Water(EcoWaterNode.Kind.Tank, 100); var b = Water(EcoWaterNode.Kind.Tank, 10); var c = Water(EcoWaterNode.Kind.Tank, 100);
         a.dirtyWater = 20; a.cleanWater = 30; b.dirtyWater = 8;
@@ -89,9 +92,9 @@ public sealed class WaterInfrastructureCheck : MonoBehaviour
         Check(builder.TryPlace(intakeIndex, new Vector3(20, 0.03f, 3.5f), Quaternion.identity), "Intake can be built beside an actual source");
         Check(builder.TryPlace(purifierIndex, new Vector3(23, 0.03f, 3.5f), Quaternion.identity), "Arıtma prefab places with its full foundation and collider");
         Check(builder.TryPlace(tankIndex, new Vector3(25, 0.03f, 3.5f), Quaternion.identity), "Water tank prefab can be built separately");
-        var pump = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Intake);
-        var treatment = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Purifier);
-        var tank = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Tank);
+        var pump = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Intake && n.GetComponent<EcoStructure>()?.playerBuilt == true);
+        var treatment = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Purifier && n.GetComponent<EcoStructure>()?.playerBuilt == true);
+        var tank = EcoWaterNode.Active.First(n => n.kind == EcoWaterNode.Kind.Tank && n.GetComponent<EcoStructure>()?.playerBuilt == true);
         Check(pump.source != null && pump.dirtyWater == 0 && treatment.cleanWater == 0 && tank.cleanWater == 0, "New buildings resolve their source and contain no free water");
         int plastic = weapon.Plastic;
         Check(builder.TryConnectPipe(pump, treatment, EcoWaterNode.Fluid.Dirty) && weapon.Plastic == plastic - 6, "Directed dirty pipe spends exactly two plastic per rounded-up metre");
