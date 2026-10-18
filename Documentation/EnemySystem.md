@@ -1,5 +1,7 @@
 # EcoQuest düşman prototipi
 
+18 Ekim güncellemesi: çevre/yapı hedefleri ve sınırlı bölgesel doğma kuralları eklendi. Taşınmış MainScene oyuncusunun konumuna göre başlangıç yerleşimi ve navigasyon düzeltildi. Güncel davranış ve kontroller: [AtmosphereAndPresentation.md](AtmosphereAndPresentation.md). Aşağıdaki eski tarihli doğrulamalar kendi dönemlerindeki kapsamı anlatır; iklim canavarı halen yapılmadı.
+
 MainScene'deki Enemys nesnesinin EnemySceneSetup bileşeni, Play başladığında eski statik yerleşim modellerini gizler ve iskeletli prefabları aynı noktalara yerleştirir. Asit ve Salya için ek deneme konumları tanımlıdır. Edit modunda eski yerleşim işaretleri korunur; prefabların kendileri Assets/Prefabs/Enemies içindedir.
 
 | Tür | Rol | Saldırı | Can | Drop |

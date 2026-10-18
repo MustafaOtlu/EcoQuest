@@ -6,8 +6,17 @@ using UnityEngine;
 public sealed class EcoPowerGrid : MonoBehaviour
 {
     public EcoWorldClock clock;
-    private void Awake() { if (clock == null) clock = FindFirstObjectByType<EcoWorldClock>(); }
-    private void Update() => Simulate(Time.deltaTime);
+    private void Awake() { if (clock == null) clock = EcoWorldClock.Current; }
+    private void Update()
+    {
+        var primary = EcoWorldClock.Current;
+        if (primary != null)
+        {
+            if (primary.TryGetComponent<EcoPowerGrid>(out var owner) && owner != this) return;
+            clock = primary;
+        }
+        Simulate(Time.deltaTime);
+    }
 
     public void Simulate(float seconds)
     {

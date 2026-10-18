@@ -12,10 +12,14 @@ public sealed class PlantedSeed : MonoBehaviour
     [Range(0f, 1f)] public float growth;
     [Range(0f, 1f)] public float health = 1f;
     public bool contaminated;
+    public float SlimeRemaining { get; private set; }
+    public float GrowthMultiplier => SlimeRemaining > 0f ? 0.5f : 1f;
+    public float ContaminationExposure { get; private set; }
     public bool IsMature => growth >= 1f && !IsWithered;
     public bool IsWithered => health <= 0f;
     public string Status => EcoCropCatalog.Get(kind).Name + " • " + (IsWithered ? "Kurumuş bitki" : IsMature ? "Hasada hazır"
-        : !ClimateSuitable ? "İklim uygun değil (" + EcoCropCatalog.Get(kind).Climate + ")" : moisture < 0.2f ? "Su gerekiyor" : pests > 0.25f ? "Böcek zararı • Organik gübre uygula" : "Büyüyor");
+        : !ClimateSuitable ? "İklim uygun değil (" + EcoCropCatalog.Get(kind).Climate + ")" : moisture < 0.2f ? "Su gerekiyor" : pests > 0.25f ? "Böcek zararı • Organik gübre uygula" : "Büyüyor")
+        + (SlimeRemaining > 0f ? "\nSalgı: büyüme %50 • " + SlimeRemaining.ToString("0.0") + " sn" : "");
     private float dryTime;
     private bool harvested;
     private Vector3 baseScale, basePosition;
@@ -23,8 +27,11 @@ public sealed class PlantedSeed : MonoBehaviour
     private MaterialPropertyBlock tint;
     private Transform cropVisual;
     private Renderer[] cropRenderers;
+    private Vector3 visualBaseScale, groundedVisualPosition;
+    private float visualHeight;
     public static PlantedSeed Create(Vector3 groundPosition, EcoCropCatalog.Kind kind = EcoCropCatalog.Kind.Cabbage)
     {
+        if (!Finite(groundPosition) || !EcoCropCatalog.Valid(kind)) return null;
         var root = new GameObject("Eco Crop");
         root.transform.position = groundPosition;
         var visual = EcoWorldArt.Spawn(EcoCropCatalog.Get(kind).Model, groundPosition, root.transform);
@@ -41,13 +48,42 @@ public sealed class PlantedSeed : MonoBehaviour
         plantRenderer = GetComponent<Renderer>();
         tint = new MaterialPropertyBlock();
         cropVisual = transform.Find("Crop Visual");
-        if (cropVisual != null) cropRenderers = cropVisual.GetComponentsInChildren<Renderer>();
+        if (cropVisual != null)
+        {
+            cropRenderers = cropVisual.GetComponentsInChildren<Renderer>();
+            visualBaseScale = cropVisual.localScale;
+            groundedVisualPosition = cropVisual.localPosition;
+            // Bounds are measured before growth scaling, preserving imported root scales and pivots.
+            bool foundBounds = false;
+            Bounds bounds = default;
+            foreach (var renderer in cropRenderers)
+            {
+                Bounds local = renderer.localBounds;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 point = local.center + Vector3.Scale(local.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
+                    point = transform.InverseTransformPoint(renderer.transform.TransformPoint(point));
+                    if (!Finite(point)) continue;
+                    if (!foundBounds) { bounds = new Bounds(point, Vector3.zero); foundBounds = true; }
+                    else bounds.Encapsulate(point);
+                }
+            }
+            if (foundBounds && bounds.size.y > 0.001f)
+            {
+                visualHeight = bounds.size.y;
+                groundedVisualPosition -= new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            }
+        }
         UpdateVisual();
     }
     private void Update() => Simulate(Time.deltaTime);
     public void Simulate(float seconds)
     {
-        if (harvested || IsWithered || !EcoRegion.Valid(seconds)) return;
+        if (!EcoRegion.Valid(seconds)) return;
+        float growthTime = seconds - Mathf.Min(seconds, SlimeRemaining) * 0.5f;
+        SlimeRemaining = Mathf.Max(0f, SlimeRemaining - seconds);
+        if (harvested || IsWithered) return;
         var region = EcoRegion.At(transform.position);
         float unprotected = Mathf.Max(0, seconds - Mathf.Max(pestProtectionRemaining, 45 - age));
         age += seconds;
@@ -63,7 +99,7 @@ public sealed class PlantedSeed : MonoBehaviour
         if (moisture >= 0.2f)
         {
             dryTime = 0f;
-            if (ClimateSuitable) growth = Mathf.Min(1f, growth + seconds / Mathf.Max(1f, growthSeconds) * (contaminated ? 0.5f : 1f) * (1 - pests * 0.7f));
+            if (ClimateSuitable) growth = Mathf.Min(1f, growth + growthTime / Mathf.Max(1f, growthSeconds) * (contaminated ? 0.5f : 1f) * (1 - pests * 0.7f));
             health = Mathf.Clamp01(health + seconds * (ClimateSuitable ? 0.015f : -0.006f));
         }
         else
@@ -89,31 +125,52 @@ public sealed class PlantedSeed : MonoBehaviour
         if (harvested || !EcoRegion.Valid(amount)) return;
         health = Mathf.Max(0, health - amount); UpdateVisual();
     }
+    public void ApplyAcid(float damage)
+    {
+        if (harvested || IsWithered || !EcoRegion.Valid(damage)) return;
+        contaminated = true; ContaminationExposure = 2f;
+        health = Mathf.Max(0f, health - Mathf.Min(damage, 1f));
+        UpdateVisual();
+    }
+    public void ApplySlime(float seconds = 8f)
+    {
+        if (harvested || IsWithered || !EcoRegion.Valid(seconds)) return;
+        SlimeRemaining = Mathf.Max(SlimeRemaining, Mathf.Min(seconds, 30f));
+        ContaminationExposure = Mathf.Min(2f, ContaminationExposure + 1f);
+        if (ContaminationExposure >= 2f) contaminated = true;
+        UpdateVisual();
+    }
     private void UpdateVisual()
     {
+        float visibleGrowth = EcoRegion.Finite(growth) ? Mathf.Clamp01(growth) : 0f;
         if (cropVisual != null)
         {
-            // The imported visual grows around its soil-level pivot; interaction collider stays reachable.
-            cropVisual.localScale = Vector3.one * Mathf.Lerp(0.25f, 1f, growth);
+            // A newly planted crop must remain readable before watering; old vegetables began at 9.5 cm.
+            float saplingHeight = kind == EcoCropCatalog.Kind.Tree ? 1f : 0.28f;
+            float seedScale = visualHeight > 0.001f ? Mathf.Clamp(saplingHeight / visualHeight, 0.25f, 1f) : 0.75f;
+            float scale = Mathf.Lerp(seedScale, 1f, visibleGrowth);
+            cropVisual.localScale = visualBaseScale * scale;
+            cropVisual.localPosition = groundedVisualPosition * scale;
             Color multiplier = IsWithered ? new Color(0.45f, 0.28f, 0.12f) : contaminated ? new Color(0.75f, 0.65f, 0.35f) : Color.white;
             foreach (var renderer in cropRenderers)
             {
+                if (renderer == null) continue;
                 tint.SetColor("_BaseColor", multiplier); tint.SetColor("_Color", multiplier); renderer.SetPropertyBlock(tint);
             }
             return;
         }
-        transform.localScale = Vector3.Scale(baseScale, new Vector3(1f + growth * 2f, 1f + growth * 4f, 1f + growth * 2f));
-        transform.position = basePosition + Vector3.up * (baseScale.y * growth * 4f);
+        transform.localScale = Vector3.Scale(baseScale, new Vector3(1f + visibleGrowth * 2f, 1f + visibleGrowth * 4f, 1f + visibleGrowth * 2f));
+        transform.position = basePosition + Vector3.up * (baseScale.y * visibleGrowth * 4f);
         if (plantRenderer != null)
         {
             Color color = IsWithered ? new Color(0.4f, 0.25f, 0.1f) : contaminated
-                ? new Color(0.5f, 0.45f, 0.1f) : Color.Lerp(new Color(0.25f, 0.8f, 0.3f), new Color(0.1f, 0.45f, 0.12f), growth);
+                ? new Color(0.5f, 0.45f, 0.1f) : Color.Lerp(new Color(0.25f, 0.8f, 0.3f), new Color(0.1f, 0.45f, 0.12f), visibleGrowth);
             tint.SetColor("_BaseColor", color); plantRenderer.SetPropertyBlock(tint);
         }
     }
     public void WaterPlant(float amount, bool clean)
     {
-        if (IsWithered || harvested || amount <= 0f) return;
+        if (IsWithered || harvested || !EcoRegion.Valid(amount)) return;
         moisture = Mathf.Clamp01(moisture + amount);
         if (!clean) contaminated = true;
         dryTime = 0f;
@@ -139,4 +196,5 @@ public sealed class PlantedSeed : MonoBehaviour
         if (ClimateSuitable) growth = Mathf.Min(1f, growth + 0.2f);
         health = Mathf.Min(1f, health + 0.25f); pests = 0; pestProtectionRemaining = 120; UpdateVisual(); return true;
     }
+    private static bool Finite(Vector3 value) => EcoRegion.Finite(value.x) && EcoRegion.Finite(value.y) && EcoRegion.Finite(value.z);
 }

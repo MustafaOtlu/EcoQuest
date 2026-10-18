@@ -5,8 +5,20 @@ public sealed class WeaponWaterSource : MonoBehaviour
 {
     public bool cleanWater = true;
     public bool useRegionalQuality;
+    [SerializeField, Range(0f, 100f)] private float localPollution;
+    public float LocalPollution => localPollution;
     public UnityEngine.UI.Text statusLabel;
-    public bool IsClean => useRegionalQuality && EcoRegion.At(transform.position) is EcoRegion region ? region.CleanWater : cleanWater;
+    public bool IsClean => useRegionalQuality
+        ? EcoRegion.At(transform.position) is EcoRegion region ? region.CleanWater : cleanWater && localPollution < 35f
+        : cleanWater;
+    public void Pollute(float amount)
+    {
+        if (!useRegionalQuality || !EcoRegion.Valid(amount)) return;
+        amount = Mathf.Min(amount, 100f);
+        var region = EcoRegion.At(transform.position);
+        if (region != null) region.AddPollution(0f, amount, 0f, 0f);
+        else localPollution = Mathf.Clamp(localPollution + amount, 0f, 100f);
+    }
     private MaterialPropertyBlock tint;
     private void Update()
     {

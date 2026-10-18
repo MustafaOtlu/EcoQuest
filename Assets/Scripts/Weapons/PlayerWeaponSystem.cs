@@ -98,19 +98,17 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     private Transform owner;
     private PlayerVitals vitals;
     private Camera view;
-    private LineRenderer beam;
+    private WeaponVisualEffects streamEffects;
     private float nextShot, nextScan;
-    private float beamUntil, nextHitFeedback;
+    private float nextHitFeedback;
     private RecyclableResource processing;
     private float progress;
     private bool dirtyWater;
     private float jamUntil;
     [SerializeField] private string sessionKey = "EcoQuest.Session";
-    private MaterialPropertyBlock tint;
 
     private void Start()
     {
-        tint = new MaterialPropertyBlock();
         owner = GetComponentInParent<PlayerController>().transform;
         vitals = owner.GetComponent<PlayerVitals>();
         Progression = owner.GetComponent<EcoProgression>();
@@ -143,12 +141,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             FitModel(model, i == 3 ? 0.25f : i == 2 ? 0.4f : 0.46f);
             models[i] = model; model.gameObject.SetActive(false);
         }
-        var fx = new GameObject("WeaponStream"); fx.transform.SetParent(owner, false);
-        beam = fx.AddComponent<LineRenderer>(); beam.sharedMaterial = effectMaterial;
-        beam.positionCount = 2; beam.startWidth = 0.035f; beam.endWidth = 0.065f;
-        beam.numCapVertices = 4;
-        beam.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        beam.useWorldSpace = true; beam.enabled = false;
+        var fx = new GameObject("Weapon particles"); fx.transform.SetParent(transform, false);
+        streamEffects = fx.AddComponent<WeaponVisualEffects>();
     }
     private void FitModel(Transform model, float length)
     {
@@ -188,7 +182,6 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     private void Update()
     {
         bool locked = Cursor.lockState == CursorLockMode.Locked && Application.isFocused;
-        if (beam != null && Time.time >= beamUntil) beam.enabled = false;
         var mouse = Mouse.current;
         if (!locked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) { ResetProcessing(); return; }
         if (Builder != null && Builder.IsBuilding) { ResetProcessing(); return; }
@@ -216,7 +209,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         // A press/release within one input update is still a shot. Never retain clicks from menus or focus loss.
         bool firing = mouse != null && (mouse.leftButton.isPressed || mouse.leftButton.wasPressedThisFrame);
         if (firing) Use(Time.deltaTime);
-        else { processing = null; progress = 0f; }
+        else { processing = null; progress = 0f; if (streamEffects != null) streamEffects.Stop(false); }
         Changed?.Invoke();
     }
     public void Use(float deltaTime)
@@ -247,7 +240,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 12f : 8f) + Upgrades.VacuumRangeBonus;
         bool found = Aim(range, out var hit, Selected == Tool.Vacuum && Mode == VacuumMode.Collect ? Upgrades.CollectionRadius : 0);
-        ShowStream(found ? hit.point : view.transform.position + view.transform.forward * range);
+        ShowStream(found ? hit.point : view.transform.position + view.transform.forward * range, found, found ? hit.normal : -view.transform.forward, deltaTime);
         if (!found) { processing = null; progress = 0; return; }
         var fire = hit.collider.GetComponentInParent<EcoFire>();
         if (fire != null && Selected == Tool.Vacuum && Mode == VacuumMode.Water)
@@ -446,9 +439,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             for (int i = 0; i < count; i++)
             {
             var seed = GameObject.CreatePrimitive(PrimitiveType.Sphere); seed.name = "Flying Seed";
-            seed.transform.position = view.transform.position; seed.transform.localScale = Vector3.one * 0.05f;
+            seed.transform.position = view.transform.position; seed.transform.localScale = new Vector3(0.075f, 0.075f, 0.105f);
             Destroy(seed.GetComponent<Collider>()); seed.GetComponent<Renderer>().sharedMaterial = effectMaterial;
-            Tint(seed.GetComponent<Renderer>(), new Color(0.3f, 0.65f, 0.15f));
             float offset = i - (count - 1) * 0.5f;
             Vector3 direction = count == 1 ? view.transform.forward : aimed
                 ? (ground.point + view.transform.right * offset * 0.9f - view.transform.position).normalized
@@ -461,13 +453,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         {
             // Spawn at the camera ray to avoid firing through a wall next to the weapon barrel.
             var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere); ball.name = "Player Metal Ball";
-            ball.transform.position = view.transform.position; ball.transform.localScale = Vector3.one * 0.08f;
+            ball.transform.position = view.transform.position; ball.transform.localScale = Vector3.one * 0.12f;
             Destroy(ball.GetComponent<Collider>()); ball.GetComponent<Renderer>().sharedMaterial = effectMaterial;
             ball.AddComponent<PlayerMetalProjectile>().Launch(owner, this, view.transform.forward); MetalAmmo--;
         }
-        ShowStream(Aim(35f, out var shotHit) ? shotHit.point : view.transform.position + view.transform.forward * 35f);
-        Color shotColor = MetalMode ? new Color(1f, 0.75f, 0.2f) : new Color(0.45f, 1f, 0.2f);
-        beam.startColor = beam.endColor = shotColor; Tint(beam, shotColor);
+        if (streamEffects != null) streamEffects.Shot(holder.transform.position + view.transform.forward * 0.25f, view.transform.forward, MetalMode);
         Energy -= unitCost * count; nextShot = Time.time + (MetalMode ? 0.35f : 0.5f); Changed?.Invoke();
     }
     public bool TryPlant(RaycastHit hit) => TryPlant(hit, SelectedSeed);
@@ -589,22 +579,15 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         Scanned?.Invoke(LastScan); Changed?.Invoke();
     }
-    private void ShowStream(Vector3 target)
+    private void ShowStream(Vector3 target, bool contact, Vector3 normal, float seconds)
     {
-        if (beam == null) return;
-        beam.enabled = true; beamUntil = Time.time + 0.12f;
-        beam.SetPosition(0, holder.transform.position + view.transform.forward * 0.25f); beam.SetPosition(1, target);
-        Color color = Selected == Tool.Recycler ? Color.green : Mode == VacuumMode.Water ? Color.cyan : Mode == VacuumMode.Disperse ? Color.white : Color.yellow;
-        beam.startColor = beam.endColor = color;
-        Tint(beam, color);
+        if (streamEffects == null) return;
+        var flow = Selected == Tool.Recycler ? WeaponVisualEffects.Flow.Recycle
+            : Mode == VacuumMode.Water ? WeaponVisualEffects.Flow.Water
+            : Mode == VacuumMode.Disperse ? WeaponVisualEffects.Flow.Disperse : WeaponVisualEffects.Flow.Collect;
+        streamEffects.Show(flow, holder.transform.position + view.transform.forward * 0.25f, target, contact, normal, seconds);
     }
-    private void Tint(Renderer renderer, Color color)
-    {
-        tint.SetColor("_BaseColor", color);
-        tint.SetColor("_Color", color);
-        renderer.SetPropertyBlock(tint);
-    }
-    private void ResetProcessing() { processing = null; progress = 0; if (beam != null) beam.enabled = false; }
+    private void ResetProcessing() { processing = null; progress = 0; if (streamEffects != null) streamEffects.Stop(); }
     private void OnDisable() { ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
 
     [Serializable]
