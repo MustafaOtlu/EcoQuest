@@ -1,0 +1,71 @@
+EcoWorld oluşturma raporu
+Eski haritadan alınan prefablar (kopyalanmadı, yalnız yeniden kullanıldı): ev=modern+house+3d+model, lamba=traffic+light+3d+model, direk=power+pole+3d+model, güneş dizisi=SolarPanel
+  korundu: Daylight
+  korundu: Cam's
+  silindi (kopyada): Gecici
+  korundu: Enemys
+  korundu: Player
+  silindi (kopyada): Bölge1
+  korundu: Eco Field Station
+  korundu: PowerStarter
+  silindi (kopyada): Ocean
+  silindi (kopyada): Ocean (1)
+  silindi (kopyada): Lamba knk
+  silindi (kopyada): Elektrik Diregi knk
+  silindi (kopyada): Evler knk
+  silindi (kopyada): Yollar knk
+  korundu: alan
+  korundu: WindTurbine
+  korundu: WindTurbine (1)
+  korundu: WindTurbine (2)
+  korundu: WindTurbine (3)
+  silindi (kopyada): Güneş Dizisi
+  silindi (kopyada): Güneş Dizisi (1)
+  silindi (kopyada): Güneş Dizisi (2)
+  silindi (kopyada): Güneş Dizisi (3)
+  silindi (kopyada): Klinik
+  silindi (kopyada): Klinik (1)
+  silindi (kopyada): Klinik (2)
+  silindi (kopyada): su arıtma tesisi
+  silindi (kopyada): batarya
+  silindi (kopyada): Market
+  silindi (kopyada): Market (2)
+  silindi (kopyada): Market (1)
+  silindi (kopyada): Market (6)
+  silindi (kopyada): Market (3)
+  silindi (kopyada): Market (5)
+  silindi (kopyada): Market (4)
+  silindi (kopyada): Geri Dönüşüm
+  silindi (kopyada): Su Deposu
+  korundu: Rock
+  korundu: WaterIntake
+Arazi: 640x640 m, yükseklik aralığı 0-170 m, su seviyesi y=17,5
+Bölge: Buzul Bölgesi merkez=(320.00, 545.00) boyut=(640.00, 190.00) hava=2 su=2 toprak=0 karbon=6
+Bölge: Rüzgârlı Alan merkez=(105.00, 300.00) boyut=(210.00, 300.00) hava=8 su=6 toprak=6 karbon=8
+Bölge: Şehir merkez=(320.00, 360.00) boyut=(220.00, 180.00) hava=38 su=30 toprak=28 karbon=38
+Bölge: Sanayi Bölgesi merkez=(535.00, 340.00) boyut=(210.00, 220.00) hava=66 su=60 toprak=58 karbon=58
+Bölge: Güneşli Bölge merkez=(320.00, 135.00) boyut=(220.00, 270.00) hava=6 su=8 toprak=10 karbon=10
+Bölge: Batı Gölü Havzası merkez=(105.00, 75.00) boyut=(210.00, 150.00) hava=5 su=8 toprak=6 karbon=6
+Bölge: Doğu Gölü Havzası merkez=(535.00, 115.00) boyut=(210.00, 230.00) hava=30 su=62 toprak=35 karbon=25
+Göl: Batı Gölü (temiz) merkez=(105.00, 95.00) yarıçap=56
+Göl: Doğu Gölü (kirli) merkez=(535.00, 110.00) yarıçap=50
+Model [apartman] = Assets/Zipler ve Modeller/Apartman/apartment+building+3d+model.fbx
+Model [modern] = Assets/Zipler ve Modeller/Modern ev/modern+house+3d+model.fbx
+Model [kitap] = Assets/Zipler ve Modeller/kitap evi/stylized+bookstore+3d+model.fbx.fbx
+Model [klinik] = Assets/Zipler ve Modeller/klinik/Klinik.fbx
+Model [market] = Assets/Zipler ve Modeller/market/Market.fbx
+Model [trafik] = Assets/Zipler ve Modeller/Trafik ısıgı/traffic+light+3d+model.fbx
+Model [cop] = Assets/Zipler ve Modeller/Cop kutusu/industrial+trash+can+3d+model.fbx
+Şehir: 21 bina yerleştirildi
+Şehir: 42 sokak lambası
+Sanayi: 2 işlevsel (filtre takılabilir) + 2 dekoratif fabrika, tank, konteyner, atık sahası
+Rüzgâr çiftliği: 11 dekoratif türbin (rüzgâra göre döner, enerji üretmez)
+Güneş sahası: 60 öğe (eski haritanın dizisi yeniden kullanıldı)
+Güneş sahası: 60 öğe (eski haritanın dizisi yeniden kullanıldı)
+Buzul: 76 buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı
+Bitki modelleri: yapraklı=58 çam=72 kaya=388 bitki=71
+Bitki örtüsü: 510 ağaç, 297 kaya, 75 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 274 renderer URP Lit'e çevrildi (238 malzeme).
+Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) (320.00, 70.00) konumuna taşındı
+Arayüz: EcoWorldHUD eklendi; EcoQuestHUD panel sprite'ı yuvarlatıldı: True
+Sahne: Assets/Scenes/EcoWorld.unity
