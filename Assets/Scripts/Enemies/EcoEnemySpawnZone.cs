@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -21,12 +20,13 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
     {
         get
         {
-            spawned.RemoveAll(e => e == null || !e.gameObject.activeInHierarchy || e.Health <= 0);
-            return spawned.Count;
+            int count = 0;
+            foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
+                if (enemy.Health > 0 && EcoRegion.At(enemy.transform.position) == region) count++;
+            return count;
         }
     }
     public float CooldownRemaining => Mathf.Max(0, nextSpawn - elapsed);
-    private readonly List<EnemyBrain> spawned = new List<EnemyBrain>();
     private EcoRegion region;
     private float elapsed, nextSpawn;
     private bool initialized;
@@ -54,7 +54,7 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
         instance.name = prefab.name + " (" + region.regionName + ")";
         var brain = instance.GetComponent<EnemyBrain>();
         if (brain == null) { Destroy(instance); return; }
-        spawned.Add(brain); SpawnedToday++;
+        SpawnedToday++;
     }
     private bool CanSpawn()
     {
@@ -76,9 +76,9 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
         // Low pollution stays safe even when an otherwise healthy biome is naturally warm.
         return species switch
         {
-            EnemyBrain.Species.Flame => carbon * (1 + Mathf.Max(0, region.Temperature - 24) * 0.1f),
+            EnemyBrain.Species.Flame => carbon * (1 + Mathf.Max(0, region.Temperature - 24) * 0.1f) * (1 - (clock != null ? clock.RainIntensity * 0.6f : 0)),
             EnemyBrain.Species.Smoke => air,
-            EnemyBrain.Species.Acid => Mathf.Max(air, soil),
+            EnemyBrain.Species.Acid => Mathf.Max(air, soil) * (1 + (clock != null ? clock.RainIntensity : 0)),
             EnemyBrain.Species.Slime => HasWater() ? water : 0,
             EnemyBrain.Species.Tin => Mathf.Max(air, soil) * 0.6f,
             _ => 0
@@ -87,7 +87,7 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
     private bool HasWater()
     {
         foreach (var source in FindObjectsByType<WeaponWaterSource>(FindObjectsSortMode.None))
-            if (source.isActiveAndEnabled && EcoRegion.At(source.transform.position) == region) return true;
+            if (source.isActiveAndEnabled && source.useRegionalQuality && EcoRegion.At(source.transform.position) == region) return true;
         return false;
     }
     private bool TryChoosePrefab(out GameObject selected)
@@ -137,5 +137,7 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
         }
         return false;
     }
-    public string Describe() => "Düşmanlar " + AliveCount + "/" + zoneLimit + " • Bugün " + SpawnedToday + "/" + dailyBudget;
+    public string Describe() => "Düşmanlar " + AliveCount + "/" + zoneLimit + " • Bugün " + SpawnedToday + "/" + dailyBudget
+        + "\n" + (Mathf.Max(region.airPollution, region.waterPollution, region.soilPollution, region.carbon) <= pollutionThreshold
+            ? "Temiz bölge: yeni düşman oluşmuyor." : "Kirli hava: Duman/Asit • kirli toprak: Teneke/Asit • karbon: Alev • kirli göl: Salya");
 }

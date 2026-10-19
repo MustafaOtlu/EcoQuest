@@ -8,7 +8,11 @@ public sealed class PlayerSeedProjectile : MonoBehaviour
     private EcoCropCatalog.Kind seedKind;
     private float life = 4f;
     public void Launch(Transform shooter, PlayerWeaponSystem source, Vector3 direction)
-    { owner = shooter; weapons = source; seedKind = source != null ? source.SelectedSeed : EcoCropCatalog.Kind.Cabbage; velocity = direction.normalized * (source != null && source.Upgrades != null ? source.Upgrades.SeedVelocity : 18f); }
+    {
+        owner = shooter; weapons = source; seedKind = source != null ? source.SelectedSeed : EcoCropCatalog.Kind.Cabbage;
+        velocity = direction.normalized * (source != null && source.Upgrades != null ? source.Upgrades.SeedVelocity : 18f);
+        WeaponProjectileVisual.Attach(gameObject, source != null ? source.effectMaterial : null, false);
+    }
     private void Update()
     {
         Vector3 step = velocity * Time.deltaTime;

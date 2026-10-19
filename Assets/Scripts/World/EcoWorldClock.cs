@@ -9,6 +9,8 @@ public sealed class EcoWorldClock : MonoBehaviour
     public bool advanceTime = true, varyingWeather = true, driveLighting = true;
     [Range(0f, 1f)] public float windStrength = 0.65f, cloudCover = 0.15f;
     public Light sun;
+    public float RainIntensity => Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.52f, 0.75f, cloudCover));
+    public string WeatherName => RainIntensity > 0.65f && windStrength > 0.7f ? "Fırtına" : RainIntensity > 0.15f ? "Yağmurlu" : cloudCover > 0.3f ? "Bulutlu" : "Açık";
     public float SolarFactor => Mathf.Max(0f, Mathf.Sin((hour - 6f) * Mathf.PI / 12f)) * (1f - cloudCover * 0.8f);
     public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
     private float originalIntensity, originalAmbient;
@@ -21,6 +23,9 @@ public sealed class EcoWorldClock : MonoBehaviour
                 if (light.type == LightType.Directional) { sun = light; break; }
         originalAmbient = RenderSettings.ambientIntensity;
         if (sun != null) { originalIntensity = sun.intensity; originalRotation = sun.transform.rotation; }
+        // Enable the atmosphere in gameplay scenes; isolated simulation fixtures stay independent.
+        if (EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
+        { var atmosphere = new GameObject("EcoQuest atmosphere").AddComponent<EcoAtmosphere>(); atmosphere.clock = this; }
     }
     private void Update()
     {
