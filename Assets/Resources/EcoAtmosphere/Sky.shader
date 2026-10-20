@@ -46,12 +46,8 @@ Shader "EcoQuest/Cloud sky"
                 float field=Cloud(p);
                 float cloud=smoothstep(0.76-_CloudCover*0.55,0.91-_CloudCover*0.55,field)*smoothstep(0,0.2,elevation);
                 color=lerp(color,_CloudColor.rgb*(0.75+field*0.25),cloud*0.94);
-<<<<<<< HEAD
-                float star=step(0.997,Hash(floor(d.xz/max(0.1,abs(d.y))*210)))*(1-_Daylight)*smoothstep(0.1,0.4,elevation)*(1-cloud);
-=======
                 float night=1-smoothstep(0.02,0.18,_Daylight);
                 float star=step(0.997,Hash(floor(d.xz/max(0.1,abs(d.y))*210)))*night*smoothstep(0.1,0.4,elevation)*(1-cloud);
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
                 color+=star*0.5;
                 return half4(color,1);
             }

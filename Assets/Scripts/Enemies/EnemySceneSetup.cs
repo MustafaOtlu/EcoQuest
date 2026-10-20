@@ -15,16 +15,12 @@ public sealed class EnemySceneSetup : MonoBehaviour
         if (player == null) { Debug.LogError("Enemy setup needs a Player reference.", this); return; }
         if (player.GetComponent<PlayerVitals>() == null) player.gameObject.AddComponent<PlayerVitals>();
         EcoNavigation.Ignore(player.gameObject);
-<<<<<<< HEAD
-        if (FindFirstObjectByType<EcoNavigation>() == null) new GameObject("Eco navigation").AddComponent<EcoNavigation>();
-=======
         if (FindFirstObjectByType<EcoNavigation>() == null)
         {
             var navigation = new GameObject("Eco navigation");
             navigation.transform.position = player.position;
             navigation.AddComponent<EcoNavigation>();
         }
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         if (enemyPrefabs == null) return;
         for (int i = 0; i < enemyPrefabs.Length; i++)
         {
@@ -32,11 +28,7 @@ public sealed class EnemySceneSetup : MonoBehaviour
             Transform marker = placementMarkers != null && i < placementMarkers.Length ? placementMarkers[i] : null;
             // An incomplete placement list must not create an enemy at an unintended origin.
             if (marker == null && (additionalPositions == null || i >= additionalPositions.Length)) continue;
-<<<<<<< HEAD
-            Vector3 position = marker != null ? marker.position : additionalPositions[i];
-=======
             Vector3 position = marker != null ? marker.position : transform.TransformPoint(additionalPositions[i]);
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
             if (marker != null) marker.gameObject.SetActive(false);
             // Snap feet onto the terrain/plane instead of keeping the static FBX pivot height.
             if (Physics.Raycast(position + Vector3.up * 8f, Vector3.down, out var hit, 30f, ~0, QueryTriggerInteraction.Ignore))

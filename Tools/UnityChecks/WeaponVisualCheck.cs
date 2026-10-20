@@ -2,10 +2,7 @@
 using System;
 using System.Collections;
 using System.IO;
-<<<<<<< HEAD
-=======
 using System.Linq;
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -56,11 +53,6 @@ public sealed class WeaponVisualCheck : MonoBehaviour
             && effects.Stream.collision.enabled == false && effects.GetComponentsInChildren<Collider>().Length == 0,
             "Cosmetic particles have bounded world-space simulation and cannot become hitboxes");
         weapons.SelectTool(0); weapons.CycleMode(); weapons.CycleMode();
-<<<<<<< HEAD
-        var flame = Enemy(EnemyBrain.Species.Flame, new Vector3(0, 0.03f, 5)); Physics.SyncTransforms();
-        float health = flame.Health, energy = weapons.Energy, water = weapons.Water;
-        weapons.Use(0.1f);
-=======
         var flame = Enemy(EnemyBrain.Species.Flame, new Vector3(0, 0.03f, 5));
         // A new CharacterController joins the physics scene on its first fixed step.
         yield return new WaitForFixedUpdate(); Physics.SyncTransforms();
@@ -68,7 +60,6 @@ public sealed class WeaponVisualCheck : MonoBehaviour
         report += "INFO water fixture before: " + WaterDiagnostic(flame) + "\n";
         weapons.Use(0.1f);
         report += "INFO water fixture after: " + WaterDiagnostic(flame) + "\n";
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         Check(flame.Health < health && Near(weapons.Energy, energy - 0.5f) && Near(weapons.Water, water - 1),
             "Replacing the stream preserves actual water damage and exact electricity/water costs");
         Check(effects.CurrentFlow == WeaponVisualEffects.Flow.Water && effects.Stream.particleCount > 0 && effects.Impacts.particleCount > 0,
@@ -147,8 +138,6 @@ public sealed class WeaponVisualCheck : MonoBehaviour
         target.Release(); Destroy(target); Destroy(image);
     }
     private static bool Near(float a, float b) => Mathf.Abs(a - b) < 0.003f;
-<<<<<<< HEAD
-=======
     private string WaterDiagnostic(EnemyBrain target)
     {
         var motor = target.GetComponent<CharacterController>();
@@ -161,7 +150,6 @@ public sealed class WeaponVisualCheck : MonoBehaviour
             + " blocked=" + EcoMarketUI.BlocksGameplay + " build=" + weapons.Builder.IsBuilding
             + " recovering=" + weapons.GetComponentInParent<PlayerVitals>().IsRecovering + " hits=[" + string.Join(", ", hits) + "]";
     }
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
     private void Check(bool success, string label) { if (!success) throw new Exception(label); report += "PASS " + label + "\n"; }
     private void OnLog(string message, string stack, LogType type)
     {

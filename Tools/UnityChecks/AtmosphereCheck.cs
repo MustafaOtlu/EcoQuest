@@ -71,8 +71,6 @@ public sealed class AtmosphereCheck : MonoBehaviour
         atmosphere.Simulate(float.NaN); atmosphere.Simulate(-1);
         Check(atmosphere.RainParticles.main.maxParticles <= 1800, "Invalid simulation steps do not create extra particle systems");
         atmosphere.RainParticles.Simulate(0.8f, true, false); Capture(camera, "rain");
-<<<<<<< HEAD
-=======
         clock.varyingWeather = true;
         float minimumRain = 1, maximumRain = 0;
         for (int hour = 0; hour < 7 * 24; hour++)
@@ -84,7 +82,6 @@ public sealed class AtmosphereCheck : MonoBehaviour
         Check(minimumRain < 0.01f && maximumRain > 0.65f,
             "Seven days of natural weather reach both dry skies and substantial rainfall without manual cloud overrides");
         clock.varyingWeather = false;
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         clock.hour = 0; atmosphere.ApplyView(); Capture(camera, "night");
         Check(atmosphere.SkyMaterial.GetFloat("_Daylight") < 0.01f && clock.SolarFactor == 0, "Night darkens the custom sky and stops solar generation");
         clock.driveLighting = true; yield return null;

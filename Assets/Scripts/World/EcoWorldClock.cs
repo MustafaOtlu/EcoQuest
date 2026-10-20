@@ -45,11 +45,7 @@ public sealed class EcoWorldClock : MonoBehaviour
         originalAmbient = RenderSettings.ambientIntensity;
         if (sun != null) { originalIntensity = sun.intensity; originalRotation = sun.transform.rotation; }
         // Enable the atmosphere in gameplay scenes; isolated simulation fixtures stay independent.
-<<<<<<< HEAD
-        if (EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
-=======
         if (Current == this && EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
->>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         { var atmosphere = new GameObject("EcoQuest atmosphere").AddComponent<EcoAtmosphere>(); atmosphere.clock = this; }
     }
     private void Update()
