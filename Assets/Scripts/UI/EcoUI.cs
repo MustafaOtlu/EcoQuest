@@ -52,6 +52,21 @@ public static class EcoUI
         return Mathf.Clamp(Mathf.Min(w / 1600f, h / 900f), 0.75f, 1.5f) * EcoSettings.UIScale;
     }
 
+    /// <summary>Owner token for HUD-made panels (controls sheet) so they do not count as foreign modal windows.</summary>
+    public sealed class HudPanel { }
+
+    /// <summary>True while a full-screen IMGUI window (menu, journal, skills, orders, final, sound) is open: the uGUI
+    /// HUD hides so it never draws over those windows.</summary>
+    public static bool ForeignWindowOpen
+    {
+        get
+        {
+            if (PlayerController.Paused || EcoAudio.AnyPanelOpen) return true;
+            var panel = EcoUIFlow.ActivePanel;
+            return panel != null && !(panel is EcoWorldHUD) && !(panel is HudPanel);
+        }
+    }
+
     // ------------------------------------------------------------------ canvas
 
     public static Canvas CreateCanvas(string name, int order, out CanvasScaler scaler)

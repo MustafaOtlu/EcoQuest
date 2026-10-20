@@ -55,9 +55,6 @@ Göl: Batı Gölü (temiz) merkez=(24.00, 30.00) yarıçap=11
 Göl: Doğu Gölü (kirli) merkez=(127.00, 30.00) yarıçap=10
 Model [apartman] = Assets/Zipler ve Modeller/Apartman/apartment+building+3d+model.fbx
 Model [modern] = Assets/Zipler ve Modeller/Modern ev/modern+house+3d+model.fbx
-Model [kitap] = Assets/Zipler ve Modeller/kitap evi/stylized+bookstore+3d+model.fbx.fbx
-Model [klinik] = Assets/Zipler ve Modeller/klinik/Klinik.fbx
-Model [market] = Assets/Zipler ve Modeller/market/Market.fbx
 Model [trafik] = Assets/Zipler ve Modeller/Trafik ısıgı/traffic+light+3d+model.fbx
 Model [cop] = Assets/Zipler ve Modeller/Cop kutusu/industrial+trash+can+3d+model.fbx
 Model [lamba] = Assets/Zipler ve Modeller/gece lambası/street+lamp+3d+model.fbx
@@ -71,11 +68,11 @@ Batı güneş tarlası: 12 öğe
 Doğu güneş tarlası: 12 öğe
 Buzul: 40 buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı
 Bitki modelleri: yapraklı=58 çam=72 kuru=21 kaya=388 bitki=71
-Ağaç adayları: yer uygun değil 952, eğim/su 22
-Bitki örtüsü: 151 ağaç, 687 sınır ormanı ağacı, 53 kaya, 18 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
-Malzeme düzeltme: 295 renderer URP Lit'e çevrildi (114 malzeme).
-Doğa paleti: 890 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
-Model dokuları: 2 renderer klasöründeki *_texture.png ile boyandı
+Ağaç adayları: yer uygun değil 957, eğim/su 20
+Bitki örtüsü: 152 ağaç, 687 sınır ormanı ağacı, 43 kaya, 21 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 296 renderer URP Lit'e çevrildi (119 malzeme).
+Doğa paleti: 885 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
 Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) (75.00, 16.00) konumuna taşındı; deneme bölgeleri 14×14 m'ye küçültüldü
 Düşman başlangıç noktaları 'alan' ile aynı miktarda kaydırıldı: (-253.00, -78.00, -174.00)
 Gezinme (NavMesh) hacmi: (150.00, 40.00, 150.00) @ (75.00, 22.00, 75.00)

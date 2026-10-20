@@ -9,6 +9,7 @@ Shader "EcoQuest/LowPoly Vertex Lit"
         _Smoothness ("Smoothness", Range(0, 1)) = 0.08
         [Toggle] _FlatShading ("Flat shading", Float) = 1
         _ShadeContrast ("Facet contrast", Range(0, 1)) = 0.35
+        _PollutionStrength ("Pollution tint (ground only)", Range(0, 1)) = 0
     }
     SubShader
     {
@@ -21,7 +22,12 @@ Shader "EcoQuest/LowPoly Vertex Lit"
             half _Smoothness;
             half _FlatShading;
             half _ShadeContrast;
+            half _PollutionStrength;
         CBUFFER_END
+        // Written by EcoPollutionField: a small map of local pollution (0 clean … 1 heavily polluted) over the play area.
+        TEXTURE2D(_EcoPollutionMap); SAMPLER(sampler_EcoPollutionMap);
+        float4 _EcoPollutionRect; // origin x, origin z, 1/width, 1/depth
+        half _EcoPollutionReady;
         ENDHLSL
 
         Pass
@@ -88,6 +94,12 @@ Shader "EcoQuest/LowPoly Vertex Lit"
                 if (_FlatShading < 0.5) n = smoothN;
 
                 half3 albedo = i.color.rgb * _BaseColor.rgb;
+                // Polluted ground loses its green: desaturated towards a dusty brown-grey; cleaning brings the colour back.
+                float2 puv = (i.positionWS.xz - _EcoPollutionRect.xy) * _EcoPollutionRect.zw;
+                half pollution = SAMPLE_TEXTURE2D(_EcoPollutionMap, sampler_EcoPollutionMap, puv).r * _EcoPollutionReady * _PollutionStrength;
+                half grey = dot(albedo, half3(0.3, 0.59, 0.11));
+                half3 dusty = lerp(half3(grey, grey, grey), half3(0.45, 0.39, 0.29), 0.6);
+                albedo = lerp(albedo, dusty, saturate(pollution));
                 float4 shadowCoord = TransformWorldToShadowCoord(i.positionWS);
                 Light mainLight = GetMainLight(shadowCoord, i.positionWS, half4(1, 1, 1, 1));
                 half3 lighting = Diffuse(mainLight, n) + SampleSH(n);

@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// GDD "iklim zinciri": higher carbon footprint -> glaciers shrink. Scenery ice blocks lose
-// height as the average regional carbon index rises and grow back when it falls.
+// GDD §10 "iklim zinciri": the ice loses height while the area-weighted world carbon index is above 20 and grows back
+// slowly below it (recovery is slower than melting). The monitoring station only measures this (stationBonus stays 0).
 public sealed class EcoGlacierMelt : MonoBehaviour
 {
     public List<Transform> ice = new List<Transform>();
-    [Range(0f, 100f)] public float safeCarbon = 12f;
+    [Range(0f, 100f)] public float safeCarbon = 20f;
     [Range(0f, 1f)] public float maxMelt = 0.7f;
     /// <summary>Set by the glacier monitoring station: shifts the safe carbon level up so the melt line stays back.</summary>
     public float stationBonus;
@@ -30,13 +30,10 @@ public sealed class EcoGlacierMelt : MonoBehaviour
         if (Time.time >= nextScan)
         {
             nextScan = Time.time + 2f;
-            var regions = FindObjectsByType<EcoRegion>(FindObjectsSortMode.None);
-            float sum = 0f; int count = 0;
-            foreach (var region in regions) if (region != null) { sum += region.carbon; count++; }
-            float average = count > 0 ? sum / count : 0f;
+            float average = EcoRegion.WorldCarbon();
             meltTarget = Mathf.Clamp01((average - safeCarbon - stationBonus) / 60f) * maxMelt;
         }
-        meltNow = Mathf.MoveTowards(meltNow, meltTarget, 0.02f * Time.deltaTime);
+        meltNow = Mathf.MoveTowards(meltNow, meltTarget, (meltTarget > meltNow ? 0.02f : 0.006f) * Time.deltaTime);
         for (int i = 0; i < ice.Count; i++)
         {
             var block = ice[i];

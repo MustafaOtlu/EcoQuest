@@ -75,7 +75,7 @@ public sealed class EcoOrders : MonoBehaviour
     {
         if (!PanelOpen) return;
         EcoTheme.Begin();
-        var rect = EcoTheme.Window(760, 510, "SİPARİŞ PANOSU", "Temiz üretimin mahallede karşılık buluyor.");
+        var rect = EcoTheme.Window(760, 540, "SİPARİŞ PANOSU", "Temiz üretimin mahallede karşılık buluyor.", "ui_orders");
         GUILayout.BeginArea(new Rect(rect.x + 28, rect.y + 94, rect.width - 56, rect.height - 120));
         GUILayout.Label("Her üç günde iki isteğe bağlı talep • %25 ek karşılık • Süre cezası yok", EcoTheme.Body);
         int day = EcoWorldClock.Current != null ? EcoWorldClock.Current.day : 1;
@@ -85,11 +85,17 @@ public sealed class EcoOrders : MonoBehaviour
         foreach (var order in orders)
         {
             GUILayout.BeginVertical(EcoTheme.Card);
+            GUILayout.BeginHorizontal();
+            var iconRect = GUILayoutUtility.GetRect(44, 44, GUILayout.Width(44), GUILayout.Height(44));
+            EcoTheme.Icon(iconRect, order.fish ? "fish" : order.cropKind == 1 ? "crop_carrot" : order.cropKind == 2 ? "crop_tomato" : "crop_cabbage");
+            GUILayout.Space(10);
             GUILayout.Label(order.title, EcoTheme.Subtitle);
+            GUILayout.EndHorizontal();
             GUILayout.Label(order.food + " adet temiz ürün → " + order.metal + " metal + " + order.plastic + " plastik", EcoTheme.Body);
             bool has = player != null && (order.fish ? player.CleanFish : player.CountProduce((EcoCropCatalog.Kind)order.cropKind)) >= order.food;
             GUI.enabled = !order.delivered && has;
-            if (GUILayout.Button(order.delivered ? "TESLİM EDİLDİ" : has ? "Teslim et" : "Ürün yetersiz", EcoTheme.Button, GUILayout.Height(40))) Deliver(order);
+            var buttonRect = GUILayoutUtility.GetRect(100, 40, GUILayout.ExpandWidth(true), GUILayout.Height(40));
+            if (EcoTheme.IconButton(buttonRect, order.delivered ? "TESLİM EDİLDİ" : has ? "Teslim et" : "Ürün yetersiz", order.delivered ? "ui_check" : has ? "metal" : "poi_warning")) Deliver(order);
             GUI.enabled = true; GUILayout.EndVertical(); GUILayout.Space(12);
         }
         GUILayout.Label(message, EcoTheme.Muted);

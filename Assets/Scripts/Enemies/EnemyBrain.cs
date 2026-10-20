@@ -252,8 +252,9 @@ public sealed class EnemyBrain : MonoBehaviour
         if (Vector3.Distance(user.transform.position, motor.bounds.ClosestPoint(user.transform.position)) > 3) return false;
         if (!IsStunned) { user.ShowFeedback("Teneke'yi önce demir topla sersemlet."); return false; }
         if (!user.UseAirFilter(false)) { user.ShowFeedback("Marketten küçük hava filtresi alman gerekiyor."); return false; }
-        FilterInstalled = true; Health = 0; Defeat(); user.Progression.Award(12);
-        user.ShowFeedback("Küçük filtre takıldı • Teneke etkisiz hale geldi • +12 YEP"); return true;
+        // GDD §7: enemy encounters never grant YEP (it is a finite achievement score); the reward is the cleaner region and loot.
+        FilterInstalled = true; Health = 0; Defeat();
+        user.ShowFeedback("Küçük filtre takıldı • Teneke kalıcı olarak etkisiz hale geldi"); return true;
     }
     private void Defeat()
     {

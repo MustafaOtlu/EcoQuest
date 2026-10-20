@@ -55,7 +55,7 @@ Oyuncu çevresel sorunları olan küçük bir yerleşimde yaşar. Atıkları top
 <a id="harita"></a>
 ## 2. Dünya, harita ve grid
 
-**Karar:** Buzul dahil bütün alanlar tek, yaklaşık **200×200 metre** haritadadır. Harita ölçeği tek bir değerden ayarlanabilir olmalıdır. 100×100 hücre ve 2 metre hücre başlangıç yerleşimidir; karakter serbest yürür, grid yalnız inşaya hizmet eder.
+**Karar (20 Ekim güncellemesi):** Buzul dahil bütün alanlar tek, yaklaşık **150×150 metre** haritadadır (önceki 200 m kullanıcı isteğiyle küçültüldü). Harita ölçeği tek bir değerden (`Size`) ayarlanabilir. Zemin Unity Terrain değil, alçak poligon bir mesh'tir; yollar ızgara değil, eğri sokak ve patikalardır. İnşa için 2 metrelik hücre mantığı korunur; karakter serbest yürür.
 
 Haritanın yaklaşık yarısı sağlıklı, yarısı sorunlu başlar; her bölge aynı durumda değildir. Şehir güvenli hazırlık alanıdır. Doğal yollar, merkezden çevreye kollar ve bölgeler arasında kısa bağlantılar bulunur. Koruluk rüzgârlı alanla komşu bir alt bölgedir; iki göl ayrı su koşullarını karşılaştırır.
 
@@ -82,7 +82,7 @@ Görüş sisinin görevi uzak ayrıntıyı yumuşatmaktır. Sis tek başına çi
 
 **Karar:** Birinci şahıs yerine 3D izometrik kamera, kameraya göre WASD, sağ tıkla rota ve fareyle bağımsız hedefleme. Kamera karakteri ve yakın çalışma alanını birlikte gösterir.
 
-**Tasarım başlangıcı:** Sabit yönlü izometrik/ortografik görünüm; yaklaşık 45° yatay yön, 55° aşağı bakış, 12–24 birim yakınlaştırma aralığı. Değerler model boyutuna göre dengelenir. Kamera sınırda yumuşak durur; karakteri örten nesneler saydamlaşır. Saydamlaşma fiziksel engeli kaldırmaz.
+**Tasarım başlangıcı:** Sabit yönlü izometrik/ortografik görünüm; yaklaşık 45° yatay yön, 55° aşağı bakış; ortografik yarı yükseklik varsayılan 10 m, tekerlekle 6–16 m (20 Ekim: kamera kullanıcı isteğiyle yaklaştırıldı). Değerler model boyutuna göre dengelenir. Kamera sınırda yumuşak durur; karakteri örten nesneler saydamlaşır. Saydamlaşma fiziksel engeli kaldırmaz.
 
 | Girdi | Normal oynanış | Bağlama göre |
 | --- | --- | --- |
@@ -605,7 +605,7 @@ Kısa açıklamalar “bu oyunda” ölçeğini belirtir. Dakikalar içinde büy
 | Parametre | Başlangıç değeri |
 | --- | --- |
 | Ana hikâye / devam | 3–5 saat / serbest oyun |
-| Harita | Yaklaşık 200×200 m; 100×100 adet 2 m hücre |
+| Harita | Yaklaşık 150×150 m; alçak poligon zemin, eğri yollar; inşada 2 m hücre |
 | İlk görünür sonuç | İlk 15–20 dakika |
 | Gün | 15 gerçek dakika; normal hızda |
 | Planlama / duraklatma | %10 / %0 dünya hızı |
@@ -719,3 +719,9 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Final terminal rezervi kayıt/yükleme (global kanca) | Uygulandı ve doğrulandı |
 | Saha görevleri (hasat/yeniden ekim/balık) | EcoDiscoveries ödüllendirir; EcoStory yalnız 3 bakım anını ödüllendirir |
 | Konsol uyarıları: "The tree … Nature/Soft Occlusion" | Bilinen sınır: kullanıcının Assets/Terrains/New Terrain.asset dosyasından geliyor (MainScene arazisi); dokunulmadı |
+| Harita yeniden kuruldu (20 Ekim) | Uygulandı: 150×150 m, Terrain yerine alçak poligon zemin mesh'i, spline yollar (kaldırım, şerit, yaya geçidi, göbekli kavşak), kıvrımlı sokaklar, Koruluk bölgesi, dereler, sınır ormanı; ayrıntı Documentation/EcoWorldMap.md |
+| Kirliliğin zeminde görünmesi (§5, §15) | Uygulandı: EcoPollutionField + zemin shader'ı; kirli bölge soluk kahve-gri, toparlanınca yeşil döner |
+| Arayüz (§13) | Uygulandı: elle çizilmiş 85 ikon, katlanabilir HUD kartları, [H] Tam/Sade/Gizli, hızlı erişim düğmeleri, [F1] kontroller, ikonlu menü/günlük/uzmanlık/sipariş/pazar/ses pencereleri |
+| [M] harita (§13) | Uygulandı: yakınlaştır/kaydır, bölge sınırları, rüzgâr/hava simgeleri, ilgi noktaları, fareyle bakılan bölgenin bilgi kartı (göstergeler, iklim, canlı görevler, fırsatlar) |
+| Düşman avı YEP vermez (§7) | Uygulandı: Teneke filtresi artık +12 YEP vermiyor |
+| Buzul istasyonu yalnız ölçer (§7, §10) | Uygulandı: erime eşiğine bonus yok; erime alan ağırlıklı dünya karbonuna (≤20 durur, altında yavaş toparlanır) bağlı |

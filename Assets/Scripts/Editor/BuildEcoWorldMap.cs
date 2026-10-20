@@ -528,6 +528,7 @@ public static class BuildEcoWorldMap
         if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, path); }
         m.shader = shader;
         m.SetFloat("_FlatShading", flat ? 1f : 0f); m.SetFloat("_Smoothness", smoothness); m.SetFloat("_ShadeContrast", 0.32f);
+        m.SetFloat("_PollutionStrength", 0f);
         m.enableInstancing = true;
         EditorUtility.SetDirty(m);
         MaterialCache[name] = m;
@@ -814,6 +815,9 @@ public static class BuildEcoWorldMap
     private static void BuildGround()
     {
         var material = VertexMat("EcoGround", true, 0.04f);
+        material.SetFloat("_PollutionStrength", 1f); // polluted regions fade the ground (EcoPollutionField)
+        var field = Groups["Ground"].gameObject.AddComponent<EcoPollutionField>();
+        field.area = new Rect(0f, 0f, Size, Size);
         var colors = new Color[N + 1, N + 1];
         for (int i = 0; i <= N; i++) for (int j = 0; j <= N; j++) colors[i, j] = GroundColor(i, j);
         int chunks = Mathf.CeilToInt(N / (float)ChunkCells);
@@ -1353,9 +1357,6 @@ public static class BuildEcoWorldMap
         var root = Groups["City"];
         var apartment = FindZiplerModel("apartman");
         var modern = FindZiplerModel("modern");
-        var library = FindZiplerModel("kitap");
-        var clinic = FindZiplerModel("klinik");
-        var market = FindZiplerModel("market");
         var traffic = FindZiplerModel("trafik");
         var bin = FindZiplerModel("cop");
         // The old map's "Lamba" group is mostly traffic lights; only a real lamp model replaces the procedural one.
@@ -1368,10 +1369,12 @@ public static class BuildEcoWorldMap
         // Civic buildings stand on the first plot of each main road out of the roundabout, facing their street.
         var civic = new (GameObject model, string name, string road, Vector2 side, bool fromEnd, float height, string icon, string detail)[]
         {
-            (market, "Mahalle Pazarı", "Batı Bulvarı", Vector2.up, false, 6f, "poi_market", "Ürün satışı ve günlük paketler. Siparişler [O] pazarın yanında."),
+            // The Meshy market/clinic exports read as flat slabs from the iso camera; procedural buildings keep clear silhouettes.
+            (null, "Mahalle Pazarı", "Batı Bulvarı", Vector2.up, false, 6f, "poi_market", "Ürün satışı ve günlük paketler. Siparişler [O] pazarın yanında."),
             (null, "Ev", "Ana Cadde (kuzey)", Vector2.right, false, 6.5f, "poi_home", "Mahalle çocuğunun evi. Bakım anları burada başlar."),
-            (library, "Kütüphane", "Doğu Bulvarı", Vector2.down, false, 7f, "poi_project", "Öğrenme kartları ve proje günlüğü [J]."),
-            (clinic, "Sağlık Ocağı", "Ana Cadde (güney)", Vector2.left, true, 8f, "poi_station", "Kirli hava çocukların sağlığını etkiler."),
+            // The bookstore asset bakes a white ground plate into its texture; a procedural civic hall reads cleaner.
+            (null, "Kütüphane", "Doğu Bulvarı", Vector2.down, false, 7f, "poi_project", "Öğrenme kartları ve proje günlüğü [J]."),
+            (null, "Sağlık Ocağı", "Ana Cadde (güney)", Vector2.left, true, 8f, "poi_station", "Kirli hava çocukların sağlığını etkiler."),
         };
         foreach (var plot in civic)
         {
@@ -1386,8 +1389,11 @@ public static class BuildEcoWorldMap
             float yaw = Mathf.Atan2(-face.x, -face.y) * Mathf.Rad2Deg;
             var pos = new Vector3(c.x, GroundY(c.x, c.y), c.y);
             GameObject built = plot.model != null ? SpawnModel(plot.model, root, pos, yaw, plot.height, 9f, depth, true) : null;
-            if (built == null) built = plot.name == "Ev" ? HomeBuilding(root, pos, yaw) : ProceduralBuilding(root, pos, yaw, 8.5f, depth, plot.height);
+            if (built == null) built = plot.name == "Ev" ? HomeBuilding(root, pos, yaw) : plot.name == "Kütüphane" ? CivicHall(root, pos, yaw)
+                : plot.name == "Mahalle Pazarı" ? MarketHall(root, pos, yaw) : plot.name == "Sağlık Ocağı" ? Clinic(root, pos, yaw) : ProceduralBuilding(root, pos, yaw, 8.5f, depth, plot.height);
             built.name = plot.name;
+            if (TryBounds(built, out var top))
+                WorldLabel(built.transform, plot.name.ToUpperInvariant(), built.transform.InverseTransformPoint(new Vector3(top.center.x, top.max.y + 1.2f, top.center.z)), 0.009f / Mathf.Max(0.01f, built.transform.lossyScale.x));
             EcoMapMarker.Add(built, plot.icon, plot.name, plot.detail, EcoMapMarker.Category.Service, plot.name == "Ev");
             if (plot.name == "Ev")
             {
@@ -1562,6 +1568,69 @@ public static class BuildEcoWorldMap
             Prim(PrimitiveType.Cube, "Flower box", root, new Vector3(x, 3.35f, -3.68f), new Vector3(1.5f, 0.3f, 0.3f), Mat("FlowerBox", new Color(0.86f, 0.38f, 0.48f), 0.2f));
         }
         Prim(PrimitiveType.Cube, "Chimney", root, new Vector3(2.4f, 7f, 1.2f), new Vector3(0.8f, 1.6f, 0.8f), Mat("HomeChimney", new Color(0.55f, 0.32f, 0.26f), 0.1f));
+        return root.gameObject;
+    }
+
+    // A small civic hall (library): pale stone, a portico of columns and a green roof, front facing local -z.
+    private static GameObject CivicHall(Transform parent, Vector3 pos, float yaw)
+    {
+        var root = Group("Kütüphane", parent); root.position = pos; root.rotation = Quaternion.Euler(0f, yaw, 0f);
+        var stone = Mat("HallStone", new Color(0.88f, 0.85f, 0.78f), 0.15f);
+        var roof = Mat("HallRoof", new Color(0.30f, 0.52f, 0.42f), 0.2f);
+        var glass = Mat("BuildingGlass", new Color(0.35f, 0.5f, 0.6f), 0.85f, 0.2f);
+        Prim(PrimitiveType.Cube, "Plinth", root, new Vector3(0f, 0.2f, 0.3f), new Vector3(9f, 0.4f, 7.6f), stone, true);
+        Prim(PrimitiveType.Cube, "Hall", root, new Vector3(0f, 2.6f, 1f), new Vector3(8f, 4.6f, 5.6f), stone, true);
+        Prim(PrimitiveType.Cube, "Roof", root, new Vector3(0f, 5.1f, 0.4f), new Vector3(8.8f, 0.5f, 7.2f), roof);
+        Prim(PrimitiveType.Cube, "Pediment", root, new Vector3(0f, 5.65f, -2.7f), new Vector3(6.2f, 0.7f, 0.6f), stone);
+        for (int i = 0; i < 4; i++)
+            Prim(PrimitiveType.Cylinder, "Column", root, new Vector3(-2.7f + i * 1.8f, 2.6f, -2.6f), new Vector3(0.5f, 2.3f, 0.5f), stone);
+        Prim(PrimitiveType.Cube, "Door", root, new Vector3(0f, 1.5f, -1.83f), new Vector3(1.5f, 2.4f, 0.1f), Mat("HallDoor", new Color(0.36f, 0.24f, 0.16f), 0.2f));
+        foreach (float x in new[] { -2.6f, 2.6f })
+            Prim(PrimitiveType.Cube, "Window", root, new Vector3(x, 2.8f, -1.83f), new Vector3(1.4f, 1.8f, 0.1f), glass);
+        return root.gameObject;
+    }
+
+    // Neighbourhood market: open-fronted hall with a striped awning and produce crates.
+    private static GameObject MarketHall(Transform parent, Vector3 pos, float yaw)
+    {
+        var root = Group("Mahalle Pazarı", parent); root.position = pos; root.rotation = Quaternion.Euler(0f, yaw, 0f);
+        var wall = Mat("MarketWall", new Color(0.93f, 0.88f, 0.76f), 0.1f);
+        var roof = Mat("MarketRoof", new Color(0.36f, 0.30f, 0.26f), 0.15f);
+        Prim(PrimitiveType.Cube, "Hall", root, new Vector3(0f, 2.2f, 1.2f), new Vector3(8f, 4.4f, 5f), wall, true);
+        Prim(PrimitiveType.Cube, "Roof", root, new Vector3(0f, 4.6f, 1.2f), new Vector3(8.6f, 0.4f, 5.6f), roof);
+        for (int i = 0; i < 8; i++)
+        {
+            var stripe = Prim(PrimitiveType.Cube, "Awning", root, new Vector3(-3.5f + i * 1f, 3.3f, -2.1f), new Vector3(1f, 0.12f, 2.2f),
+                Mat(i % 2 == 0 ? "AwningRed" : "AwningWhite", i % 2 == 0 ? new Color(0.86f, 0.30f, 0.27f) : new Color(0.97f, 0.95f, 0.9f), 0.2f));
+            stripe.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
+        }
+        var crate = Mat("CrateWood", new Color(0.62f, 0.44f, 0.26f), 0.1f);
+        Color[] produce = { new Color(0.47f, 0.72f, 0.3f), new Color(0.95f, 0.55f, 0.2f), new Color(0.86f, 0.25f, 0.22f) };
+        for (int i = 0; i < 3; i++)
+        {
+            Prim(PrimitiveType.Cube, "Crate", root, new Vector3(-2.4f + i * 2.4f, 0.45f, -2.2f), new Vector3(1.6f, 0.9f, 1f), crate, true);
+            Prim(PrimitiveType.Cube, "Produce", root, new Vector3(-2.4f + i * 2.4f, 0.95f, -2.2f), new Vector3(1.4f, 0.18f, 0.85f), Mat("Produce" + i, produce[i], 0.3f));
+        }
+        Prim(PrimitiveType.Cube, "Counter", root, new Vector3(0f, 0.6f, -1.25f), new Vector3(7.6f, 1.2f, 0.4f), Mat("MarketCounter", new Color(0.44f, 0.30f, 0.18f), 0.1f), true);
+        return root.gameObject;
+    }
+
+    // Health centre: white walls, a teal band and a green cross sign above the entrance.
+    private static GameObject Clinic(Transform parent, Vector3 pos, float yaw)
+    {
+        var root = Group("Sağlık Ocağı", parent); root.position = pos; root.rotation = Quaternion.Euler(0f, yaw, 0f);
+        var white = Mat("ClinicWall", new Color(0.95f, 0.96f, 0.95f), 0.2f);
+        var teal = Mat("ClinicBand", new Color(0.24f, 0.62f, 0.62f), 0.2f);
+        var green = Mat("ClinicCross", new Color(0.28f, 0.78f, 0.47f), 0.3f, 0f, false, new Color(0.2f, 0.7f, 0.4f) * 0.6f);
+        var glass = Mat("BuildingGlass", new Color(0.35f, 0.5f, 0.6f), 0.85f, 0.2f);
+        Prim(PrimitiveType.Cube, "Body", root, new Vector3(0f, 2.4f, 0.6f), new Vector3(8f, 4.8f, 6f), white, true);
+        Prim(PrimitiveType.Cube, "Band", root, new Vector3(0f, 4.55f, 0.6f), new Vector3(8.1f, 0.5f, 6.1f), teal);
+        Prim(PrimitiveType.Cube, "Roof", root, new Vector3(0f, 4.95f, 0.6f), new Vector3(8.4f, 0.3f, 6.4f), Mat("BuildingRoof", new Color(0.22f, 0.24f, 0.26f), 0.1f));
+        Prim(PrimitiveType.Cube, "Canopy", root, new Vector3(0f, 2.7f, -3.0f), new Vector3(3.6f, 0.2f, 1.6f), teal);
+        Prim(PrimitiveType.Cube, "Door", root, new Vector3(0f, 1.2f, -2.43f), new Vector3(1.8f, 2.4f, 0.1f), glass);
+        foreach (float x in new[] { -2.8f, 2.8f }) Prim(PrimitiveType.Cube, "Window", root, new Vector3(x, 2.6f, -2.43f), new Vector3(1.6f, 1.4f, 0.1f), glass);
+        Prim(PrimitiveType.Cube, "Cross V", root, new Vector3(0f, 3.75f, -2.5f), new Vector3(0.45f, 1.3f, 0.12f), green);
+        Prim(PrimitiveType.Cube, "Cross H", root, new Vector3(0f, 3.75f, -2.5f), new Vector3(1.3f, 0.45f, 0.12f), green);
         return root.gameObject;
     }
 
@@ -2330,6 +2399,9 @@ public static class BuildEcoWorldMap
             if (region.groundVisual != null) { region.groundVisual.enabled = false; RecordOverride(region.groundVisual); region.groundVisual = null; }
             RecordOverride(region);
         }
+        // The station's flat turf plate is a dark square on the new ground; the mesh ground already covers it.
+        foreach (var renderer in alan.GetComponentsInChildren<MeshRenderer>(true))
+            if (renderer.name == "Ground cover") { renderer.enabled = false; RecordOverride(renderer); }
         // The square starter pond becomes a round pond with a stone rim.
         foreach (var source in alan.GetComponentsInChildren<WeaponWaterSource>(true))
         {

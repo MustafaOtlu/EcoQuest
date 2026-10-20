@@ -235,6 +235,10 @@ public sealed class EcoAudio : MonoBehaviour
 
     /// <summary>Opens/closes the sound panel (also bound to [F2] and the HUD's gear button).</summary>
     public void TogglePanel() => panelOpen = !panelOpen;
+    /// <summary>True while any sound panel is open (the uGUI HUD hides behind it).</summary>
+    public static bool AnyPanelOpen { get; private set; }
+    private void LateUpdate() => AnyPanelOpen = panelOpen;
+    private void OnDisable() => AnyPanelOpen = false;
 
     private void OnGUI()
     {
@@ -244,11 +248,10 @@ public sealed class EcoAudio : MonoBehaviour
             title = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold };
             body = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
         }
-        float w = 400f, h = 290f;
-        var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
-        GUI.Box(panel, "");
-        GUI.Label(new Rect(panel.x + 16f, panel.y + 10f, w - 32f, 24f), "SES AYARLARI", title);
-        DrawSliders(panel.x + 16f, panel.y + 44f, w - 32f, body);
-        GUI.Label(new Rect(panel.x + 16f, panel.y + h - 28f, w - 32f, 22f), "Kapat: " + EcoKeys.Tag(EcoKeys.Action.Settings) + " veya [Esc]", body);
+        EcoTheme.Begin();
+        var panel = EcoTheme.Window(520f, 390f, "SES AYARLARI", "Ana ses, müzik, ortam, efekt ve arayüz ayrı ayarlanır.", "ui_gear");
+        DrawSliders(panel.x + 28f, panel.y + 100f, panel.width - 56f, EcoTheme.Body);
+        if (EcoTheme.IconButton(new Rect(panel.x + 28f, panel.yMax - 58f, panel.width - 56f, 40f), "Kapat  " + EcoKeys.Tag(EcoKeys.Action.Settings) + " / [Esc]", "ui_close")) panelOpen = false;
+        EcoTheme.End();
     }
 }

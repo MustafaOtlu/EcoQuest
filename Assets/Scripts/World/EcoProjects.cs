@@ -37,7 +37,6 @@ public sealed class EcoProjects : MonoBehaviour
     private EcoRegion[] regions = Array.Empty<EcoRegion>();
     private EcoPowerNode[] power = Array.Empty<EcoPowerNode>();
     private EcoWaterNode[] water = Array.Empty<EcoWaterNode>();
-    private GUIStyle title, body, small;
     private Vector2 scroll;
     private string cardTitle = "", cardText = "";
     private float cardUntil;
@@ -265,45 +264,62 @@ public sealed class EcoProjects : MonoBehaviour
         }
         player?.ShowFeedback(text); return text;
     }
+    private static readonly string[] ProjectIcons = { "electricity", "region_lake_dirty", "poi_tree", "poi_factory", "ui_layers", "region_glacier" };
+
     private void OnGUI()
     {
-        title ??= new GUIStyle(GUI.skin.label) { fontSize = 19, fontStyle = FontStyle.Bold, wordWrap = true };
-        body ??= new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true };
-        small ??= new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true };
         if (Time.unscaledTime < HintUntil && Camera.main != null)
         {
             Vector3 point = Camera.main.WorldToScreenPoint(HintPosition + Vector3.up * 3f);
-            if (point.z > 0) GUI.Box(new Rect(Mathf.Clamp(point.x - 90, 12, Screen.width - 192), Mathf.Clamp(Screen.height - point.y, 12, Screen.height - 52), 180, 40), "İpucu: çalışma alanı", small);
+            if (point.z > 0)
+            {
+                EcoTheme.Begin();
+                float s = Screen.width / EcoTheme.Width;
+                var box = new Rect(Mathf.Clamp(point.x / s - 110, 12, EcoTheme.Width - 232), Mathf.Clamp((Screen.height - point.y) / s, 12, EcoTheme.Height - 60), 220, 46);
+                GUI.Box(box, "", EcoTheme.Card);
+                EcoTheme.Icon(new Rect(box.x + 8, box.y + 7, 32, 32), "poi_quest");
+                GUI.Label(new Rect(box.x + 46, box.y + 9, box.width - 52, 30), "İpucu: çalışma alanı", EcoTheme.Body);
+                EcoTheme.End();
+            }
         }
         if (showLearningCard && Time.unscaledTime < cardUntil && !PanelOpen)
         {
-            var card = new Rect(18, Screen.height - 255, Mathf.Min(470, Screen.width - 36), 110);
-            GUI.Box(card, "");
-            GUI.Label(new Rect(card.x + 12, card.y + 8, card.width - 45, 30), cardTitle + " • Öğrenme kartı", title);
-            if (GUI.Button(new Rect(card.xMax - 30, card.y + 7, 24, 24), "×")) showLearningCard = false;
-            GUI.Label(new Rect(card.x + 12, card.y + 39, card.width - 24, 65), cardText, small);
+            EcoTheme.Begin();
+            var card = new Rect(18, EcoTheme.Height - 300, Mathf.Min(520, EcoTheme.Width - 36), 150);
+            GUI.Box(card, "", EcoTheme.Card);
+            EcoTheme.Icon(new Rect(card.x + 14, card.y + 14, 52, 52), "yep");
+            GUI.Label(new Rect(card.x + 78, card.y + 12, card.width - 120, 30), cardTitle + " · Biliyor muydun?", EcoTheme.Subtitle);
+            if (GUI.Button(new Rect(card.xMax - 40, card.y + 10, 28, 28), "", EcoTheme.Button)) showLearningCard = false;
+            EcoTheme.Icon(new Rect(card.xMax - 38, card.y + 12, 24, 24), "ui_close");
+            GUI.Label(new Rect(card.x + 78, card.y + 46, card.width - 96, 96), cardText, EcoTheme.Muted);
+            EcoTheme.End();
         }
         if (!PanelOpen) return;
-        float w = Mathf.Min(900f, Screen.width - 32f), h = Mathf.Min(690f, Screen.height - 32f);
-        var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
-        GUI.Box(panel, "");
-        GUI.Label(new Rect(panel.x + 18, panel.y + 14, w - 70, 30), "PROJE GÜNLÜĞÜ • " + CompletedCount + "/6 • Final hazırlığı %" + Mathf.RoundToInt(Readiness * 100), title);
-        if (GUI.Button(new Rect(panel.xMax - 42, panel.y + 12, 28, 28), "×")) SetOpen(false);
-        GUI.Label(new Rect(panel.x + 18, panel.y + 49, w - 36, 44), "Sonuçları 120 simülasyon saniyesi koru. Proje seçimi serbesttir; kazanılmış başarı kalıcıdır. Planlama sırasında dünya %10 hızdadır.", small);
-        var viewport = new Rect(panel.x + 14, panel.y + 100, w - 28, h - 130);
-        scroll = GUI.BeginScrollView(viewport, scroll, new Rect(0, 0, viewport.width - 22, projects.Count * 198f));
+        EcoTheme.Begin();
+        var panel = EcoTheme.Window(940f, 720f, "PROJE GÜNLÜĞÜ · " + CompletedCount + "/6 · Final hazırlığı %" + Mathf.RoundToInt(Readiness * 100),
+            "Sonuçları 120 simülasyon saniyesi koru. Proje seçimi serbest; kazanılan başarı kalıcıdır. Günlük açıkken dünya %10 hızda.", "ui_journal");
+        if (GUI.Button(new Rect(panel.xMax - 52, panel.y + 16, 34, 34), "", EcoTheme.Button)) SetOpen(false);
+        EcoTheme.Icon(new Rect(panel.xMax - 48, panel.y + 20, 26, 26), "ui_close");
+        var viewport = new Rect(panel.x + 20, panel.y + 96, panel.width - 40, panel.height - 116);
+        const float rowH = 206f;
+        scroll = GUI.BeginScrollView(viewport, scroll, new Rect(0, 0, viewport.width - 22, projects.Count * rowH));
         for (int i = 0; i < projects.Count; i++)
         {
-            var project = projects[i]; float y = i * 198f;
-            if (GUI.Button(new Rect(0, y, viewport.width - 40, 32), (SelectedIndex == i ? "› " : "") + (project.done ? "✓ " : "○ ") + project.name)) SelectedIndex = i;
-            GUI.Label(new Rect(10, y + 35, viewport.width - 52, 42), project.goal, body);
-            GUI.Label(new Rect(10, y + 80, viewport.width - 52, 42), (project.done ? "Başarı korundu • Güncel: " : "") + project.status, small);
-            DrawBar(new Rect(10, y + 126, viewport.width - 52, 8), project.done ? 1 : project.held / VerifySeconds);
-            GUI.Label(new Rect(10, y + 139, 150, 24), project.done ? "40 YEP kazanıldı" : project.held.ToString("0") + "/120 sn", small);
-            if (GUI.Button(new Rect(viewport.width - 175, y + 139, 130, 26), "İpucu (" + HintLevels[i] + "/3)")) RequestHint(i);
-            if (HintLevels[i] > 0) GUI.Label(new Rect(10, y + 166, viewport.width - 52, 30), HintLevels[i] == 1 ? project.symptom : HintLevels[i] == 2 ? project.cause : project.action, small);
+            var project = projects[i]; float y = i * rowH, w = viewport.width - 30;
+            GUI.Box(new Rect(0, y, w, rowH - 10), "", EcoTheme.Card);
+            if (SelectedIndex == i) { var prev = GUI.color; GUI.color = EcoSettings.Good; GUI.DrawTexture(new Rect(0, y, 4, rowH - 10), Texture2D.whiteTexture); GUI.color = prev; }
+            EcoTheme.Icon(new Rect(14, y + 14, 56, 56), ProjectIcons[Mathf.Clamp(i, 0, ProjectIcons.Length - 1)]);
+            if (project.done) EcoTheme.Icon(new Rect(50, y + 50, 26, 26), "ui_check");
+            if (GUI.Button(new Rect(84, y + 10, w - 100, 34), project.name + "  ·  " + project.concept, EcoTheme.Subtitle)) SelectedIndex = i;
+            GUI.Label(new Rect(84, y + 44, w - 100, 44), project.goal, EcoTheme.Body);
+            GUI.Label(new Rect(84, y + 92, w - 100, 40), (project.done ? "Başarı korundu · Güncel: " : "") + project.status, EcoTheme.Muted);
+            DrawBar(new Rect(84, y + 136, w - 260, 8), project.done ? 1 : project.held / VerifySeconds);
+            GUI.Label(new Rect(84, y + 148, 220, 24), project.done ? "40 YEP kazanıldı" : project.held.ToString("0") + " / 120 sn", EcoTheme.Muted);
+            if (EcoTheme.IconButton(new Rect(w - 166, y + 128, 150, 36), "İpucu " + HintLevels[i] + "/3", "ui_help")) RequestHint(i);
+            if (HintLevels[i] > 0) GUI.Label(new Rect(84, y + 170, w - 100, 30), HintLevels[i] == 1 ? project.symptom : HintLevels[i] == 2 ? project.cause : project.action, EcoTheme.Muted);
         }
         GUI.EndScrollView();
+        EcoTheme.End();
     }
     private static void DrawBar(Rect rect, float fill)
     {

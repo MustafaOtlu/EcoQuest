@@ -27,6 +27,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _FlatShading: 1
+    - _PollutionStrength: 1
     - _ShadeContrast: 0.32
     - _Smoothness: 0.04
     m_Colors:

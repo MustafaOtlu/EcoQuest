@@ -69,7 +69,8 @@ public sealed class EcoMarketUI : MonoBehaviour
         {
             int index = i;
             var card = Panel("Offer " + i, content.transform, new Vector2(i % 3 * 306, -(i / 3) * 153), new Vector2(292, 143), new Color(0.12f, 0.2f, 0.17f));
-            TextAt(card, upgrades ? EcoEquipmentUpgrades.Names[i] : EcoMarket.Titles[i], new Vector2(12, -7), new Vector2(268, 27), 19);
+            IconAt(card, upgrades ? UpgradeIcons[i] : OfferIcons[i], new Vector2(236, -6), 46f);
+            TextAt(card, upgrades ? EcoEquipmentUpgrades.Names[i] : EcoMarket.Titles[i], new Vector2(12, -7), new Vector2(222, 27), 19);
             descriptions[i] = TextAt(card, "", new Vector2(12, -36), new Vector2(268, 42), 14);
             prices[i] = TextAt(card, "", new Vector2(12, -79), new Vector2(268, 20), 14);
             buttons[i] = ButtonAt(card, "İşlem", new Vector2(12, -104), new Vector2(268, 30), () =>
@@ -97,7 +98,8 @@ public sealed class EcoMarketUI : MonoBehaviour
         shade.anchorMin = Vector2.zero; shade.anchorMax = Vector2.one; shade.offsetMin = shade.offsetMax = Vector2.zero;
         var window = Panel("Market window", canvasRoot.transform, Vector2.zero, new Vector2(960, 720), new Color(0.045f, 0.085f, 0.07f, 1));
         window.anchorMin = window.anchorMax = window.pivot = new Vector2(0.5f, 0.5f);
-        TextAt(window, "EKO MARKET", new Vector2(24, -14), new Vector2(600, 36), 28);
+        IconAt(window, "poi_market", new Vector2(22, -10), 44f);
+        TextAt(window, "EKO MARKET", new Vector2(76, -14), new Vector2(600, 36), 28);
         wallet = TextAt(window, "", new Vector2(24, -55), new Vector2(906, 31), 17);
         ButtonAt(window, "Alışveriş", new Vector2(24, -99), new Vector2(180, 35), () => ShowPage(false));
         ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(216, -99), new Vector2(240, 35), () => ShowPage(true));
@@ -108,7 +110,8 @@ public sealed class EcoMarketUI : MonoBehaviour
     private void Refresh()
     {
         if (player == null || wallet == null) return;
-        wallet.text = "Metal " + player.Metal + " • Plastik " + player.Plastic + " • Ürün " + player.Food + " • YEP " + player.Progression.Level
+        wallet.text = "Metal " + player.Metal + " • Plastik " + player.Plastic + " • Ürün " + player.Food + " • Temiz balık " + player.CleanFish
+            + " • YEP " + player.Progression.Experience + "/" + EcoProgression.MaximumExperience
             + " • Geliştirme hakkı " + Mathf.Max(0, player.Upgrades.Allowance - player.Upgrades.Purchased);
         int count = upgradePage ? 9 : EcoMarket.Titles.Length;
         for (int i = 0; i < count; i++)
@@ -128,7 +131,7 @@ public sealed class EcoMarketUI : MonoBehaviour
                 valid = player.CanMarketTrade(item, out reason);
                 if (valid && !EcoMarket.WithinDailyLimit(item, out reason)) valid = false;
                 descriptions[i].text = EcoMarket.Details[i] + (EcoMarket.DailyLimits[i] > 0 && EcoMarket.IsPurchase(item) ? "\nBugün kalan: " + EcoMarket.RemainingToday(item) + "/" + EcoMarket.DailyLimits[i] : "");
-                prices[i].text = EcoMarket.IsPurchase(item) ? EcoMarket.MetalPrice(item) + " metal / " + EcoMarket.PlasticPrice(item) + " plastik • YEP " + EcoMarket.Level(item)
+                prices[i].text = EcoMarket.IsPurchase(item) ? EcoMarket.MetalPrice(item) + " metal / " + EcoMarket.PlasticPrice(item) + " plastik"
                     : i == 4 ? "Bedel: 1 ürün" : "Bedel: 5 tohum";
             }
             buttons[i].interactable = valid;
@@ -141,6 +144,15 @@ public sealed class EcoMarketUI : MonoBehaviour
         var go = new GameObject(name, typeof(RectTransform), typeof(Image));
         var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false); rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = position; rect.sizeDelta = size;
         go.GetComponent<Image>().color = color; return rect;
+    }
+    // Hand-drawn icons for each offer / upgrade card (Resources/EcoIcons).
+    private static readonly string[] OfferIcons = { "ammo", "crop_cabbage", "filter", "poi_factory", "food", "seed", "crop_carrot", "crop_tomato", "crop_tree", "fish" };
+    private static readonly string[] UpgradeIcons = { "water", "tool_vacuum", "w_wind", "seed", "crop_cabbage", "tool_seed", "scrap", "tool_recycle", "metal" };
+    private static void IconAt(Transform parent, string icon, Vector2 position, float size)
+    {
+        var go = new GameObject("Icon", typeof(RectTransform), typeof(Image)); var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false);
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = position; rect.sizeDelta = new Vector2(size, size);
+        var image = go.GetComponent<Image>(); image.sprite = EcoIcons.Get(icon); image.preserveAspect = true; image.raycastTarget = false; image.enabled = image.sprite != null;
     }
     private Text TextAt(Transform parent, string value, Vector2 position, Vector2 size, int fontSize)
     {

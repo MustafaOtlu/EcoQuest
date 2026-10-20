@@ -1,16 +1,17 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// GDD §15.5 decision: the glacier is protected by a monitoring station. After the player switches it on ([E] next to
-// it) it pushes the melt line back (EcoGlacierMelt.stationBonus) while the average carbon index stays under the
-// threshold. If an EcoPowerNode sits on the same object the station also draws electricity and only protects while
-// it is supplied. It doubles as the final terminal (EcoFinale) once active.
+// GDD §7/§10: the glacier monitoring station measures; it does not lower carbon or stop the melt by itself
+// ("İstasyon ölçer; tek başına karbon düşürmez"). Switched on with [E], it reports the area-weighted carbon index and
+// the melt rate, which the P6 project reads. If an EcoPowerNode sits on the same object it draws electricity and only
+// measures while supplied. It doubles as the final terminal (EcoFinale) once active.
 public sealed class EcoGlacierStation : MonoBehaviour
 {
     public static EcoGlacierStation Current { get; private set; }
     [Range(0f, 100f)] public float safeCarbon = 20f;
     [Min(1f)] public float reach = 5.5f;
-    [Min(0f)] public float meltBonus = 8f;
+    [Tooltip("Kept for old scenes; must stay 0 so the station measures without changing the melt (GDD).")]
+    [Min(0f)] public float meltBonus = 0f;
     [Min(0f)] public float requestedPower = 0.5f;
 
     public bool Active { get; private set; }
@@ -47,7 +48,7 @@ public sealed class EcoGlacierStation : MonoBehaviour
     private void ApplyBonus()
     {
         if (melt == null) melt = FindFirstObjectByType<EcoGlacierMelt>();
-        if (melt != null) melt.stationBonus = Active && Powered ? meltBonus : 0f;
+        if (melt != null) melt.stationBonus = 0f; // measuring only
     }
 
     public bool TryInteract(PlayerWeaponSystem w)
@@ -55,7 +56,7 @@ public sealed class EcoGlacierStation : MonoBehaviour
         if (w == null || (w.transform.position - transform.position).sqrMagnitude > reach * reach) return false;
         if (Active) { w.ShowFeedback(Describe()); return true; }
         Active = true; ApplyBonus(); nextScan = 0f;
-        w.ShowFeedback("İzleme istasyonu çalışıyor • Buzul erime çizgisi geriye çekildi • Final terminali açıldı.");
+        w.ShowFeedback("İzleme istasyonu çalışıyor • Dünya karbonu ve erime ölçülüyor • Final terminali açıldı.");
         return true;
     }
 
@@ -63,9 +64,7 @@ public sealed class EcoGlacierStation : MonoBehaviour
     {
         if (Time.time < nextScan) return;
         nextScan = Time.time + 1f;
-        float sum = 0f; int count = 0;
-        foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None)) if (region != null) { sum += region.carbon; count++; }
-        AverageCarbon = count > 0 ? sum / count : 0f;
+        AverageCarbon = EcoRegion.WorldCarbon();
         ApplyBonus();
         RefreshLabel();
     }

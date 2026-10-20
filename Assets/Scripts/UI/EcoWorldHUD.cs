@@ -64,6 +64,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private RawImage miniImage;
     private Text miniNorth;
     private Button bigMapButton;
+    private Image clockIcon, weatherIcon, windIcon;
+    private Text clockText, weatherText, windText;
     private readonly List<Image> miniPins = new List<Image>();
 
     // Banner & intro
@@ -76,8 +78,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private RectTransform actions;
     private readonly List<(Button button, Text key, string id)> actionButtons = new List<(Button, Text, string)>();
     private RectTransform help;
+    private Image skillsAlert;
     private bool helpOpen;
-    private object helpOwner = new object();
+    private readonly EcoUI.HudPanel helpOwner = new EcoUI.HudPanel();
     private Text modeToast; private float modeToastUntil; private Image modeToastBg;
 
     // Big map
@@ -140,8 +143,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void Update()
     {
         if (canvas == null) return;
-        canvas.enabled = !EcoMarketUI.IsOpen;
-        overlay.enabled = !EcoMarketUI.IsOpen;
+        bool foreign = EcoMarketUI.IsOpen || EcoUI.ForeignWindowOpen;
+        canvas.enabled = !foreign;
+        overlay.enabled = !foreign;
         if (lastWidth != DisplayWidth || lastHeight != DisplayHeight || lastMode != EcoUI.Mode) dirty = true;
         if (Mathf.Abs(laidOutVitalsBottom - EcoQuestHUD.VitalsBottom) > 0.5f) dirty = true;
         if (dirty) ApplyLayout();
@@ -164,6 +168,19 @@ public sealed class EcoWorldHUD : MonoBehaviour
             refreshAt = Time.unscaledTime + 0.1f;
             Sample(current, target);
             RefreshMiniPins();
+            var clock = EcoWorldClock.Current;
+            if (clock != null)
+            {
+                clockText.text = "Gün " + clock.day + "  " + Mathf.FloorToInt(clock.hour).ToString("00") + ":" + Mathf.FloorToInt(clock.hour % 1f * 60f).ToString("00");
+                EcoUI.SetIcon(weatherIcon, EcoIcons.Weather(clock));
+                weatherText.text = clock.WeatherName;
+                float wind = RegionWind(current, clock);
+                windText.text = "%" + Mathf.RoundToInt(wind * 100f);
+                mapCard.summary.text = clockText.text + "  ·  " + clock.WeatherName;
+            }
+            var skills = EcoSpecialization.Current;
+            bool alert = skills != null && skills.Points > 0;
+            if (skillsAlert != null && skillsAlert.gameObject.activeSelf != alert) skillsAlert.gameObject.SetActive(alert);
         }
         AnimateValues();
         UpdateMiniMap();
@@ -287,6 +304,16 @@ public sealed class EcoWorldHUD : MonoBehaviour
         miniNorth = EcoUI.Label("North", miniFrame, "K", 13, TextAnchor.MiddleCenter, EcoUI.Ink, true);
         miniNorth.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.9f);
         bigMapButton = EcoUI.IconButton("Open map", mapCard.body, "ui_layers", 28f, () => SetMap(true), "Büyük harita " + EcoKeys.Tag(EcoKeys.Action.Map));
+        // Day, time and weather strip under the map (GDD §13).
+        clockIcon = EcoUI.Icon("Clock", mapCard.body, "clock", new Vector2(0, 1), new Vector2(0, 1), 20f);
+        clockText = EcoUI.Label("Clock text", mapCard.body, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+        weatherIcon = EcoUI.Icon("Weather", mapCard.body, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 22f);
+        weatherText = EcoUI.Label("Weather text", mapCard.body, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink);
+        windIcon = EcoUI.Icon("Wind", mapCard.body, "w_wind", new Vector2(0, 1), new Vector2(0, 1), 22f);
+        windText = EcoUI.Label("Wind text", mapCard.body, "", 13, TextAnchor.MiddleRight, EcoUI.Ink, true);
+        var strip = EcoUI.Panel("Weather hit", mapCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
+        strip.rectTransform.anchoredPosition = new Vector2(0, -260); strip.rectTransform.sizeDelta = new Vector2(276, 26);
+        EcoUI.AddTooltip(strip.gameObject, "Gün, saat ve hava. Bulut güneş üretimini, sakin hava rüzgâr türbinini düşürür; yağmur açık ekinleri sular.");
         var button = frame.gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
         button.onClick.AddListener(() => SetMap(true));
         EcoUI.AddTooltip(frame.gameObject, "Büyük haritayı aç " + EcoKeys.Tag(EcoKeys.Action.Map));
@@ -444,6 +471,14 @@ public sealed class EcoWorldHUD : MonoBehaviour
         var text = EcoUI.Label("Key text", badge.transform, key, 10, TextAnchor.MiddleCenter, EcoUI.Ink, true);
         EcoUI.Layout(text, Vector2.zero, badge.rectTransform.sizeDelta);
         actionButtons.Add((button, text, id));
+        if (id == "skills")
+        {
+            skillsAlert = EcoUI.Panel("Alert", button.transform, new Vector2(1, 1), new Vector2(0.5f, 0.5f), EcoUI.Amber, false, EcoUI.Circle);
+            EcoUI.Place(skillsAlert.rectTransform, new Vector2(-4f, -4f), new Vector2(16f, 16f));
+            var mark = EcoUI.Label("!", skillsAlert.transform, "!", 11, TextAnchor.MiddleCenter, new Color(0.03f, 0.07f, 0.08f), true);
+            EcoUI.Layout(mark, Vector2.zero, new Vector2(16f, 16f));
+            skillsAlert.gameObject.SetActive(false);
+        }
     }
 
     private void CycleHud()
@@ -963,8 +998,15 @@ public sealed class EcoWorldHUD : MonoBehaviour
         // Map card, top right.
         mapCard.SetVisible(!hidden);
         float mapSide = rightWidth - 20f;
-        float mh = mapCard.Layout(new Vector2(-margin, -margin), rightWidth, mapSide + 14f, true);
+        float mh = mapCard.Layout(new Vector2(-margin, -margin), rightWidth, mapSide + 40f, mapCard.IsCollapsed);
         EcoUI.Place(miniFrame, new Vector2(10f, -4f), new Vector2(mapSide, mapSide));
+        float sy = -(mapSide + 10f);
+        EcoUI.LayoutIcon(clockIcon, new Vector2(10f, sy), 20f);
+        EcoUI.Layout(clockText, new Vector2(34f, sy), new Vector2(90f, 20f));
+        EcoUI.LayoutIcon(weatherIcon, new Vector2(122f, sy - 1f), 22f);
+        EcoUI.Layout(weatherText, new Vector2(146f, sy), new Vector2(70f, 20f));
+        EcoUI.LayoutIcon(windIcon, new Vector2(rightWidth - 74f, sy - 1f), 22f);
+        EcoUI.Layout(windText, new Vector2(rightWidth - 52f, sy), new Vector2(40f, 20f));
         EcoUI.Layout(miniNorth, new Vector2(mapSide * 0.5f - 10f, -5f), new Vector2(20f, 16f));
         var bb = (RectTransform)bigMapButton.transform; bb.anchorMin = bb.anchorMax = new Vector2(0, 1); bb.pivot = new Vector2(1, 1);
         bb.anchoredPosition = new Vector2(10f + mapSide - 6f, -10f);

@@ -198,7 +198,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private void Update()
     {
         if (canvas == null) return;
-        canvas.enabled = !EcoMarketUI.IsOpen;
+        canvas.enabled = !EcoMarketUI.IsOpen && !EcoUI.ForeignWindowOpen;
         if (lastWidth != DisplayWidth || lastHeight != DisplayHeight || lastMode != EcoUI.Mode) dirty = true;
         if (Mathf.Abs(laidOutMapBottom - EcoWorldHUD.MapBottom) > 0.5f) dirty = true;
         if (weapons == null) return;
@@ -253,8 +253,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (weapons.Progression != null)
         {
             bool max = weapons.Progression.Level == EcoProgression.MaximumLevel;
-            yepText.text = "Seviye " + weapons.Progression.Level + "   " + (max ? "En yüksek seviye" : "YEP " + weapons.Progression.LevelProgress + " / " + weapons.Progression.LevelRequirement);
-            EcoUI.SetMeter(yepFill, yepTrack, max ? 1f : weapons.Progression.LevelProgress / (float)Mathf.Max(1, weapons.Progression.LevelRequirement), EcoUI.Amber);
+            // GDD §7: YEP is a finite score (360); every 40 YEP is one specialisation right (9 in total).
+            var progression = weapons.Progression;
+            yepText.text = "YEP " + progression.Experience + " / " + EcoProgression.MaximumExperience + "   ·   Hak " + progression.EarnedRights + " / 9";
+            EcoUI.SetMeter(yepFill, yepTrack, max ? 1f : (progression.Experience % EcoProgression.PointsPerRight) / (float)EcoProgression.PointsPerRight, EcoUI.Amber);
         }
         // Tool belt
         slotCounts[0].text = Mathf.CeilToInt(weapons.Water) + " su";
@@ -352,7 +354,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
 
         // Vitals card.
         vitalsCard.SetVisible(!hidden);
-        float vh = vitalsCard.Layout(new Vector2(margin, -margin), leftWidth, 150f);
+        float vh = vitalsCard.Layout(new Vector2(margin, -margin), leftWidth, 114f);
         float inner = leftWidth - 24f;
         for (int i = 0; i < 3; i++)
         {
@@ -362,12 +364,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.Layout(meterValues[i], new Vector2(leftWidth - 104f, y - 1f), new Vector2(92f, 20f));
             EcoUI.Place(meterTracks[i], new Vector2(40f, y - 23f), new Vector2(leftWidth - 52f, 6f));
         }
-        float wy = -8f - 3 * 36f - 2f;
-        EcoUI.LayoutIcon(weatherIcon, new Vector2(12f, wy), 22f);
-        EcoUI.Layout(weatherText, new Vector2(40f, wy - 1f), new Vector2(leftWidth - 140f, 22f));
-        EcoUI.LayoutIcon(windIcon, new Vector2(leftWidth - 104f, wy), 22f);
-        EcoUI.Layout(windText, new Vector2(leftWidth - 80f, wy - 1f), new Vector2(68f, 22f));
-        clockIcon.enabled = false;
+        // Day, time and weather moved to the map card (GDD §13, top right).
+        weatherIcon.gameObject.SetActive(false); weatherText.gameObject.SetActive(false);
+        windIcon.gameObject.SetActive(false); windText.gameObject.SetActive(false); clockIcon.gameObject.SetActive(false);
         VitalsBottom = hidden ? margin : margin + vh;
 
         // Resources card, under EcoWorldHUD's map card in the right column.

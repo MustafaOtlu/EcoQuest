@@ -32,6 +32,30 @@ public static class EcoTheme
         GUI.Label(new Rect(rect.x+28,rect.y+54,rect.width-56,30),description,muted);
         return rect;
     }
+    /// <summary>Window with an icon beside the heading (icon names from Resources/EcoIcons).</summary>
+    public static Rect Window(float width, float height, string heading, string description, string icon)
+    {
+        var rect = Window(width, height, "", "");
+        Icon(new Rect(rect.x + 24, rect.y + 18, 40, 40), icon);
+        GUI.Label(new Rect(rect.x + 74, rect.y + 18, rect.width - 102, 34), heading, title);
+        GUI.Label(new Rect(rect.x + 74, rect.y + 54, rect.width - 102, 30), description, muted);
+        return rect;
+    }
+    /// <summary>Draws a hand-drawn icon; does nothing when the icon is missing.</summary>
+    public static void Icon(Rect rect, string icon)
+    {
+        var sprite = EcoIcons.Get(icon);
+        if (sprite != null) GUI.DrawTexture(rect, sprite.texture, ScaleMode.ScaleToFit, true);
+    }
+    /// <summary>A themed button with an icon on its left.</summary>
+    public static bool IconButton(Rect rect, string text, string icon, GUIStyle style = null)
+    {
+        Init();
+        bool pressed = GUI.Button(rect, "        " + text, style ?? button);
+        float s = Mathf.Min(26f, rect.height - 10f);
+        Icon(new Rect(rect.x + 12, rect.y + (rect.height - s) * .5f, s, s), icon);
+        return pressed;
+    }
     private static Texture2D Swatch(Color color) { var t=new Texture2D(1,1);t.SetPixel(0,0,color);t.Apply();return t; }
     private static void Init()
     {

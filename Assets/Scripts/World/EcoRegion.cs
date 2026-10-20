@@ -32,6 +32,34 @@ public sealed class EcoRegion : MonoBehaviour
                 || (region.priority == best.priority && region.GetInstanceID() < best.GetInstanceID()))) best = region;
         return best;
     }
+    private static float worldCarbon, worldCarbonAt = -10f;
+    /// <summary>GDD §10: area-weighted world carbon. The map is sampled on a grid and each point counts the region that
+    /// owns it (highest priority), so overlapping pockets or many small clean regions cannot pull the average down.</summary>
+    public static float WorldCarbon()
+    {
+        if (Time.time - worldCarbonAt < 1f && worldCarbonAt >= 0f) return worldCarbon;
+        worldCarbonAt = Time.time;
+        bool any = false; float minX = 0f, maxX = 0f, minZ = 0f, maxZ = 0f;
+        foreach (var r in Active)
+        {
+            if (r == null) continue;
+            Vector3 c = r.transform.position; float hx = r.size.x * 0.5f, hz = r.size.y * 0.5f;
+            if (!any) { minX = c.x - hx; maxX = c.x + hx; minZ = c.z - hz; maxZ = c.z + hz; any = true; }
+            else { minX = Mathf.Min(minX, c.x - hx); maxX = Mathf.Max(maxX, c.x + hx); minZ = Mathf.Min(minZ, c.z - hz); maxZ = Mathf.Max(maxZ, c.z + hz); }
+        }
+        if (!any) return worldCarbon = 0f;
+        float step = Mathf.Max(2f, Mathf.Max(maxX - minX, maxZ - minZ) / 40f), sum = 0f; int count = 0;
+        float y = 0f; foreach (var r in Active) if (r != null) { y = r.transform.position.y; break; }
+        for (float x = minX + step * 0.5f; x < maxX; x += step)
+            for (float z = minZ + step * 0.5f; z < maxZ; z += step)
+            {
+                var region = At(new Vector3(x, y, z));
+                if (region == null) continue;
+                sum += region.carbon; count++;
+            }
+        return worldCarbon = count > 0 ? sum / count : 0f;
+    }
+
     private void Update() { Simulate(Time.deltaTime); UpdateVisual(); }
     public void Simulate(float seconds)
     {

@@ -35,28 +35,28 @@ public sealed class EcoGameMenu : MonoBehaviour
         string heading = screen == Screen_.Main ? "ECOQUEST" : "DURAKLATILDI";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Kayıt slotları" : screen == Screen_.Settings ? "Ayarlar"
             : screen == Screen_.Keys ? "Tuş atamaları (değiştirmek için tıkla, sonra yeni tuşa bas)" : "Dünya durdu. Devam etmek için Esc.";
-        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : 520f, heading, sub);
+        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : 520f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
         switch (screen)
         {
             case Screen_.Main:
-                if (GUI.Button(new Rect(x, y, w, 44f), "Yeni oyun", EcoTheme.Button)) PlayerController.SetPaused(false);
+                if (EcoTheme.IconButton(new Rect(x, y, w, 44f), "Yeni oyun", "player")) PlayerController.SetPaused(false);
                 GUI.enabled = save != null && save.HasSave;
-                if (GUI.Button(new Rect(x, y + 54f, w, 44f), "Devam et (son kayıt)", EcoTheme.Button)) { PlayerController.SetPaused(false); save.QuickLoad(); }
+                if (EcoTheme.IconButton(new Rect(x, y + 54f, w, 44f), "Devam et (son kayıt)", "ui_check")) { PlayerController.SetPaused(false); save.QuickLoad(); }
                 GUI.enabled = true;
-                if (GUI.Button(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", EcoTheme.Button)) Go(Screen_.Slots, Screen_.Main);
-                if (GUI.Button(new Rect(x, y + 162f, w, 44f), "Ayarlar", EcoTheme.Button)) Go(Screen_.Settings, Screen_.Main);
-                if (GUI.Button(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(false) ? "Öğrenme anketi (ön) ✓" : "Öğrenme anketi (ön, isteğe bağlı)", EcoTheme.Button)) EcoSurvey.Current?.Open(false);
-                if (GUI.Button(new Rect(x, y + 270f, w, 44f), "Oyundan çık", EcoTheme.Button)) Application.Quit();
+                if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Main);
+                if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Main);
+                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(false) ? "Öğrenme anketi (ön) ✓" : "Öğrenme anketi (ön, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(false);
+                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
                 break;
             case Screen_.Pause:
-                if (GUI.Button(new Rect(x, y, w, 44f), "Devam et", EcoTheme.Button)) PlayerController.SetPaused(false);
-                if (GUI.Button(new Rect(x, y + 54f, w, 44f), "Hızlı kaydet", EcoTheme.Button)) save?.QuickSave();
-                if (GUI.Button(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", EcoTheme.Button)) Go(Screen_.Slots, Screen_.Pause);
-                if (GUI.Button(new Rect(x, y + 162f, w, 44f), "Ayarlar", EcoTheme.Button)) Go(Screen_.Settings, Screen_.Pause);
-                if (GUI.Button(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(true) ? "Öğrenme anketi (son) ✓" : "Öğrenme anketi (son, isteğe bağlı)", EcoTheme.Button)) EcoSurvey.Current?.Open(true);
-                if (GUI.Button(new Rect(x, y + 270f, w, 44f), "Oyundan çık", EcoTheme.Button)) Application.Quit();
+                if (EcoTheme.IconButton(new Rect(x, y, w, 44f), "Devam et", "player")) PlayerController.SetPaused(false);
+                if (EcoTheme.IconButton(new Rect(x, y + 54f, w, 44f), "Hızlı kaydet", "calendar")) save?.QuickSave();
+                if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Pause);
+                if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Pause);
+                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(true) ? "Öğrenme anketi (son) ✓" : "Öğrenme anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
+                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
                 break;
             case Screen_.Slots:
                 if (save == null) { GUI.Label(new Rect(x, y, w, 40f), "Kayıt sistemi bu sahnede yok.", EcoTheme.Body); }
@@ -92,7 +92,7 @@ public sealed class EcoGameMenu : MonoBehaviour
                 if (Switch(new Rect(x, y + 138f, w, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
                 if (Switch(new Rect(x, y + 176f, w, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
                 EcoAudio.DrawSliders(x, y + 220f, w, EcoTheme.Body);
-                if (GUI.Button(new Rect(x, y + 412f, w, 40f), "Tuş atamaları", EcoTheme.Button)) Go(Screen_.Keys, Screen_.Settings);
+                if (EcoTheme.IconButton(new Rect(x, y + 412f, w, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
                 GUI.Label(new Rect(x, y + 456f, w, 30f), "F3: performans göstergesi", EcoTheme.Muted);
                 if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) screen = back;
                 break;
