@@ -636,6 +636,8 @@ Kalan üretim sırası: sahne/izometrik giriş tutarlılığı → temel döngü
 <a id="mevcut"></a>
 ## 18. Mevcut proje analizi ve tasarıma kalan mesafe
 
+> **21 Ekim 2026 güncellemesi:** Aşağıdaki tablo ve listeler 20 Ekim incelemesinin anlık görüntüsüdür; içindeki farkların çoğu sonradan kapatıldı ve Play Mode'da denendi. Kapatılanlar: altı projenin hedef koşulları (Doğu Gölü girişi + yerel arıtma/göle dönüş, Koruluk alt bölgesi, kesinti altında dayanıklılık), hidroelektrik (doğal akış alanı, balık geçidi, düz kurulum zemini), temiz balık takası ve tür bazlı siparişler, 360 YEP / 9 hak, buzul istasyonunun yalnız ölçmesi, üç odaklı final ve düzgün yenilgi, kayıt kapsamı (yapılar, depolar, düşmanlar, atıklar, filtreler, final rezervi ve zafer), çıkmaza girmeme yolları (§8). Güncel durum için belgenin sonundaki **Uygulama durumu** tablosu esas alınır. Gerçek fare/klavye denemesi hâlâ oyuncu tarafından yapılmalıdır.
+
 **Kanıt türü:** 20 Ekim 2026 tarihli kaynak dosyası ve sahne metni incelemesi. “Kaynakta var” derlenmiş, çalışırken görülmüş veya oynanışta doğrulanmış demek değildir. Bu bölüm hedef tasarımın yerine geçmez.
 
 ### Kaynakta görülen karşılıklar
@@ -739,3 +741,8 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Final arayüzü | Yenilendi: ikonlu canavar/faz kartı (baskı çubuğu, 3 faz rozeti, ilerleme çubuğu), terminal yakınında başlatma kontrol listesi (✓/✗), temalı mesaj kartı; hedef kartı final durumunu gösteriyor; anket açıkken mesaj süresi durur |
 | Terminal menzili | Düzeltildi: [F] başlatma, [E] rezerv/çekirdek ve ipucu kartı aynı 9 m menzili kullanıyor (önce E 7 m'de kesiliyordu) |
 | Menü + anket | Düzeltildi: menüden açılan anket artık menünün üstüne binmiyor; kapanınca menüye dönülüyor; anket penceresi ikonlu |
+| Market açılışı | Düzeltildi: 10. teklif (temiz balık sat) eklenince kart dizileri 9'da kalmıştı ve market açılırken hata veriyordu; artık 4 sütunlu ızgara 12 karta kadar taşır. Balık kartında doğru bedel, cüzdanda "Geliştirme kademesi x/27" |
+| Çıkmaza girmeme (§8) | Uygulandı ve Play Mode'da doğrulandı: market > "Destek ve atölye" sekmesi. Acil şarj (araç 0 EB iken 30 sn yakında kal → +15 EB), temel destek (tohum/ürün yokken ya da su <2 SB iken günde bir kez 1 lahana tohumu + 2 SB), elektriksiz elle ayırma, atölye (günlük stok bitince aynı tarifle paket başına 45 sn, sıra 3, panel kapansa da sürer, günlük sayaca dokunmaz) |
+| Hidroelektrik (§9) | Düzeltildi ve doğrulandı: doğal akış alanı kıyı eğiminde olduğu için santral hiç kurulamıyordu; derenin yanına düz bir kurulum zemini eklendi. 60M/30P ile kuruluyor, kuru havada 1,29 EB/sn (yağmurda artar), kabloyla bataryayı dolduruyor. Yeni alçak poligon model: kırmızı çatılı türbin evi, verimle dönen su çarkı, kanal, üç basamaklı balık geçidi, durum lambası; "burada kurulabilir" tabelası santral kurulunca gizlenir |
+| Sipariş ve market satışı (§8) | Play Mode'da doğrulandı: yanlış tür reddedilir; 4 domates → 15M+10P (%25 ek); teslim tek seferlik. Temiz balık 4M+2P, satış sınırsız; alımda günlük sınır (8 paket demir top) işliyor |
+| Sahne GUID'i | Düzeltildi: harita her kurulduğunda sahne silinip kopyalandığı için GUID değişiyor, Build Settings eski GUID'de kalıyordu. Artık sahne yerinde üzerine yazılıyor ve Build Settings girişi yenileniyor |

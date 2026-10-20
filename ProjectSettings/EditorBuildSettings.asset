@@ -7,7 +7,7 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/EcoWorld.unity
-    guid: 692ca84821066a94e9a3e17baa564a7a
+    guid: 6f0c1966bc956b046b1024a79aaeaf1c
   - enabled: 1
     path: Assets/Scenes/MainScene.unity
     guid: 99c9720ab356a0642a771bea13969a05

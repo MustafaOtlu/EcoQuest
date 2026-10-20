@@ -16,11 +16,14 @@ public sealed class EcoMarketUI : MonoBehaviour
     private PlayerWeaponSystem player;
     private GameObject canvasRoot, content;
     private Text wallet, notice;
-    private readonly Button[] buttons = new Button[9];
-    private readonly Text[] descriptions = new Text[9];
-    private readonly Text[] prices = new Text[9];
+    // Sized for the largest page (10 offers today); a 4-column grid holds up to 12 cards.
+    private const int MaxCards = 12, Columns = 4;
+    private readonly Button[] buttons = new Button[MaxCards];
+    private readonly Text[] descriptions = new Text[MaxCards];
+    private readonly Text[] prices = new Text[MaxCards];
     private Font font;
-    private bool upgradePage;
+    private enum Page { Shop, Upgrades, Support }
+    private Page page;
     private float refreshAt;
     private CursorLockMode previousLock;
 
@@ -59,29 +62,71 @@ public sealed class EcoMarketUI : MonoBehaviour
         if (!vendor.CanReach(player) || !player.isActiveAndEnabled || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)) { Close(); return; }
         if (Time.unscaledTime >= refreshAt) { refreshAt = Time.unscaledTime + 0.1f; Refresh(); }
     }
-    public void ShowPage(bool upgrades)
+    public void ShowPage(bool upgrades) => ShowPage(upgrades ? Page.Upgrades : Page.Shop);
+    private int CardCount => page == Page.Upgrades ? 9 : page == Page.Support ? SupportTitles.Length : EcoMarket.Titles.Length;
+    private void ShowPage(Page target)
     {
-        upgradePage = upgrades;
+        page = target;
         if (content != null) { content.SetActive(false); Destroy(content); }
         content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(20, -148), new Vector2(920, 470), Color.clear).gameObject;
-        int count = upgrades ? 9 : EcoMarket.Titles.Length;
+        int count = Mathf.Min(CardCount, MaxCards);
         for (int i = 0; i < count; i++)
         {
             int index = i;
-            var card = Panel("Offer " + i, content.transform, new Vector2(i % 3 * 306, -(i / 3) * 153), new Vector2(292, 143), new Color(0.12f, 0.2f, 0.17f));
-            IconAt(card, upgrades ? UpgradeIcons[i] : OfferIcons[i], new Vector2(236, -6), 46f);
-            TextAt(card, upgrades ? EcoEquipmentUpgrades.Names[i] : EcoMarket.Titles[i], new Vector2(12, -7), new Vector2(222, 27), 19);
-            descriptions[i] = TextAt(card, "", new Vector2(12, -36), new Vector2(268, 42), 14);
-            prices[i] = TextAt(card, "", new Vector2(12, -79), new Vector2(268, 20), 14);
-            buttons[i] = ButtonAt(card, "İşlem", new Vector2(12, -104), new Vector2(268, 30), () =>
+            var card = Panel("Offer " + i, content.transform, new Vector2(i % Columns * 230, -(i / Columns) * 155), new Vector2(220, 147), new Color(0.12f, 0.2f, 0.17f));
+            IconAt(card, page == Page.Upgrades ? UpgradeIcons[i] : page == Page.Support ? SupportIcons[i] : OfferIcons[i], new Vector2(172, -6), 40f);
+            TextAt(card, page == Page.Upgrades ? EcoEquipmentUpgrades.Names[i] : page == Page.Support ? SupportTitles[i] : EcoMarket.Titles[i], new Vector2(10, -7), new Vector2(160, 27), 17);
+            descriptions[i] = TextAt(card, "", new Vector2(10, -34), new Vector2(202, 46), 13);
+            prices[i] = TextAt(card, "", new Vector2(10, -81), new Vector2(202, 20), 13);
+            buttons[i] = ButtonAt(card, "İşlem", new Vector2(10, -107), new Vector2(200, 30), () =>
             {
                 if (vendor == null || player == null) return;
-                if (upgradePage) vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
+                if (page == Page.Upgrades) vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
+                else if (page == Page.Support) Support(index);
                 else vendor.Trade(player, (EcoMarket.Offer)index);
                 Refresh();
             });
         }
         Refresh();
+    }
+    // GDD §8 "Çıkmaza girmeme": emergency charge, basic rescue, hand sorting and the slow workshop path.
+    private static readonly string[] SupportTitles = { "Acil şarj", "Temel destek", "Elle ayırma", "Atölye: demir top", "Atölye: küçük filtre", "Atölye: büyük filtre" };
+    private static readonly string[] SupportIcons = { "electricity", "seed", "tool_recycle", "ammo", "filter", "poi_factory" };
+    private static readonly EcoMarket.Offer[] Crafts = { EcoMarket.Offer.IronAmmo, EcoMarket.Offer.SmallFilter, EcoMarket.Offer.LargeFilter };
+    private void Support(int index)
+    {
+        var shop = EcoWorkshop.For(player);
+        if (index == 0) shop.StartCharge(vendor);
+        else if (index == 1) shop.Rescue();
+        else if (index == 2) player.HandSort();
+        else shop.Enqueue(Crafts[index - 3]);
+    }
+    private bool DescribeSupport(int index, out string description, out string price, out string action)
+    {
+        var shop = EcoWorkshop.For(player); string reason;
+        int raw = player.CollectedMetalScrap + player.CollectedPlasticScrap + player.CollectedOrganicWaste;
+        switch (index)
+        {
+            case 0:
+                description = "Araç elektriği bitince 30 sn markete yakın kal: +15 EB. Paneli kapatabilirsin.";
+                price = shop.Charging ? "Şarj %" + Mathf.RoundToInt(shop.ChargeProgress / EcoWorkshop.ChargeSeconds * 100f) : "Araç " + player.Energy.ToString("0") + " EB";
+                bool charge = shop.CanCharge(out reason); action = charge ? "Başlat" : reason; return charge;
+            case 1:
+                description = "Tohum ve ürün yokken ya da su 2 SB altındayken: 1 lahana tohumu + 2 SB.";
+                price = "Günde bir kez • ücretsiz";
+                bool rescue = shop.CanRescue(out reason); action = rescue ? "Al" : reason; return rescue;
+            case 2:
+                description = "Elektriksiz: 1 ham atığı elle ayırıp metal/plastik/organik yap.";
+                price = "Ham atık " + raw;
+                action = raw > 0 ? "Ayır" : "Ham atık yok"; return raw > 0;
+            default:
+                var offer = Crafts[index - 3];
+                description = "Günlük stok bitince eldeki malzemeyle paket başına 45 sn'de yapılır.";
+                int queued = 0; foreach (var q in shop.Queue) if (q == offer) queued++;
+                price = EcoMarket.MetalPrice(offer) + "M / " + EcoMarket.PlasticPrice(offer) + "P • sırada " + queued
+                    + (shop.Queue.Count > 0 && shop.Queue[0] == offer ? " • %" + Mathf.RoundToInt(shop.PackProgress / EcoWorkshop.PackSeconds * 100f) : "");
+                bool craft = shop.CanQueue(offer, out reason); action = craft ? "Sıraya ekle" : reason; return craft;
+        }
     }
     private void Build()
     {
@@ -103,6 +148,7 @@ public sealed class EcoMarketUI : MonoBehaviour
         wallet = TextAt(window, "", new Vector2(24, -55), new Vector2(906, 31), 17);
         ButtonAt(window, "Alışveriş", new Vector2(24, -99), new Vector2(180, 35), () => ShowPage(false));
         ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(216, -99), new Vector2(240, 35), () => ShowPage(true));
+        ButtonAt(window, "Destek ve atölye", new Vector2(468, -99), new Vector2(200, 35), () => ShowPage(Page.Support));
         ButtonAt(window, "Kapat [Esc]", new Vector2(790, -15), new Vector2(145, 35), Close);
         notice = TextAt(window, "", new Vector2(24, -618), new Vector2(908, 38), 17);
         TextAt(window, "Geliştirmeler YEP harcamaz; her kademe ilgili kapasite/erişim/hızı tabana göre %15 artırır.\n2. kademe 2 tamamlanmış proje, 3. kademe 4 proje ister. Güçlü araç daha çok elektrik kullanır.", new Vector2(24, -667), new Vector2(908, 43), 14);
@@ -112,12 +158,19 @@ public sealed class EcoMarketUI : MonoBehaviour
         if (player == null || wallet == null) return;
         wallet.text = "Metal " + player.Metal + " • Plastik " + player.Plastic + " • Ürün " + player.Food + " • Temiz balık " + player.CleanFish
             + " • YEP " + player.Progression.Experience + "/" + EcoProgression.MaximumExperience
-            + " • Geliştirme hakkı " + Mathf.Max(0, player.Upgrades.Allowance - player.Upgrades.Purchased);
-        int count = upgradePage ? 9 : EcoMarket.Titles.Length;
+            + " • Geliştirme kademesi " + player.Upgrades.Purchased + "/" + player.Upgrades.Allowance;
+        int count = Mathf.Min(CardCount, MaxCards);
         for (int i = 0; i < count; i++)
         {
             bool valid; string reason;
-            if (upgradePage)
+            if (page == Page.Support)
+            {
+                valid = DescribeSupport(i, out string description, out string price, out string action);
+                descriptions[i].text = description; prices[i].text = price;
+                buttons[i].interactable = valid; buttons[i].GetComponentInChildren<Text>().text = action;
+                continue;
+            }
+            if (page == Page.Upgrades)
             {
                 var item = (EcoEquipmentUpgrades.Upgrade)i;
                 valid = player.Upgrades.CanBuy(item, out reason);
@@ -132,10 +185,10 @@ public sealed class EcoMarketUI : MonoBehaviour
                 if (valid && !EcoMarket.WithinDailyLimit(item, out reason)) valid = false;
                 descriptions[i].text = EcoMarket.Details[i] + (EcoMarket.DailyLimits[i] > 0 && EcoMarket.IsPurchase(item) ? "\nBugün kalan: " + EcoMarket.RemainingToday(item) + "/" + EcoMarket.DailyLimits[i] : "");
                 prices[i].text = EcoMarket.IsPurchase(item) ? EcoMarket.MetalPrice(item) + " metal / " + EcoMarket.PlasticPrice(item) + " plastik"
-                    : i == 4 ? "Bedel: 1 ürün" : "Bedel: 5 tohum";
+                    : i == 4 ? "Bedel: 1 ürün" : item == EcoMarket.Offer.SellFish ? "Bedel: 1 temiz balık" : "Bedel: 5 tohum";
             }
             buttons[i].interactable = valid;
-            buttons[i].GetComponentInChildren<Text>().text = valid ? upgradePage ? "Geliştir" : EcoMarket.IsPurchase((EcoMarket.Offer)i) ? "Satın al" : "Sat" : reason;
+            buttons[i].GetComponentInChildren<Text>().text = valid ? page == Page.Upgrades ? "Geliştir" : EcoMarket.IsPurchase((EcoMarket.Offer)i) ? "Satın al" : "Sat" : reason;
         }
         notice.text = Time.time < player.FeedbackUntil ? player.Feedback : "Tohum " + player.TotalSeeds + "/" + player.Upgrades.SeedCapacity + " • Seçili " + EcoCropCatalog.Get(player.SelectedSeed).Name + " " + player.SeedCount(player.SelectedSeed) + " • Filtre " + player.SmallFilters + " küçük / " + player.LargeFilters + " büyük";
     }

@@ -39,6 +39,8 @@ public static class BuildEcoWorldMap
     private static readonly Vector2 LakeB = new Vector2(127f * L, 30f * L);
     private const float LakeAR = 11f, LakeBR = 10f;
     private static readonly Vector2 StationPad = new Vector2(96f * L, 133f * L);
+    // GDD §9: level ground beside the Dağ Deresi mouth so the small hydro plant (6×6 m) can actually be placed.
+    private static readonly Vector2 HydroPad = new Vector2(6.5f * L, 24.5f * L);
     private static Vector2 P(float x, float z) => new Vector2(x * L, z * L);
 
     // ---------------------------------------------------------------- definitions
@@ -248,6 +250,7 @@ public static class BuildEcoWorldMap
         h = Mathf.Lerp(h, Ground0, RectMask(x, z, 75f * L, 30f * L, 26f * L, 22f * L, 10f) * 0.85f);
         h = Mathf.Lerp(h, Ground0, CircleMask(x, z, Base, 17f, 8f));
         h = Mathf.Lerp(h, stationPadHeight, CircleMask(x, z, StationPad, 6.5f, 5f));
+        h = Mathf.Lerp(h, Ground0 - 0.4f, CircleMask(x, z, HydroPad, 4.6f, 2.5f));
         h = LakeShape(h, x, z, LakeA, LakeAR);
         h = LakeShape(h, x, z, LakeB, LakeBR);
         return h;
@@ -343,8 +346,9 @@ public static class BuildEcoWorldMap
             Directory.CreateDirectory(Folder + "Materials"); Directory.CreateDirectory(Folder + "Meshes"); Directory.CreateDirectory(ResFolder);
             AssetDatabase.Refresh();
             Progress("Sahne kopyalanıyor", 0.02f);
-            if (File.Exists(TargetScene)) AssetDatabase.DeleteAsset(TargetScene);
-            if (!AssetDatabase.CopyAsset(SourceScene, TargetScene)) throw new System.Exception("MainScene kopyalanamadı.");
+            // Overwrite in place so the scene keeps its GUID (Build Settings and other references stay valid).
+            if (File.Exists(TargetScene)) { File.Copy(SourceScene, TargetScene, true); AssetDatabase.ImportAsset(TargetScene, ImportAssetOptions.ForceUpdate); }
+            else if (!AssetDatabase.CopyAsset(SourceScene, TargetScene)) throw new System.Exception("MainScene kopyalanamadı.");
             var scene = EditorSceneManager.OpenScene(TargetScene, OpenSceneMode.Single);
 
             Progress("Eski dekor ayıklanıyor", 0.06f);
@@ -1234,7 +1238,8 @@ public static class BuildEcoWorldMap
         else
         {
             // GDD §9: small hydro may only stand on a natural-flow site with a fish pass (the mountain stream mouth).
-            Vector2 hp = new Vector2(11.6f * L, 31.6f * L);
+            Vector2 hp = HydroPad;
+            KeepOut.Add(new Rect(hp.x - 5f, hp.y - 5f, 10f, 10f));
             var site = new GameObject("Doğal akış alanı (hidro)"); site.transform.SetParent(root, true);
             site.transform.position = new Vector3(hp.x, Mathf.Max(GroundY(hp.x, hp.y), WaterY) + 0.05f, hp.y);
             var hydro = site.AddComponent<EcoHydroSite>(); hydro.radius = 8f;
@@ -2585,7 +2590,16 @@ public static class BuildEcoWorldMap
     private static void RegisterInBuildSettings()
     {
         var scenes = EditorBuildSettings.scenes.ToList();
-        if (scenes.Any(s => s.path == TargetScene)) return;
+        int index = scenes.FindIndex(s => s.path == TargetScene);
+        // Re-create the entry so its GUID matches the scene asset. Unity keeps a cached GUID when a path is replaced
+        // in one assignment, so the entry is removed first and then inserted again at the same position.
+        if (index >= 0)
+        {
+            bool enabled = scenes[index].enabled; scenes.RemoveAt(index);
+            EditorBuildSettings.scenes = scenes.ToArray();
+            scenes.Insert(index, new EditorBuildSettingsScene(TargetScene, enabled));
+            EditorBuildSettings.scenes = scenes.ToArray(); return;
+        }
         scenes.Add(new EditorBuildSettingsScene(TargetScene, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         report.AppendLine("Build Settings: EcoWorld sahnesi listeye eklendi (diğer sahnelerin sırası değişmedi).");
