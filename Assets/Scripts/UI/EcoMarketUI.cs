@@ -105,7 +105,7 @@ public sealed class EcoMarketUI : MonoBehaviour
         ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(216, -99), new Vector2(240, 35), () => ShowPage(true));
         ButtonAt(window, "Kapat [Esc]", new Vector2(790, -15), new Vector2(145, 35), Close);
         notice = TextAt(window, "", new Vector2(24, -618), new Vector2(908, 38), 17);
-        TextAt(window, "Geliştirmeler daha fazla elektrik kullanır. YEP harcanmaz; seviye kilitleri açar.\nHer YEP seviyesi toplam geliştirme hakkına 3 ekler.", new Vector2(24, -667), new Vector2(908, 43), 14);
+        TextAt(window, "Geliştirmeler YEP harcamaz; her kademe ilgili kapasite/erişim/hızı tabana göre %15 artırır.\n2. kademe 2 tamamlanmış proje, 3. kademe 4 proje ister. Güçlü araç daha çok elektrik kullanır.", new Vector2(24, -667), new Vector2(908, 43), 14);
     }
     private void Refresh()
     {

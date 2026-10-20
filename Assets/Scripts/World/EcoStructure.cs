@@ -9,8 +9,12 @@ public sealed class EcoStructure : MonoBehaviour
     public bool playerBuilt;
     [Range(0f, 100f)] public float integrity = 100f;
     [Range(1, 3)] public int tier = 1;
-    public bool SupportsUpgrade => buildingId == "recycling" || buildingId == "intake" || buildingId == "purifier" || buildingId == "tank";
-    public int NextUpgradeLevel => !SupportsUpgrade || tier >= 3 ? 0 : buildingId == "recycling" ? (tier == 1 ? 6 : 12) : (tier == 1 ? 12 : 24);
+    // GDD §9: production/storage facilities have three tiers. Tier 2 needs two completed projects and the base cost
+    // again; tier 3 needs four projects and twice the base cost. Capacity/throughput is 1× / 1.5× / 2×; the cost per
+    // unit processed stays the same, so a faster pump also draws more power.
+    public bool SupportsUpgrade => buildingId == "recycling" || buildingId == "intake" || buildingId == "purifier" || buildingId == "tank" || buildingId == "battery";
+    public int NextUpgradeProjects => !SupportsUpgrade || tier >= 3 ? 0 : tier == 1 ? 2 : 4;
+    public static float TierScale(int t) => 1f + 0.5f * (Mathf.Clamp(t, 1, 3) - 1);
     public string UpgradeHint
     {
         get
@@ -18,10 +22,10 @@ public sealed class EcoStructure : MonoBehaviour
             if (!SupportsUpgrade) return "";
             if (tier >= 3) return "En yüksek kademe";
             int index = EcoBuildingCatalog.Find(buildingId); var entry = EcoBuildingCatalog.Entries[index];
-            return "" + EcoKeys.Tag(EcoKeys.Action.Upgrade) + " Kademe " + (tier + 1) + " • YEP " + NextUpgradeLevel + " • " + entry.Metal * (tier + 1) + "M / " + entry.Plastic * (tier + 1) + "P";
+            return EcoKeys.Tag(EcoKeys.Action.Upgrade) + " Kademe " + (tier + 1) + " (×" + TierScale(tier + 1).ToString("0.#") + ") • " + NextUpgradeProjects + " proje • "
+                + entry.Metal * tier + "M / " + entry.Plastic * tier + "P";
         }
     }
-    private int InvestmentMultiplier => tier * (tier + 1) / 2;
     private EcoPowerNode power;
     private void Awake() => power = GetComponent<EcoPowerNode>();
     private void OnEnable() { Active.Add(this); EcoNavigation.MarkDirty(); }
@@ -46,8 +50,9 @@ public sealed class EcoStructure : MonoBehaviour
         int index = EcoBuildingCatalog.Find(buildingId);
         if (owner == null || index < 0 || integrity >= 100f) return false;
         var entry = EcoBuildingCatalog.Entries[index];
+        // GDD §9: repair = missing integrity × 25 % of the base materials, rounded up.
         float fraction = (100f - integrity) / 100f;
-        if (!owner.TrySpendMaterials(Mathf.CeilToInt(entry.Metal * fraction * InvestmentMultiplier), Mathf.CeilToInt(entry.Plastic * fraction * InvestmentMultiplier))) return false;
+        if (!owner.TrySpendMaterials(Mathf.CeilToInt(entry.Metal * fraction * 0.25f), Mathf.CeilToInt(entry.Plastic * fraction * 0.25f))) return false;
         integrity = 100;
         if (power != null) power.condition = 1;
         owner.ShowFeedback(entry.Name + " onarıldı."); return true;
@@ -56,20 +61,26 @@ public sealed class EcoStructure : MonoBehaviour
     {
         if (tier >= 3) return;
         tier++;
-        if (TryGetComponent<EcoWaterNode>(out var water)) { water.capacity *= 2; water.litresPerSecond *= 2; }
-        if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) { recycler.unitsPerSecond *= 2; recycler.storageCapacity *= 2; }
+        ApplyTierScale(tier - 1, tier);
+    }
+    private void ApplyTierScale(int from, int to)
+    {
+        float k = TierScale(to) / TierScale(from);
+        if (TryGetComponent<EcoWaterNode>(out var water)) { water.capacity *= k; water.litresPerSecond *= k; }
+        if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) { recycler.unitsPerSecond *= k; recycler.storageCapacity = Mathf.RoundToInt(recycler.storageCapacity * k); }
+        if (buildingId == "battery" && power != null) { power.capacity *= k; power.batteryRate *= k; }
     }
     public bool Upgrade(PlayerWeaponSystem owner)
     {
-        if (owner == null || !owner.CanOperate || NextUpgradeLevel == 0) return false;
-        if (!owner.Progression.HasLevel(NextUpgradeLevel)) { owner.ShowFeedback("Geliştirme için YEP " + NextUpgradeLevel + ". seviye gerekiyor."); return false; }
+        if (owner == null || !owner.CanOperate || NextUpgradeProjects == 0) return false;
+        int done = EcoProjects.Current != null ? EcoProjects.Current.CompletedCount : 0;
+        if (done < NextUpgradeProjects) { owner.ShowFeedback("Kademe " + (tier + 1) + " için " + NextUpgradeProjects + " tamamlanmış proje gerekiyor (" + done + "/" + NextUpgradeProjects + ")."); return false; }
         if (integrity < 100) { owner.ShowFeedback("Geliştirmeden önce yapıyı tamir et."); return false; }
         var entry = EcoBuildingCatalog.Entries[EcoBuildingCatalog.Find(buildingId)];
-        if (!owner.TrySpendMaterials(entry.Metal * (tier + 1), entry.Plastic * (tier + 1))) { owner.ShowFeedback("Geliştirme malzemesi yetersiz."); return false; }
+        if (!owner.TrySpendMaterials(entry.Metal * tier, entry.Plastic * tier)) { owner.ShowFeedback("Geliştirme malzemesi yetersiz."); return false; }
         tier++;
-        if (TryGetComponent<EcoWaterNode>(out var water)) { water.capacity *= 2; water.litresPerSecond *= 2; }
-        if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) { recycler.unitsPerSecond *= 2; recycler.storageCapacity *= 2; }
-        owner.ShowFeedback(entry.Name + " kademe " + tier + " oldu. Kapasite ve işlem hızı arttı."); return true;
+        ApplyTierScale(tier - 1, tier);
+        owner.ShowFeedback(entry.Name + " kademe " + tier + " oldu • kapasite ×" + TierScale(tier).ToString("0.#") + "."); return true;
     }
     public bool Dismantle(PlayerWeaponSystem owner)
     {
@@ -79,7 +90,7 @@ public sealed class EcoStructure : MonoBehaviour
         playerBuilt = false; // A second request in the same frame cannot refund twice.
         var entry = EcoBuildingCatalog.Entries[index];
         if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) recycler.RecoverContents(owner);
-        owner.ReturnMaterials(entry.Metal * InvestmentMultiplier / 2, entry.Plastic * InvestmentMultiplier / 2);
+        owner.ReturnMaterials(entry.Metal / 2, entry.Plastic / 2); // GDD §9: dismantling returns 50 % of the base cost
         gameObject.SetActive(false); Destroy(gameObject);
         owner.ShowFeedback("Yapı söküldü • Malzemenin yarısı geri alındı."); return true;
     }

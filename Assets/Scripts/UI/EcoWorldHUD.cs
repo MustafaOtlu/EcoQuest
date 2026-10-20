@@ -66,6 +66,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private Button bigMapButton;
     private Image clockIcon, weatherIcon, windIcon;
     private Text clockText, weatherText, windText;
+    private string announcedWeather = "";
     private readonly List<Image> miniPins = new List<Image>();
 
     // Banner & intro
@@ -173,7 +174,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
             {
                 clockText.text = "Gün " + clock.day + "  " + Mathf.FloorToInt(clock.hour).ToString("00") + ":" + Mathf.FloorToInt(clock.hour % 1f * 60f).ToString("00");
                 EcoUI.SetIcon(weatherIcon, EcoIcons.Weather(clock));
-                weatherText.text = clock.WeatherName;
+                // GDD §10: at least 30 s warning before a harsh change (rain or storm).
+                string soon = clock.ForecastName(45f);
+                bool harsh = soon != clock.WeatherName && (soon == "Yağmurlu" || soon == "Fırtına");
+                weatherText.text = harsh ? "→ " + soon : clock.WeatherName; // the icon still shows the current weather
+                weatherText.color = harsh ? EcoUI.Amber : EcoUI.Ink;
+                if (harsh && soon != announcedWeather && weapons != null) { announcedWeather = soon; weapons.ShowFeedback("Hava değişiyor: yaklaşık 45 sn içinde " + soon.ToLowerInvariant() + ". Açık ekinler sulanır, güneş üretimi düşer."); }
+                if (!harsh) announcedWeather = "";
                 float wind = RegionWind(current, clock);
                 windText.text = "%" + Mathf.RoundToInt(wind * 100f);
                 mapCard.summary.text = clockText.text + "  ·  " + clock.WeatherName;

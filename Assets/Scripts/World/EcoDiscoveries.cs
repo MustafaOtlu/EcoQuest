@@ -29,14 +29,14 @@ public sealed class EcoDiscoveries : MonoBehaviour
     public static bool CanBuild(string id)
     {
         if (id == "solar" || id == "battery" || id == "charger" || id == "farm" || id == "recycling") return true;
-        if (id == "wind") return Has("recipe.wind");
+        if (id == "wind") return Has("recipe.wind") && Completed(0); // GDD §7: wind opens after the first energy project
         if (id == "intake" || id == "purifier" || id == "tank") return Has("recipe.water");
         if (id == "hydro") return Has("recipe.hydro") || Completed(1);
         if (id == "station" || id == "glacier") return Has("recipe.station");
         return false;
     }
     public static string UnlockReason(string id) => CanBuild(id) ? ""
-        : id == "wind" ? "Rüzgârlı yükseltide üretim koşullarını keşfet."
+        : id == "wind" ? (Has("recipe.wind") ? "Önce \"Mahalleye ilk enerji\" projesini tamamla." : "Rüzgârlı tepelerin üretim koşullarını keşfet.")
         : id == "hydro" ? "Gölü canlandırma projesi sonrası doğal akış santrali açılır."
         : id == "station" || id == "glacier" ? "Buzul bölgesine giderek izleme tarifini keşfet."
         : "Su sorunu olan bir gölü incele; temel çözüm tarifi YEP istemez.";

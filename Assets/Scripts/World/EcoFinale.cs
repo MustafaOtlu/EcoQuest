@@ -53,8 +53,10 @@ public sealed class EcoFinale : MonoBehaviour
         {
             nextDrought = Time.time + 60f; pressureFree = Time.time + 12f;
             foreach (var node in FindObjectsByType<EcoWaterNode>(FindObjectsSortMode.None))
-                if (node.kind == EcoWaterNode.Kind.Tank || node.kind == EcoWaterNode.Kind.Purifier) node.cleanWater *= 0.6f;
-            Say("Kuraklık! Depolardaki temiz suyun bir kısmı kayboldu.", 6f);
+                // GDD §12: a drought wave takes at most 20 % of the open reserve; a closed tank halves that loss.
+                if (node.kind == EcoWaterNode.Kind.Tank) node.cleanWater *= 0.9f;
+                else if (node.kind == EcoWaterNode.Kind.Purifier) node.cleanWater *= 0.8f;
+            Say("Kuraklık! Açık rezervden %20, kapalı depodan %10 temiz su buharlaştı.", 6f);
         }
         else if (Time.time >= nextSmog)
         {

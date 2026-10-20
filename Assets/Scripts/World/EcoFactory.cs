@@ -8,7 +8,9 @@ public sealed class EcoFactory : MonoBehaviour
     public bool Converted => converted;
     public ParticleSystem smoke;
     public GameObject filterVisual;
-    [Min(0)] public float airPerSecond = 0.12f, carbonPerSecond = 0.04f;
+    // GDD §10 balance: an unfiltered factory adds +4 air pollution and +2 carbon per minute; the filter removes 80 % of
+    // the air load (not carbon); the clean-energy conversion removes 90 % of the carbon while it is powered.
+    [Min(0)] public float airPerSecond = 4f / 60f, carbonPerSecond = 2f / 60f;
     private void Start() => RefreshVisual();
     private void Update() => Simulate(Time.deltaTime);
     public void Simulate(float seconds)
@@ -27,7 +29,7 @@ public sealed class EcoFactory : MonoBehaviour
         if (filtered) { player.ShowFeedback("Bu fabrikada filtre zaten takılı."); return false; }
         if (!player.UseAirFilter(true)) { player.ShowFeedback("Marketten büyük hava filtresi alman gerekiyor."); return false; }
         filtered = true; RefreshVisual();
-        player.ShowFeedback("Büyük filtre takıldı • Hava emisyonu %92 azaldı. Karbon üretimi sürüyor."); return true;
+        player.ShowFeedback("Büyük filtre takıldı • Hava emisyonu %80 azaldı. Karbon üretimi sürüyor."); return true;
     }
     public bool ConvertToCleanPower(PlayerWeaponSystem player)
     {
@@ -55,6 +57,6 @@ public sealed class EcoFactory : MonoBehaviour
         // Existing particles must also change when the filter is installed.
         smoke.Clear(); if (Application.isPlaying && smoke.gameObject.activeInHierarchy) smoke.Play();
     }
-    public string Describe() => filtered ? "Fabrika • Büyük filtre takılı\nHava emisyonu %92 azaldı • Karbon üretimi sürüyor"
+    public string Describe() => filtered ? "Fabrika • Büyük filtre takılı\nHava emisyonu %80 azaldı • Karbon üretimi sürüyor"
         : "Filtresiz fabrika • Hava kirliliği ve karbon üretiyor\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Büyük hava filtresi tak";
 }

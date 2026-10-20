@@ -30,6 +30,17 @@ public sealed class EcoWorldClock : MonoBehaviour
     public Light sun;
     public float RainIntensity => Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.52f, 0.75f, cloudCover));
     public string WeatherName => RainIntensity > 0.65f && windStrength > 0.7f ? "Fırtına" : RainIntensity > 0.15f ? "Yağmurlu" : cloudCover > 0.3f ? "Bulutlu" : "Açık";
+    /// <summary>GDD §10: the weather is a deterministic function of game time, so the HUD can warn ahead of a change.</summary>
+    public string ForecastName(float seconds)
+    {
+        if (!varyingWeather) return WeatherName;
+        float time = day * 24f + hour + Mathf.Max(0f, seconds) * 24f / Mathf.Max(60f, dayLengthSeconds);
+        float phase = time * 0.08f;
+        float wind = Mathf.Lerp(0.05f, 1f, Mathf.PerlinNoise(phase, 7.31f));
+        float cloud = Mathf.SmoothStep(0.05f, 0.95f, Mathf.InverseLerp(0.25f, 0.75f, Mathf.PerlinNoise(phase * 0.7f, 2.19f)));
+        float rain = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.52f, 0.75f, cloud));
+        return rain > 0.65f && wind > 0.7f ? "Fırtına" : rain > 0.15f ? "Yağmurlu" : cloud > 0.3f ? "Bulutlu" : "Açık";
+    }
     public float SolarFactor => Mathf.Max(0f, Mathf.Sin((hour - 6f) * Mathf.PI / 12f)) * (1f - cloudCover * 0.8f);
     public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
     private float originalIntensity, originalAmbient;

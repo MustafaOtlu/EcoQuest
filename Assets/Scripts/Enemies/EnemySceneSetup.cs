@@ -46,6 +46,8 @@ public sealed class EnemySceneSetup : MonoBehaviour
         foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID))
         {
             if (region.GetComponent<EcoEnemySpawnZone>() != null) continue;
+            // GDD §2/§11: the town is the safe preparation area and the starter pockets at the base never spawn.
+            if (region.priority >= 5 || (region.TryGetComponent<EcoRegionInfo>(out var info) && info.kind == EcoRegionInfo.Kind.City)) continue;
             var zone = region.gameObject.AddComponent<EcoEnemySpawnZone>();
             zone.enemyPrefabs = enemyPrefabs;
             zone.player = player;

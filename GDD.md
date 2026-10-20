@@ -725,3 +725,10 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | [M] harita (§13) | Uygulandı: yakınlaştır/kaydır, bölge sınırları, rüzgâr/hava simgeleri, ilgi noktaları, fareyle bakılan bölgenin bilgi kartı (göstergeler, iklim, canlı görevler, fırsatlar) |
 | Düşman avı YEP vermez (§7) | Uygulandı: Teneke filtresi artık +12 YEP vermiyor |
 | Buzul istasyonu yalnız ölçer (§7, §10) | Uygulandı: erime eşiğine bonus yok; erime alan ağırlıklı dünya karbonuna (≤20 durur, altında yavaş toparlanır) bağlı |
+| Tesis kademeleri, tamir, söküm (§9) | Uygulandı ve Play Mode'da doğrulandı: 2. kademe 2 proje + taban maliyet, 3. kademe 4 proje + 2× taban; kapasite 1× / 1,5× / 2× (batarya dahil); tamir = eksik oran × taban × %25; söküm tabanın %50'si |
+| Rüzgâr tarifi (§7) | Uygulandı: rüzgâr türbini, bölge keşfi ve "Mahalleye ilk enerji" projesinden sonra açılır |
+| Fabrika emisyonu (§10) | Uygulandı: filtresiz +4 hava / +2 karbon dakikada; filtre havayı %80 azaltır; temiz enerji karbonu %90 azaltır |
+| Hava uyarısı (§10) | Uygulandı: yağmur/fırtınadan ~45 sn önce harita kartında ve mesajla uyarı (deterministik tahmin) |
+| Güvenli şehir (§2, §11) | Uygulandı: şehir ve üs cepleri düşman doğurmaz |
+| Final kuraklığı (§12) | Uygulandı: açık rezervden en çok %20, kapalı depodan %10 |
+| Harita fare etkileşimi | Input System ile enjekte edilen fare konumuyla doğrulandı (bölge tespiti + bilgi kartı); gerçek oyuncu denemesi önerilir |

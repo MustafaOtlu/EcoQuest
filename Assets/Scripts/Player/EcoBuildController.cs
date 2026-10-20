@@ -29,7 +29,7 @@ public sealed class EcoBuildController : MonoBehaviour
     public string SlotCost(int slot)
     {
         int i = Page * 5 + slot;
-        return i < CableIndex ? EcoBuildingCatalog.Entries[i].Metal + "M " + EcoBuildingCatalog.Entries[i].Plastic + "P • Sv" + EcoBuildingCatalog.Entries[i].Level
+        return i < CableIndex ? EcoBuildingCatalog.Entries[i].Metal + "M " + EcoBuildingCatalog.Entries[i].Plastic + "P" + (EcoDiscoveries.CanBuild(EcoBuildingCatalog.Entries[i].Id) ? "" : " • kilitli")
             : i == CableIndex ? "1M + 1P / m" : i == PipeIndex ? "2P / m" : "";
     }
     public void NextPage() => Select(((Page + 1) % PageCount) * 5);
