@@ -31,11 +31,12 @@ public sealed class EcoGameMenu : MonoBehaviour
     private void OnGUI()
     {
         if (!PlayerController.Paused) { if (screen != Screen_.Pause) screen = Screen_.Pause; listening = -1; return; }
+        if (EcoSurvey.Current != null && EcoSurvey.Current.IsOpen) return; // the survey opened from here sits on top; the menu returns when it closes
         EcoTheme.Begin();
         string heading = screen == Screen_.Main ? "ECOQUEST" : "DURAKLATILDI";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Kayıt slotları" : screen == Screen_.Settings ? "Ayarlar"
             : screen == Screen_.Keys ? "Tuş atamaları (değiştirmek için tıkla, sonra yeni tuşa bas)" : "Dünya durdu. Devam etmek için Esc.";
-        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : 520f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
+        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 520f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
         switch (screen)

@@ -732,3 +732,10 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Güvenli şehir (§2, §11) | Uygulandı: şehir ve üs cepleri düşman doğurmaz |
 | Final kuraklığı (§12) | Uygulandı: açık rezervden en çok %20, kapalı depodan %10 |
 | Harita fare etkileşimi | Input System ile enjekte edilen fare konumuyla doğrulandı (bölge tespiti + bilgi kartı); gerçek oyuncu denemesi önerilir |
+| Kayıt/yükleme (§14) | Play Mode'da doğrulandı: hızlı kayıttan sonra değiştirilen metal, ekin, sanayi havası ve oyuncu konumu hızlı yüklemeyle geri geldi; final zaferi (`Won`) kayıtta kalıyor |
+| Ses (§15) | Play Mode'da doğrulandı: müzik + ortam katmanları, tek dinleyici; sanayiye girince fabrika uğultusu 0,02 → 0,15 |
+| Öğrenme kartı (§16) | Play Mode'da doğrulandı: gerçek 10 EB şarjla P1 koşulu sağlandı, 120 sn sonunda +40 YEP, 1 uzmanlık hakkı ve "Biliyor muydun?" kartı |
+| Final (§12) | Play Mode'da baştan sona doğrulandı: başlatma kapıları sırayla reddediyor (istasyon → %50 hazırlık → terminal 40 EB/30 SB → araç 40 EB/15 SB/5 top); odaklar sırasız ilerlemiyor; ısı → duman (terminalden 20 EB) → çekirdek (5 top + E) → zafer; yenilgide karşılaşma temizleniyor, rezerv korunuyor |
+| Final arayüzü | Yenilendi: ikonlu canavar/faz kartı (baskı çubuğu, 3 faz rozeti, ilerleme çubuğu), terminal yakınında başlatma kontrol listesi (✓/✗), temalı mesaj kartı; hedef kartı final durumunu gösteriyor; anket açıkken mesaj süresi durur |
+| Terminal menzili | Düzeltildi: [F] başlatma, [E] rezerv/çekirdek ve ipucu kartı aynı 9 m menzili kullanıyor (önce E 7 m'de kesiliyordu) |
+| Menü + anket | Düzeltildi: menüden açılan anket artık menünün üstüne binmiyor; kapanınca menüye dönülüyor; anket penceresi ikonlu |

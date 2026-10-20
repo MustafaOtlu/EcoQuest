@@ -53,7 +53,7 @@ public sealed class EcoSurvey : MonoBehaviour
         if (!open) return;
         EcoTheme.Begin();
         if (option == null) { option = new GUIStyle(EcoTheme.Button) { wordWrap = true, fontSize = 14, alignment = TextAnchor.MiddleCenter }; }
-        var r = EcoTheme.Window(780f, 640f, post ? "Öğrenme anketi (son)" : "Öğrenme anketi (ön)", "İsteğe bağlı • 5 soru • yanıtlar yalnız bu bilgisayarda kalır.");
+        var r = EcoTheme.Window(780f, 640f, post ? "Öğrenme anketi (son)" : "Öğrenme anketi (ön)", "İsteğe bağlı • 5 soru • yanıtlar yalnız bu bilgisayarda kalır.", "ui_journal");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 100f;
         for (int q = 0; q < 5; q++)
         {

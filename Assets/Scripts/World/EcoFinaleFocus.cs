@@ -72,6 +72,32 @@ public sealed class EcoFinaleFocus : MonoBehaviour
         RefreshVisual(); return true;
     }
 
+    public static readonly string[] Icons = { "temperature", "air", "metal" };
+    public static string NameOf(int phase) => Names[Mathf.Clamp(phase, 0, 2)];
+    public static Color ColorOf(int phase) => Colors[Mathf.Clamp(phase, 0, 2)];
+    /// <summary>0..1 toward balancing this focus, for the HUD bar.</summary>
+    public float Progress
+    {
+        get
+        {
+            if (Balanced) return 1f;
+            if (Owner == null) return 0f;
+            if (Phase == 0) return 0.75f * WaterReceived / Owner.RequiredWater + 0.25f * Held / EcoFinale.BalanceSeconds;
+            if (Phase == 1) return 0.75f * AirSeconds / 3f + 0.25f * Held / EcoFinale.BalanceSeconds;
+            return (float)MetalHits / Owner.RequiredMetalHits;
+        }
+    }
+    /// <summary>One-line instruction without the focus name.</summary>
+    public string Goal
+    {
+        get
+        {
+            if (Phase == 0) return "Temiz su püskürt " + WaterReceived.ToString("0.0") + "/" + Owner.RequiredWater.ToString("0") + " SB · destek " + Held.ToString("0.0") + "/4 sn";
+            if (Phase == 1) return "Anti-vakum tut " + AirSeconds.ToString("0.0") + "/3 sn · destek " + Held.ToString("0.0") + "/4 sn";
+            return "Demir top " + MetalHits + "/" + Owner.RequiredMetalHits + (MetalHits >= Owner.RequiredMetalHits ? " · terminalde " + EcoKeys.Tag(EcoKeys.Action.Interact) : " · zırhı aç");
+        }
+    }
+
     public string Describe()
     {
         if (Balanced) return Names[Phase] + " • DENGELENDİ";

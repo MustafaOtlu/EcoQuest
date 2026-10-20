@@ -317,7 +317,12 @@ public sealed class EcoQuestHUD : MonoBehaviour
         var enemies = FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None); int alive = 0;
         for (int i = 0; i < enemies.Length; i++) if (enemies[i] != null && enemies[i].State != EnemyBrain.Behaviour.Dead && enemies[i].Health > 0f) alive++;
         string text;
-        if (alive > 0) text = "Alanı temizle · Kalan düşman: " + alive;
+        var finale = EcoFinale.Current; var readiness = EcoProjects.Current;
+        // GDD §12: the endgame state outranks the early-game guidance.
+        if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
+        else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
+        else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness) text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
+        else if (alive > 0) text = "Alanı temizle · Kalan düşman: " + alive;
         else
         {
             var crops = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None); bool mature = false, living = false;
