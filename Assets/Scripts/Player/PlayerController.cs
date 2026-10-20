@@ -8,6 +8,7 @@ public class PlayerController : MonoBehaviour
     [Header("Movement")]
     public float walkSpeed = 3f;
     public float runSpeed = 6f;
+    public float jumpHeight = 1.25f;
     public float gravity = -9.81f;
     [Header("First Person Look")]
     public float mouseSensitivity = 0.1f;
@@ -20,7 +21,7 @@ public class PlayerController : MonoBehaviour
     private static readonly int SpeedParameter = Animator.StringToHash("Speed");
     private CharacterController controller;
     private PlayerVitals vitals;
-    private InputAction moveAction, lookAction, sprintAction;
+    private InputAction moveAction, lookAction, sprintAction, jumpAction;
     private float verticalSpeed, pitch;
     private Renderer[] bodyRenderers;
     private ShadowCastingMode[] originalShadowModes;
@@ -35,6 +36,7 @@ public class PlayerController : MonoBehaviour
         moveAction = input.actions.FindAction("Player/Move", true);
         lookAction = input.actions.FindAction("Player/Look", true);
         sprintAction = input.actions.FindAction("Player/Sprint", true);
+        jumpAction = input.actions.FindAction("Player/Jump", false);
         if (characterAnimator == null) characterAnimator = GetComponentInChildren<Animator>();
         if (characterAnimator != null) characterAnimator.applyRootMotion = false;
         ConfigureFirstPersonBody();
@@ -68,7 +70,16 @@ public class PlayerController : MonoBehaviour
         if (vitals != null) speed *= vitals.MovementMultiplier;
         // Backwards and sideways movement preserve the view direction.
         Vector3 movement = (transform.forward * input.y + transform.right * input.x) * speed;
-        if (controller.isGrounded && verticalSpeed < 0f) verticalSpeed = -2f;
+        if (controller.isGrounded)
+        {
+            if (verticalSpeed < 0f) verticalSpeed = -2f;
+            bool jumpPressed = (jumpAction != null && jumpAction.WasPressedThisFrame())
+                || (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame);
+            if (hasControl && jumpPressed)
+            {
+                verticalSpeed = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+        }
         verticalSpeed += gravity * Time.deltaTime;
         controller.Move((movement + Vector3.up * verticalSpeed) * Time.deltaTime);
 

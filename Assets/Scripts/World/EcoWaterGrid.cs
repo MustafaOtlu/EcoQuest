@@ -5,7 +5,12 @@ using UnityEngine;
 [DefaultExecutionOrder(40)]
 public sealed class EcoWaterGrid : MonoBehaviour
 {
-    private void Update() => Simulate(Time.deltaTime);
+    private void Update()
+    {
+        var primary = EcoWorldClock.Current;
+        if (primary != null && primary.TryGetComponent<EcoWaterGrid>(out var owner) && owner != this) return;
+        Simulate(Time.deltaTime);
+    }
     public void Simulate(float seconds)
     {
         if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;

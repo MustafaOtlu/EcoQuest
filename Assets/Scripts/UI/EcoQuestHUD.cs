@@ -35,7 +35,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (weapons == null) weapons = FindFirstObjectByType<PlayerWeaponSystem>();
         vitals = weapons != null ? weapons.GetComponentInParent<PlayerVitals>() : null;
         if (vitals != null) { previousLegacyHud = vitals.showLegacyHUD; vitals.showLegacyHUD = false; }
+<<<<<<< HEAD
         worldClock = FindFirstObjectByType<EcoWorldClock>();
+=======
+        worldClock = EcoWorldClock.Current;
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         // The dynamic built-in font includes Turkish glyphs. A 2x raster provides crisp
         // small labels without depending on a font installed only on the developer's PC.
         font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -57,7 +61,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
             tracks[i] = Panel("Meter " + i, vitalsPanel, new Vector2(0, 1), new Vector2(16, y - 25), new Vector2(264, 5), new Vector2(0, 1), new Color(0.15f, 0.22f, 0.24f));
             fills[i] = Panel("Fill", tracks[i], new Vector2(0, 1), Vector2.zero, new Vector2(264, 5), new Vector2(0, 1), meterColors[i]).GetComponent<Image>();
         }
+<<<<<<< HEAD
         weather = Label(vitalsPanel, "Weather", "", new Vector2(16, -150), new Vector2(264, 44), 14, TextAnchor.UpperLeft, muted);
+=======
+        weather = Label(vitalsPanel, "Weather", "", new Vector2(16, -150), new Vector2(264, 44), 15, TextAnchor.UpperLeft, muted);
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         resourcesPanel = Panel("Materials", root.transform, new Vector2(1, 1), Vector2.zero, new Vector2(274, 188), new Vector2(1, 1));
         Label(resourcesPanel, "Heading", "KAYNAKLAR", new Vector2(14, -10), new Vector2(220, 22), 14, TextAnchor.MiddleLeft, accent, true);
         inventory = Label(resourcesPanel, "Inventory", "", new Vector2(14, -39), new Vector2(246, 143), 16, TextAnchor.UpperLeft);
@@ -66,17 +74,30 @@ public sealed class EcoQuestHUD : MonoBehaviour
         objective = Label(objectivePanel, "Current objective", "", new Vector2(16, -32), new Vector2(384, 54), 19, TextAnchor.UpperLeft, ink, true);
         Label(objectivePanel, "Heading", "SIRADAKİ HEDEF", new Vector2(16, -10), new Vector2(300, 18), 12, TextAnchor.MiddleLeft, accent, true);
 
+<<<<<<< HEAD
         dock = Panel("Toolbelt", root.transform, new Vector2(0.5f, 0), Vector2.zero, new Vector2(700, 84), new Vector2(0.5f, 0), Color.clear);
+=======
+        dock = Panel("Toolbelt", root.transform, new Vector2(0.5f, 0), Vector2.zero, new Vector2(700, 96), new Vector2(0.5f, 0), Color.clear);
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         slots = new Image[5]; slotRects = new RectTransform[5]; markers = new Image[5];
         slotTitles = new Text[5]; slotCounts = new Text[5];
         for (int i = 0; i < 5; i++)
         {
+<<<<<<< HEAD
             var slot = Panel(names[i], dock, new Vector2(0, 1), new Vector2(i * 142, 0), new Vector2(132, 84), new Vector2(0, 1));
             slotRects[i] = slot; slots[i] = slot.GetComponent<Image>(); slots[i].sprite = slotSprite;
             markers[i] = Strip(slot, "Selection", new Vector2(0, 1), Vector2.zero, new Vector2(132, 3), new Vector2(0, 1), accent);
             Label(slot, "Key", (i + 1).ToString(), new Vector2(10, -7), new Vector2(24, 19), 13, TextAnchor.MiddleLeft, muted, true);
             slotTitles[i] = Label(slot, "Title", names[i], new Vector2(8, -28), new Vector2(116, 25), 15, TextAnchor.MiddleCenter, ink, true);
             slotCounts[i] = Label(slot, "Count", "", new Vector2(8, -56), new Vector2(116, 22), 14, TextAnchor.MiddleCenter, muted);
+=======
+            var slot = Panel(names[i], dock, new Vector2(0, 1), new Vector2(i * 142, 0), new Vector2(132, 96), new Vector2(0, 1));
+            slotRects[i] = slot; slots[i] = slot.GetComponent<Image>(); slots[i].sprite = slotSprite;
+            markers[i] = Strip(slot, "Selection", new Vector2(0, 1), Vector2.zero, new Vector2(132, 3), new Vector2(0, 1), accent);
+            Label(slot, "Key", (i + 1).ToString(), new Vector2(10, -7), new Vector2(24, 19), 15, TextAnchor.MiddleLeft, muted, true);
+            slotTitles[i] = Label(slot, "Title", names[i], new Vector2(8, -25), new Vector2(116, 40), 15, TextAnchor.MiddleCenter, ink, true);
+            slotCounts[i] = Label(slot, "Count", "", new Vector2(8, -69), new Vector2(116, 21), 15, TextAnchor.MiddleCenter, muted);
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
             if (toolIcons != null && i < toolIcons.Length && toolIcons[i] != null)
             {
                 var icon = Panel("Icon", slot, new Vector2(1, 1), new Vector2(-9, -7), new Vector2(21, 21), new Vector2(1, 1), Color.white).GetComponent<Image>();
@@ -85,7 +106,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
         }
         modePanel = Panel("Mode", root.transform, new Vector2(0.5f, 0), Vector2.zero, new Vector2(700, 62), new Vector2(0.5f, 0));
         mode = Label(modePanel, "Active tool", "", new Vector2(14, -7), new Vector2(672, 25), 19, TextAnchor.MiddleCenter, ink, true);
+<<<<<<< HEAD
         instructions = Label(modePanel, "Controls", "", new Vector2(14, -34), new Vector2(672, 22), 14, TextAnchor.MiddleCenter, muted);
+=======
+        instructions = Label(modePanel, "Controls", "", new Vector2(14, -34), new Vector2(672, 22), 15, TextAnchor.MiddleCenter, muted);
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         contextPanel = Panel("Context", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0, -88), new Vector2(600, 112), new Vector2(0.5f, 0.5f), Color.clear);
         context = Label(contextPanel, "Interaction", "", new Vector2(16, -10), new Vector2(568, 92), 19, TextAnchor.MiddleCenter);
         feedbackPanel = Panel("Feedback", root.transform, new Vector2(0.5f, 1), new Vector2(0, -122), new Vector2(540, 74), new Vector2(0.5f, 1), Color.clear);
@@ -108,7 +133,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
     {
         if (canvas == null) return;
         canvas.enabled = !EcoMarketUI.IsOpen;
+<<<<<<< HEAD
         if (lastWidth != Screen.width || lastHeight != Screen.height) ApplyLayout();
+=======
+        if (lastWidth != DisplayWidth || lastHeight != DisplayHeight) ApplyLayout();
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         if (weapons == null) return;
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
         if (buildingLayout != building) ApplyLayout();
@@ -127,6 +156,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private void Refresh()
     {
         if (weapons == null || canvas == null) return;
+<<<<<<< HEAD
+=======
+        worldClock = EcoWorldClock.Current;
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         if (worldClock != null) weather.text = "Gün " + worldClock.day + "  ·  " + Mathf.FloorToInt(worldClock.hour).ToString("00") + ":"
             + Mathf.FloorToInt(worldClock.hour % 1f * 60f).ToString("00") + "  ·  " + worldClock.WeatherName + "\nRüzgâr %" + Mathf.RoundToInt(worldClock.windStrength * 100);
         float[] values = { vitals != null ? vitals.Energy : 100, weapons.Energy, weapons.Water };
@@ -146,7 +179,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (weapons.Progression != null) inventory.text += "\nSeviye " + weapons.Progression.Level + "  ·  "
             + (weapons.Progression.Level == EcoProgression.MaximumLevel ? "En yüksek seviye" : "YEP " + weapons.Progression.LevelProgress + " / " + weapons.Progression.LevelRequirement);
         slotCounts[0].text = Mathf.CeilToInt(weapons.Water) + " su";
+<<<<<<< HEAD
         slotCounts[1].text = weapons.SeedCount(weapons.SelectedSeed) + " tohum · " + weapons.MetalAmmo + " top";
+=======
+        slotCounts[1].text = weapons.MetalMode ? weapons.MetalAmmo + " demir top" : weapons.SeedCount(weapons.SelectedSeed) + " tohum";
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         slotCounts[2].text = (weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap + weapons.CollectedOrganicWaste) + " atık";
         slotCounts[3].text = "Analiz"; slotCounts[4].text = "Etkileşim";
         string[] modes = { "Toplama", "Anti-vakum", "Su" };
@@ -203,7 +240,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
 
     private void ApplyLayout()
     {
+<<<<<<< HEAD
         lastWidth = Screen.width; lastHeight = Screen.height;
+=======
+        lastWidth = DisplayWidth; lastHeight = DisplayHeight;
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         // Keep labels readable at 800x600 while allowing high-resolution displays to grow
         // gently. The whole HUD is at scene root, independent of camera and weapon sway.
         float scale = Mathf.Clamp(Mathf.Min(lastWidth / 1600f, lastHeight / 900f), 0.8f, 1.5f);
@@ -228,6 +269,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         Place(objectivePanel, new Vector2(objectiveCenter, -margin), new Vector2(objectiveWidth, 92));
         LayoutText(objective, new Vector2(16, -32), new Vector2(objectiveWidth - 32, 54));
         float dockWidth = Mathf.Min(700, width - 2 * margin);
+<<<<<<< HEAD
         Place(dock, new Vector2(0, margin), new Vector2(dockWidth, 84));
         float slotWidth = (dockWidth - 40) / 5;
         for (int i = 0; i < slots.Length; i++)
@@ -244,6 +286,24 @@ public sealed class EcoQuestHUD : MonoBehaviour
         LayoutText(instructions, new Vector2(14, -34), new Vector2(dockWidth - 28, modeHeight - 40));
         float contextWidth = Mathf.Min(600, width - 2 * margin);
         float contextY = Mathf.Max(-88, margin + 96 + modeHeight + 18 + 56 - height * 0.5f);
+=======
+        Place(dock, new Vector2(0, margin), new Vector2(dockWidth, 96));
+        float slotWidth = (dockWidth - 40) / 5;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            Place(slotRects[i], new Vector2(i * (slotWidth + 10), 0), new Vector2(slotWidth, 96));
+            markers[i].rectTransform.sizeDelta = new Vector2(slotWidth, 3);
+            LayoutText(slotTitles[i], new Vector2(8, -25), new Vector2(slotWidth - 16, 40));
+            LayoutText(slotCounts[i], new Vector2(8, -69), new Vector2(slotWidth - 16, 21));
+        }
+        buildingLayout = weapons != null && weapons.Builder != null && weapons.Builder.IsBuilding;
+        float modeHeight = compact && buildingLayout ? 80 : 62;
+        Place(modePanel, new Vector2(0, margin + 108), new Vector2(dockWidth, modeHeight));
+        LayoutText(mode, new Vector2(14, -7), new Vector2(dockWidth - 28, 25));
+        LayoutText(instructions, new Vector2(14, -34), new Vector2(dockWidth - 28, modeHeight - 40));
+        float contextWidth = Mathf.Min(600, width - 2 * margin);
+        float contextY = Mathf.Max(-88, margin + 108 + modeHeight + 18 + 56 - height * 0.5f);
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         Place(contextPanel, new Vector2(0, contextY), new Vector2(contextWidth, 112));
         LayoutText(context, new Vector2(16, -10), new Vector2(contextWidth - 32, 92));
         float feedbackWidth = Mathf.Min(540, objectiveWidth + 80);
@@ -253,6 +313,14 @@ public sealed class EcoQuestHUD : MonoBehaviour
         LayoutText(recovery, new Vector2(16, -10), new Vector2(recoveryPanel.sizeDelta.x - 32, 56));
     }
 
+<<<<<<< HEAD
+=======
+    // Camera-space previews and split displays may have a different output size from
+    // Screen. Overlay canvases report the ordinary game-view size through pixelRect.
+    private int DisplayWidth => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.width));
+    private int DisplayHeight => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.height));
+
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
     private void SetVisible(RectTransform panel, bool visible) => panel.GetComponent<Image>().color = visible ? surface : Color.clear;
     private static void Place(RectTransform rect, Vector2 position, Vector2 size) { rect.anchoredPosition = position; rect.sizeDelta = size; }
 

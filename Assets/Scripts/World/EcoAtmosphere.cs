@@ -47,7 +47,12 @@ public sealed class EcoAtmosphere : MonoBehaviour
     public void ApplyView()
     {
         if (!isActiveAndEnabled) return;
+<<<<<<< HEAD
         if (clock == null) clock = FindFirstObjectByType<EcoWorldClock>();
+=======
+        // Gameplay follows clock ownership changes; manual fixtures retain their assigned clock.
+        if (automatic || clock == null) clock = EcoWorldClock.Current;
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         if (viewCamera == null) viewCamera = Camera.main;
         float far = Mathf.Clamp(renderDistance, 50, 2000);
         float daylight = clock == null ? 1 : Mathf.Clamp01(Mathf.Sin((clock.hour - 6) * Mathf.PI / 12));

@@ -3,6 +3,25 @@ using UnityEngine;
 [DefaultExecutionOrder(-100)]
 public sealed class EcoWorldClock : MonoBehaviour
 {
+    private static EcoWorldClock current;
+    public static EcoWorldClock Current
+    {
+        get
+        {
+            if (current != null && current.isActiveAndEnabled) return current;
+            var player = FindFirstObjectByType<PlayerController>();
+            Vector3 anchor = player != null ? player.transform.position : Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+            float nearest = float.PositiveInfinity;
+            foreach (var candidate in FindObjectsByType<EcoWorldClock>(FindObjectsSortMode.InstanceID))
+            {
+                if (!candidate.isActiveAndEnabled) continue;
+                float distance = (candidate.transform.position - anchor).sqrMagnitude;
+                if (distance >= nearest) continue;
+                nearest = distance; current = candidate;
+            }
+            return current;
+        }
+    }
     [Range(0f, 24f)] public float hour = 9f;
     [Min(60f)] public float dayLengthSeconds = 900f;
     public int day = 1;
@@ -15,6 +34,8 @@ public sealed class EcoWorldClock : MonoBehaviour
     public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
     private float originalIntensity, originalAmbient;
     private Quaternion originalRotation;
+    private void OnEnable() => current = null;
+    private void OnDisable() { if (current == this) current = null; }
 
     private void Start()
     {
@@ -24,11 +45,16 @@ public sealed class EcoWorldClock : MonoBehaviour
         originalAmbient = RenderSettings.ambientIntensity;
         if (sun != null) { originalIntensity = sun.intensity; originalRotation = sun.transform.rotation; }
         // Enable the atmosphere in gameplay scenes; isolated simulation fixtures stay independent.
+<<<<<<< HEAD
         if (EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
+=======
+        if (Current == this && EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         { var atmosphere = new GameObject("EcoQuest atmosphere").AddComponent<EcoAtmosphere>(); atmosphere.clock = this; }
     }
     private void Update()
     {
+        if (Current != this) return;
         if (advanceTime) Simulate(Time.deltaTime);
         if (!driveLighting || sun == null) return;
         sun.intensity = originalIntensity * SolarFactor;
@@ -44,11 +70,12 @@ public sealed class EcoWorldClock : MonoBehaviour
         if (!varyingWeather) return;
         float phase = (day * 24f + hour) * 0.08f;
         windStrength = Mathf.Lerp(0.05f, 1f, Mathf.PerlinNoise(phase, 7.31f));
-        cloudCover = Mathf.PerlinNoise(phase * 0.7f, 2.19f) * 0.75f;
+        float humidity = Mathf.PerlinNoise(phase * 0.7f, 2.19f);
+        cloudCover = Mathf.SmoothStep(0.05f, 0.95f, Mathf.InverseLerp(0.25f, 0.75f, humidity));
     }
     private void OnDestroy()
     {
-        if (!driveLighting) return;
+        if (!driveLighting || (current != null && current != this)) return;
         if (sun != null) { sun.intensity = originalIntensity; sun.transform.rotation = originalRotation; }
         RenderSettings.ambientIntensity = originalAmbient;
     }

@@ -30,14 +30,24 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
     private EcoRegion region;
     private float elapsed, nextSpawn;
     private bool initialized;
+<<<<<<< HEAD
     private readonly NavMeshPath connection = new NavMeshPath();
 
     private void Awake() => region = GetComponent<EcoRegion>();
+=======
+    private NavMeshPath connection;
+
+    private void Awake() { region = GetComponent<EcoRegion>(); connection = new NavMeshPath(); }
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
     private void Update() { if (autoSimulate) Simulate(Time.deltaTime); }
     public void Simulate(float seconds)
     {
         if (!isActiveAndEnabled || !EcoRegion.Valid(seconds)) return;
+<<<<<<< HEAD
         if (clock == null) clock = FindFirstObjectByType<EcoWorldClock>();
+=======
+        if (autoSimulate || clock == null) clock = EcoWorldClock.Current;
+>>>>>>> 745f61ed57cb575d070a9391ad0cb1c1d5851527
         int today = clock != null ? clock.day : 1;
         if (!initialized)
         {
