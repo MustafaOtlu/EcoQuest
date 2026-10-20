@@ -74,7 +74,7 @@ public class PlayerController : MonoBehaviour
         foreach (var other in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (other.gameObject != go) other.enabled = false; // exactly one listener
         var cam = go.GetComponent<Camera>();
         if (legacy != null) cam.CopyFrom(legacy);
-        cam.orthographic = true; cam.orthographicSize = 16f; cam.nearClipPlane = 0.3f; cam.farClipPlane = 450f;
+        cam.orthographic = true; cam.orthographicSize = 10f; cam.nearClipPlane = 0.3f; cam.farClipPlane = 450f;
         cam.enabled = true;
         var data = cam.GetUniversalAdditionalCameraData();
         if (legacy != null)

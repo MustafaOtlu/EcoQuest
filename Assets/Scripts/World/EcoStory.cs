@@ -35,18 +35,40 @@ public sealed class EcoStory : MonoBehaviour
 
     private void CreateChild()
     {
+        // The child waits at the front door of the home in town (map builder); older scenes fall back to the market.
+        var door = GameObject.Find("Eco Home door");
         var market = FindFirstObjectByType<EcoMarket>();
-        Vector3 basePosition = market != null ? market.transform.position : transform.position;
-        Vector3 position = basePosition + new Vector3(5f, 0f, 3f);
+        Vector3 position = door != null ? door.transform.position
+            : (market != null ? market.transform.position : transform.position) + new Vector3(5f, 0f, 3f);
         if (Physics.Raycast(position + Vector3.up * 40f, Vector3.down, out var hit, 120f, ~0, QueryTriggerInteraction.Ignore)) position = hit.point;
-        var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        go.name = "Mahalle çocuğu"; go.transform.position = position + Vector3.up * 0.75f; go.transform.localScale = new Vector3(0.6f, 0.75f, 0.6f);
-        var collider = go.GetComponent<Collider>(); if (collider != null) collider.isTrigger = true;
+        var go = new GameObject("Mahalle çocuğu");
+        go.transform.position = position;
+        if (door != null) go.transform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(door.transform.position - door.transform.parent.position, Vector3.up).normalized + Vector3.forward * 1e-4f);
+        var trigger = go.AddComponent<CapsuleCollider>(); trigger.isTrigger = true; trigger.radius = 0.35f; trigger.height = 1.3f; trigger.center = Vector3.up * 0.65f;
         EcoNavigation.Ignore(go);
+        // A small stylised figure: legs, shirt, head and hair, so the child reads as a person from the iso camera.
         var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        if (shader != null) { var material = new Material(shader); material.color = new Color(0.98f, 0.75f, 0.35f); if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", material.color); go.GetComponent<Renderer>().sharedMaterial = material; }
+        Material Paint(Color c) { var m = new Material(shader); m.color = c; if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c); return m; }
+        void Part(PrimitiveType type, Vector3 at, Vector3 size, Material m)
+        {
+            var part = GameObject.CreatePrimitive(type); Destroy(part.GetComponent<Collider>());
+            part.transform.SetParent(go.transform, false); part.transform.localPosition = at; part.transform.localScale = size;
+            part.GetComponent<Renderer>().sharedMaterial = m;
+        }
+        if (shader != null)
+        {
+            var trousers = Paint(new Color(0.22f, 0.32f, 0.52f)); var shirt = Paint(new Color(0.98f, 0.72f, 0.28f));
+            var skin = Paint(new Color(0.94f, 0.78f, 0.64f)); var hair = Paint(new Color(0.33f, 0.21f, 0.13f));
+            Part(PrimitiveType.Capsule, new Vector3(-0.09f, 0.27f, 0f), new Vector3(0.14f, 0.27f, 0.14f), trousers);
+            Part(PrimitiveType.Capsule, new Vector3(0.09f, 0.27f, 0f), new Vector3(0.14f, 0.27f, 0.14f), trousers);
+            Part(PrimitiveType.Capsule, new Vector3(0f, 0.72f, 0f), new Vector3(0.36f, 0.26f, 0.26f), shirt);
+            Part(PrimitiveType.Capsule, new Vector3(-0.22f, 0.7f, 0f), new Vector3(0.1f, 0.2f, 0.1f), shirt);
+            Part(PrimitiveType.Capsule, new Vector3(0.22f, 0.7f, 0f), new Vector3(0.1f, 0.2f, 0.1f), shirt);
+            Part(PrimitiveType.Sphere, new Vector3(0f, 1.1f, 0f), new Vector3(0.32f, 0.32f, 0.32f), skin);
+            Part(PrimitiveType.Sphere, new Vector3(0f, 1.18f, 0.03f), new Vector3(0.34f, 0.22f, 0.34f), hair);
+        }
+        EcoMapMarker.Add(go, "poi_home", "Mahalle çocuğu", "Bakım anları ve günlük sohbetler. Yanına gidip " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile konuş.", EcoMapMarker.Category.Quest, true);
         var label = new GameObject("Label"); label.transform.SetParent(go.transform, false); label.transform.localPosition = new Vector3(0f, 1.8f, 0f);
-        label.transform.localScale = new Vector3(1f / 0.6f, 1f / 0.75f, 1f / 0.6f);
         var mesh = label.AddComponent<TextMesh>(); var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         mesh.font = font; label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
         mesh.text = "MAHALLE ÇOCUĞU\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Konuş"; mesh.anchor = TextAnchor.MiddleCenter; mesh.alignment = TextAlignment.Center; mesh.characterSize = 0.1f; mesh.fontSize = 48; mesh.color = Color.white;

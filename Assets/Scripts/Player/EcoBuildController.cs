@@ -187,8 +187,11 @@ public sealed class EcoBuildController : MonoBehaviour
             if (!Physics.Raycast(position + corner + Vector3.up * 0.4f, Vector3.down, out var floor, 0.7f, ~(1 << 2), QueryTriggerInteraction.Ignore)
                 || floor.normal.y < 0.9f || Mathf.Abs(floor.point.y - (position.y - 0.03f)) > 0.12f
                 || floor.collider.GetComponentInParent<EcoStructure>() != null
-                || (floor.collider is not TerrainCollider && floor.collider.GetComponent<PlantingSurface>() == null))
-            { reason = "Yapının tamamı düz, sağlam zeminde olmalı."; return false; }
+                || (!EcoGround.IsSoil(floor.collider) && floor.collider.GetComponent<PlantingSurface>() == null))
+            {
+                string surface = floor.collider != null ? EcoGround.SurfaceName(floor.collider) : "";
+                reason = surface.Length > 0 ? surface : "Yapının tamamı düz, sağlam zeminde olmalı."; return false;
+            }
         }
         var prefab = Resources.Load<GameObject>("EcoInfrastructure/" + entry.Prefab);
         if (prefab == null && entry.Id != "hydro") { reason = "Yapı modeli bulunamadı."; return false; }
@@ -196,7 +199,7 @@ public sealed class EcoBuildController : MonoBehaviour
         foreach (var area in FindObjectsByType<EcoNoBuildZone>(FindObjectsSortMode.None))
             if (area.Contains(position, entry.Footprint * 0.5f)) { reason = "Yol, geçiş veya korunan habitat üzerine yapı kurulamaz."; return false; }
         foreach (var obstacle in Physics.OverlapBox(position + Vector3.up * (height * 0.5f + 0.03f), new Vector3(entry.Footprint.x * 0.48f, height * 0.5f, entry.Footprint.y * 0.48f), rotation, ~(1 << 2), QueryTriggerInteraction.Ignore))
-            if (obstacle.GetComponentInParent<EcoStructure>() != null || (obstacle is not TerrainCollider && obstacle.GetComponent<PlantingSurface>() == null))
+            if (obstacle.GetComponentInParent<EcoStructure>() != null || (!EcoGround.IsSoil(obstacle) && obstacle.GetComponent<PlantingSurface>() == null))
             { reason = "Başka bir nesneyle veya oyuncuyla çakışıyor."; return false; }
         reason = "Sol tık: kur • R: döndür • T: tamir • X: sök";
         string warning = EcoRegion.PlacementWarning(entry.Id, position);

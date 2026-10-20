@@ -39,16 +39,20 @@ Eski haritadan alınan prefablar (kopyalanmadı, yalnız yeniden kullanıldı): 
   silindi (kopyada): Su Deposu
   silindi (kopyada): Rock
   silindi (kopyada): WaterIntake
-Arazi: 200x200 m, yükseklik aralığı 0-130 m, su seviyesi y=17,5
-Bölge: Buzul Bölgesi merkez=(100.00, 173.00) boyut=(200.00, 54.00) hava=2 su=2 toprak=0 karbon=6
-Bölge: Rüzgârlı Alan merkez=(30.00, 110.00) boyut=(60.00, 72.00) hava=8 su=6 toprak=6 karbon=8
-Bölge: Şehir merkez=(100.00, 110.00) boyut=(80.00, 72.00) hava=38 su=30 toprak=28 karbon=38
-Bölge: Sanayi Bölgesi merkez=(170.00, 110.00) boyut=(60.00, 72.00) hava=66 su=60 toprak=58 karbon=58
-Bölge: Güneşli Bölge merkez=(100.00, 37.00) boyut=(76.00, 74.00) hava=6 su=8 toprak=10 karbon=10
-Bölge: Batı Gölü Havzası merkez=(31.00, 37.00) boyut=(62.00, 74.00) hava=5 su=8 toprak=6 karbon=6
-Bölge: Doğu Gölü Havzası merkez=(169.00, 37.00) boyut=(62.00, 74.00) hava=30 su=62 toprak=35 karbon=25
-Göl: Batı Gölü (temiz) merkez=(30.00, 44.00) yarıçap=16
-Göl: Doğu Gölü (kirli) merkez=(170.00, 44.00) yarıçap=14
+  silindi (kopyada): Cube
+Zemin ızgarası: 135×135 köşe, hücre 1,5 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 16 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Yollar: 13 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 7 toprak patika, 2 dere; ızgara yok
+Bölge: Buzul Bölgesi merkez=(75.00, 130.00) boyut=(150.00, 40.00) hava=2 su=2 toprak=0 karbon=6
+Bölge: Rüzgârlı Tepeler merkez=(22.00, 80.00) boyut=(44.00, 60.00) hava=8 su=6 toprak=6 karbon=8
+Bölge: Koruluk merkez=(22.00, 99.00) boyut=(40.00, 20.00) hava=10 su=8 toprak=22 karbon=14
+Bölge: Şehir Merkezi merkez=(75.00, 80.00) boyut=(62.00, 60.00) hava=32 su=26 toprak=24 karbon=32
+Bölge: Sanayi Bölgesi merkez=(128.00, 80.00) boyut=(44.00, 60.00) hava=66 su=55 toprak=58 karbon=58
+Bölge: Güneşli Çayır merkez=(75.00, 25.00) boyut=(62.00, 50.00) hava=6 su=8 toprak=10 karbon=10
+Bölge: Batı Gölü merkez=(22.00, 25.00) boyut=(44.00, 50.00) hava=5 su=8 toprak=6 karbon=6
+Bölge: Doğu Gölü merkez=(128.00, 25.00) boyut=(44.00, 50.00) hava=28 su=64 toprak=35 karbon=22
+Göl: Batı Gölü (temiz) merkez=(24.00, 30.00) yarıçap=11
+Göl: Doğu Gölü (kirli) merkez=(127.00, 30.00) yarıçap=10
 Model [apartman] = Assets/Zipler ve Modeller/Apartman/apartment+building+3d+model.fbx
 Model [modern] = Assets/Zipler ve Modeller/Modern ev/modern+house+3d+model.fbx
 Model [kitap] = Assets/Zipler ve Modeller/kitap evi/stylized+bookstore+3d+model.fbx.fbx
@@ -56,18 +60,24 @@ Model [klinik] = Assets/Zipler ve Modeller/klinik/Klinik.fbx
 Model [market] = Assets/Zipler ve Modeller/market/Market.fbx
 Model [trafik] = Assets/Zipler ve Modeller/Trafik ısıgı/traffic+light+3d+model.fbx
 Model [cop] = Assets/Zipler ve Modeller/Cop kutusu/industrial+trash+can+3d+model.fbx
-Şehir: 15 bina yerleştirildi
-Şehir: 30 sokak lambası
-Sanayi: 2 işlevsel (filtre takılabilir) + 2 dekoratif fabrika, tank, konteyner, atık sahası
-Rüzgâr çiftliği: 4 dekoratif türbin (rüzgâra göre döner, enerji üretmez)
-Güneş sahası: 30 öğe (eski haritanın dizisi yeniden kullanıldı)
-Güneş sahası: 30 öğe (eski haritanın dizisi yeniden kullanıldı)
-Buzul: 39 buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı
-Bitki modelleri: yapraklı=58 çam=72 kaya=388 bitki=71
-Bitki örtüsü: 86 ağaç, 79 kaya, 10 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
-Malzeme düzeltme: 66 renderer URP Lit'e çevrildi (111 malzeme).
-Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) (100.00, 24.00) konumuna taşındı
-Düşman başlangıç noktaları 'alan' ile aynı miktarda kaydırıldı: (-228.00, -77.00, -166.00)
-Gezinme (NavMesh) hacmi: (200.00, 80.00, 200.00) @ (100.00, 22.00, 100.00)
-Arayüz: EcoWorldHUD eklendi; EcoQuestHUD panel sprite'ı yuvarlatıldı: True
+Model [lamba] = Assets/Zipler ve Modeller/gece lambası/street+lamp+3d+model.fbx
+Şehir: göbekli kavşak, 4 kamu yapısı, sokak kenarlarına 17 bina (ızgara blok yok; elenen aday: alan 21, yol 9, çakışma 11)
+Şehir: 1 iç parsel evi (en yakın sokağa bakar)
+Şehir: 5 sokak lambası
+Şehir: 2 cadde ağacı
+Sanayi: 2 işlevsel (filtre takılabilir) + 2 depo, tanklar, konteynerler, atık sahası, kirli kanal
+Rüzgâr çiftliği: 3 dekoratif türbin (rüzgâra göre döner, enerji üretmez)
+Batı güneş tarlası: 12 öğe
+Doğu güneş tarlası: 12 öğe
+Buzul: 40 buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı
+Bitki modelleri: yapraklı=58 çam=72 kuru=21 kaya=388 bitki=71
+Ağaç adayları: yer uygun değil 952, eğim/su 22
+Bitki örtüsü: 151 ağaç, 687 sınır ormanı ağacı, 53 kaya, 18 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 295 renderer URP Lit'e çevrildi (114 malzeme).
+Doğa paleti: 890 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 2 renderer klasöründeki *_texture.png ile boyandı
+Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) (75.00, 16.00) konumuna taşındı; deneme bölgeleri 14×14 m'ye küçültüldü
+Düşman başlangıç noktaları 'alan' ile aynı miktarda kaydırıldı: (-253.00, -78.00, -174.00)
+Gezinme (NavMesh) hacmi: (150.00, 40.00, 150.00) @ (75.00, 22.00, 75.00)
+Arayüz: EcoWorldHUD eklendi (harita: üstten gerçek render 2048 px)
 Sahne: Assets/Scenes/EcoWorld.unity

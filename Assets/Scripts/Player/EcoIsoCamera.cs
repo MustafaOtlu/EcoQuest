@@ -14,7 +14,8 @@ public sealed class EcoIsoCamera : MonoBehaviour
 
     public Transform target;
     public float yaw = 45f, pitch = 55f;
-    public float distance = 16f, minDistance = 12f, maxDistance = 24f;
+    // Orthographic half-height in metres: 10 shows the character and a ~20 m working area; the wheel zooms 6–16.
+    public float distance = 10f, minDistance = 6f, maxDistance = 16f;
     public float followSharpness = 9f;
     public float focusHeight = 1.1f;
 
@@ -56,13 +57,19 @@ public sealed class EcoIsoCamera : MonoBehaviour
         {
             float scroll = mouse.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) > 0.01f)
-                wantedDistance = Mathf.Clamp(wantedDistance - Mathf.Sign(scroll) * 2.2f, minDistance, maxDistance);
+                wantedDistance = Mathf.Clamp(wantedDistance - Mathf.Sign(scroll) * 1.5f, minDistance, maxDistance);
         }
         distance = Mathf.Lerp(distance, wantedDistance, 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
 
         if (cam.orthographic) cam.orthographicSize = distance;
         Vector3 wantedFocus = target.position + Vector3.up * focusHeight;
-        if (Terrain.activeTerrain != null)
+        if (EcoGround.HasMap)
+        {
+            var map = EcoGround.MapRect;
+            wantedFocus.x = Mathf.Clamp(wantedFocus.x, map.xMin + 4f, map.xMax - 4f);
+            wantedFocus.z = Mathf.Clamp(wantedFocus.z, map.yMin + 4f, map.yMax - 4f);
+        }
+        else if (Terrain.activeTerrain != null)
         {
             var t = Terrain.activeTerrain; var size = t.terrainData.size; var origin = t.transform.position;
             wantedFocus.x = Mathf.Clamp(wantedFocus.x, origin.x + 5f, origin.x + size.x - 5f);
@@ -95,7 +102,7 @@ public sealed class EcoIsoCamera : MonoBehaviour
             var hits = Physics.SphereCastAll(from, 0.45f, direction / (length + 0.4f), length, ~(1 << 2), QueryTriggerInteraction.Ignore);
             foreach (var hit in hits)
             {
-                if (hit.collider is TerrainCollider || hit.transform.IsChildOf(target)) continue;
+                if (EcoGround.IsGround(hit.collider) || hit.transform.IsChildOf(target)) continue;
                 var renderer = hit.collider.GetComponent<Renderer>();
                 if (renderer != null) Touch(renderer);
                 else foreach (var child in hit.collider.GetComponentsInChildren<Renderer>()) Touch(child);

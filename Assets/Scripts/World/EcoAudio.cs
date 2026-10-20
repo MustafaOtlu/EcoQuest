@@ -233,9 +233,12 @@ public sealed class EcoAudio : MonoBehaviour
     }
     public static bool MuteFlag { get; private set; }
 
+    /// <summary>Opens/closes the sound panel (also bound to [F2] and the HUD's gear button).</summary>
+    public void TogglePanel() => panelOpen = !panelOpen;
+
     private void OnGUI()
     {
-        if (!panelOpen) { GUI.Label(new Rect(Screen.width - 120f, Screen.height - 24f, 112f, 20f), "" + EcoKeys.Tag(EcoKeys.Action.Settings) + " Ayarlar"); return; }
+        if (!panelOpen) return; // the HUD's quick-action column shows the [F2] settings button
         if (title == null)
         {
             title = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold };

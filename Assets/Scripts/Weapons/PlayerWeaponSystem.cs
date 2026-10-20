@@ -544,8 +544,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     public bool TryPlant(RaycastHit hit, EcoCropCatalog.Kind kind)
     {
         if (!EcoCropCatalog.Valid(kind) || !EcoDiscoveries.CanPlant(kind)) return false;
-        if (hit.normal.y < 0.7f || (hit.collider is not TerrainCollider && hit.collider.GetComponentInParent<PlantingSurface>() == null))
-        { Notify("Tohum için düz bir toprak yüzeyi gerekiyor."); return false; }
+        if (hit.normal.y < 0.7f || (!EcoGround.IsSoil(hit.collider) && hit.collider.GetComponentInParent<PlantingSurface>() == null))
+        {
+            string surfaceName = EcoGround.SurfaceName(hit.collider);
+            Notify(surfaceName.Length > 0 ? surfaceName : "Tohum için düz bir toprak yüzeyi gerekiyor."); return false;
+        }
         bool tree = kind == EcoCropCatalog.Kind.Tree;
         var surface = hit.collider.GetComponentInParent<PlantingSurface>();
         if (tree && (hit.collider.GetComponentInParent<EcoFarm>() != null || (surface != null && !surface.allowTrees)))

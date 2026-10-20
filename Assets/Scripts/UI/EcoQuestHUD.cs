@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+// Player layer of the HUD: vitals (top-left), resources (right column, under the map), the next objective (top centre),
+// the tool belt with its mode line (bottom centre) and the interaction / feedback / recovery messages.
+// Every card can be collapsed with its chevron; [H] cycles Tam → Sade → Gizli (EcoUI.Mode). EcoWorldHUD stacks its
+// cards around these using the heights published below.
 [DefaultExecutionOrder(40)]
 public sealed class EcoQuestHUD : MonoBehaviour
 {
@@ -9,26 +13,63 @@ public sealed class EcoQuestHUD : MonoBehaviour
     public Sprite panelSprite;
     public Sprite slotSprite;
     public Sprite[] toolIcons = new Sprite[5];
-    private const int RasterScale = 2;
-    private readonly Color surface = new Color(0.035f, 0.075f, 0.09f, 0.94f);
-    private readonly Color ink = new Color(0.94f, 0.97f, 0.95f);
-    private readonly Color muted = new Color(0.67f, 0.77f, 0.77f);
-    private readonly Color accent = new Color(0.43f, 0.91f, 0.66f);
-    private readonly Color[] meterColors = { new Color(0.34f, 0.86f, 0.59f), new Color(1f, 0.79f, 0.31f), new Color(0.36f, 0.77f, 1f) };
-    private readonly string[] names = { "VAKUM", "TOHUM", "GERİ DÖNÜŞÜM", "TARAYICI", "ELLER" };
+
+    /// <summary>Bottom edge (canvas units from the top) of the vitals card; EcoWorldHUD places the environment card below.</summary>
+    public static float VitalsBottom { get; private set; } = 220f;
+    /// <summary>Height of the tool belt + mode line block at the bottom of the screen.</summary>
+    public static float DockTop { get; private set; } = 170f;
+
+    private static readonly string[] ToolNames = { "VAKUM", "TOHUM", "GERİ DÖNÜŞÜM", "TARAYICI", "ELLER" };
+    private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand" };
+    private static readonly string[] ToolTips =
+    {
+        "Vakum [1]: atık toplar, anti-vakumla duman/asit dağıtır, su moduyla söndürür ve sular. [Q] mod.",
+        "Tohum aracı [2]: toprağa tohum eker; demir top modunda Teneke'yi sersemletir. [Q] mod, [R] tohum türü.",
+        "Geri dönüşüm [3]: atığı yerinde işler, [R] ile gübre uygular.",
+        "Tarayıcı [4]: neden, kalite ve bağlantı bilgisini gösterir; hasar vermez.",
+        "Eller [5]: etkileşim, hasat ve balıkçılık.",
+    };
+    private static readonly Color EnergyColor = new Color(0.34f, 0.86f, 0.59f), ElectricColor = new Color(1f, 0.79f, 0.31f), WaterColor = new Color(0.36f, 0.77f, 1f);
+
     private PlayerVitals vitals;
     private EcoWorldClock worldClock;
     private Canvas canvas;
     private CanvasScaler scaler;
-    private Font font;
-    private RectTransform vitalsPanel, resourcesPanel, objectivePanel, dock, modePanel, contextPanel, feedbackPanel, recoveryPanel;
-    private RectTransform[] tracks, slotRects;
-    private Image[] fills, slots, markers;
-    private Text[] barLabels, barValues, slotTitles, slotCounts;
-    private Text mode, inventory, context, feedback, instructions, recovery, objective, weather;
+    private EcoUI.Card vitalsCard, resourcesCard, objectiveCard;
+    // Vitals
+    private readonly Image[] meterIcons = new Image[3], meterFills = new Image[3];
+    private readonly RectTransform[] meterTracks = new RectTransform[3];
+    private readonly Text[] meterNames = new Text[3], meterValues = new Text[3];
+    private Image weatherIcon, windIcon, clockIcon;
+    private Text weatherText, windText;
+    // Resources
+    private static readonly (string icon, string name, string tip)[] Chips =
+    {
+        ("metal", "Metal", "Metal: inşa, tamir ve ekipman."), ("plastic", "Plastik", "Plastik: inşa, tohum ve filtre."),
+        ("food", "Ürün", "Temiz ürün: pazarda takas ve siparişler."), ("compost", "Gübre", "Gübre: bitki bakımı, zararlı baskısını azaltır."),
+        ("fish", "Temiz balık", "Temiz balık: en değerli takas ürünü."), ("fish_dirty", "Kirli balık", "Kirli balık gıda olmaz; organiğe işlenir."),
+        ("filter", "Küçük filtre", "Küçük filtre: sersemlemiş Teneke'ye takılır."), ("ui_build", "Büyük filtre", "Büyük filtre: fabrikaya takılır."),
+        ("scrap", "Ham atık", "Toplanmış metal/plastik atık; geri dönüştür."), ("organic", "Organik", "Organik kalıntı: üç birim bir gübre."),
+    };
+    private readonly Image[] chipIcons = new Image[10];
+    private readonly Text[] chipValues = new Text[10], chipNames = new Text[10];
+    private readonly GameObject[] chipHits = new GameObject[10];
+    private Image yepIcon, yepFill; private RectTransform yepTrack; private Text yepText;
+    // Objective
+    private Text objective;
+    // Dock
+    private RectTransform dock, modePanel, contextPanel, feedbackPanel, recoveryPanel, aim;
+    private readonly Image[] slotBg = new Image[5], slotIcon = new Image[5], slotMarker = new Image[5];
+    private readonly RectTransform[] slotRects = new RectTransform[5];
+    private readonly Text[] slotTitles = new Text[5], slotCounts = new Text[5], slotKeys = new Text[5];
+    private Image modeIcon;
+    private Text mode, instructions, context, feedback, recovery;
+    private Image contextBg, feedbackBg, recoveryBg;
     private float refreshAt, objectiveAt;
     private int lastWidth, lastHeight;
-    private bool buildingLayout, previousLegacyHud;
+    private float laidOutMapBottom = -1f;
+    private bool buildingLayout, previousLegacyHud, dirty = true;
+    private EcoUI.HudMode lastMode;
 
     private void Start()
     {
@@ -36,71 +77,121 @@ public sealed class EcoQuestHUD : MonoBehaviour
         vitals = weapons != null ? weapons.GetComponentInParent<PlayerVitals>() : null;
         if (vitals != null) { previousLegacyHud = vitals.showLegacyHUD; vitals.showLegacyHUD = false; }
         worldClock = EcoWorldClock.Current;
-        // The dynamic built-in font includes Turkish glyphs. A 2x raster provides crisp
-        // small labels without depending on a font installed only on the developer's PC.
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        var root = new GameObject("EcoQuest HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler)); root.layer = 5;
-        canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 20; canvas.pixelPerfect = true;
-        scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-
-        vitalsPanel = Panel("Vitals", root.transform, new Vector2(0, 1), Vector2.zero, new Vector2(296, 202), new Vector2(0, 1));
-        Strip(vitalsPanel, "Accent", new Vector2(0, 1), Vector2.zero, new Vector2(3, 202), new Vector2(0, 1), accent);
-        Label(vitalsPanel, "Brand", "ECOQUEST", new Vector2(16, -10), new Vector2(200, 23), 16, TextAnchor.MiddleLeft, accent, true);
-        tracks = new RectTransform[3]; fills = new Image[3]; barLabels = new Text[3]; barValues = new Text[3];
-        string[] labels = { "Karakter enerjisi", "Silah elektriği", "Temiz su" };
-        for (int i = 0; i < 3; i++)
-        {
-            float y = -38 - i * 36;
-            barLabels[i] = Label(vitalsPanel, "Meter name " + i, labels[i], new Vector2(16, y), new Vector2(176, 22), 17, TextAnchor.MiddleLeft);
-            barValues[i] = Label(vitalsPanel, "Meter value " + i, "", new Vector2(192, y), new Vector2(88, 22), 17, TextAnchor.MiddleRight, ink, true);
-            tracks[i] = Panel("Meter " + i, vitalsPanel, new Vector2(0, 1), new Vector2(16, y - 25), new Vector2(264, 5), new Vector2(0, 1), new Color(0.15f, 0.22f, 0.24f));
-            fills[i] = Panel("Fill", tracks[i], new Vector2(0, 1), Vector2.zero, new Vector2(264, 5), new Vector2(0, 1), meterColors[i]).GetComponent<Image>();
-        }
-        weather = Label(vitalsPanel, "Weather", "", new Vector2(16, -150), new Vector2(264, 44), 15, TextAnchor.UpperLeft, muted);
-        resourcesPanel = Panel("Materials", root.transform, new Vector2(1, 1), Vector2.zero, new Vector2(274, 188), new Vector2(1, 1));
-        Label(resourcesPanel, "Heading", "KAYNAKLAR", new Vector2(14, -10), new Vector2(220, 22), 14, TextAnchor.MiddleLeft, accent, true);
-        inventory = Label(resourcesPanel, "Inventory", "", new Vector2(14, -39), new Vector2(246, 143), 16, TextAnchor.UpperLeft);
-        objectivePanel = Panel("Objective", root.transform, new Vector2(0.5f, 1), Vector2.zero, new Vector2(416, 92), new Vector2(0.5f, 1));
-        // Keep the objective first for existing scene consumers which query the first Text.
-        objective = Label(objectivePanel, "Current objective", "", new Vector2(16, -32), new Vector2(384, 54), 19, TextAnchor.UpperLeft, ink, true);
-        Label(objectivePanel, "Heading", "SIRADAKİ HEDEF", new Vector2(16, -10), new Vector2(300, 18), 12, TextAnchor.MiddleLeft, accent, true);
-
-        dock = Panel("Toolbelt", root.transform, new Vector2(0.5f, 0), Vector2.zero, new Vector2(700, 96), new Vector2(0.5f, 0), Color.clear);
-        slots = new Image[5]; slotRects = new RectTransform[5]; markers = new Image[5];
-        slotTitles = new Text[5]; slotCounts = new Text[5];
-        for (int i = 0; i < 5; i++)
-        {
-            var slot = Panel(names[i], dock, new Vector2(0, 1), new Vector2(i * 142, 0), new Vector2(132, 96), new Vector2(0, 1));
-            slotRects[i] = slot; slots[i] = slot.GetComponent<Image>(); slots[i].sprite = slotSprite;
-            markers[i] = Strip(slot, "Selection", new Vector2(0, 1), Vector2.zero, new Vector2(132, 3), new Vector2(0, 1), accent);
-            Label(slot, "Key", (i + 1).ToString(), new Vector2(10, -7), new Vector2(24, 19), 15, TextAnchor.MiddleLeft, muted, true);
-            slotTitles[i] = Label(slot, "Title", names[i], new Vector2(8, -25), new Vector2(116, 40), 15, TextAnchor.MiddleCenter, ink, true);
-            slotCounts[i] = Label(slot, "Count", "", new Vector2(8, -69), new Vector2(116, 21), 15, TextAnchor.MiddleCenter, muted);
-            if (toolIcons != null && i < toolIcons.Length && toolIcons[i] != null)
-            {
-                var icon = Panel("Icon", slot, new Vector2(1, 1), new Vector2(-9, -7), new Vector2(21, 21), new Vector2(1, 1), Color.white).GetComponent<Image>();
-                icon.sprite = toolIcons[i]; icon.preserveAspect = true;
-            }
-        }
-        modePanel = Panel("Mode", root.transform, new Vector2(0.5f, 0), Vector2.zero, new Vector2(700, 62), new Vector2(0.5f, 0));
-        mode = Label(modePanel, "Active tool", "", new Vector2(14, -7), new Vector2(672, 25), 19, TextAnchor.MiddleCenter, ink, true);
-        instructions = Label(modePanel, "Controls", "", new Vector2(14, -34), new Vector2(672, 22), 15, TextAnchor.MiddleCenter, muted);
-        contextPanel = Panel("Context", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0, -88), new Vector2(600, 112), new Vector2(0.5f, 0.5f), Color.clear);
-        context = Label(contextPanel, "Interaction", "", new Vector2(16, -10), new Vector2(568, 92), 19, TextAnchor.MiddleCenter);
-        feedbackPanel = Panel("Feedback", root.transform, new Vector2(0.5f, 1), new Vector2(0, -122), new Vector2(540, 74), new Vector2(0.5f, 1), Color.clear);
-        feedback = Label(feedbackPanel, "Notice", "", new Vector2(14, -7), new Vector2(512, 60), 18, TextAnchor.MiddleCenter, accent);
-        recoveryPanel = Panel("Recovery", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0, 80), new Vector2(470, 76), new Vector2(0.5f, 0.5f), Color.clear);
-        recovery = Label(recoveryPanel, "Recovery status", "", new Vector2(16, -10), new Vector2(438, 56), 22, TextAnchor.MiddleCenter, ink, true);
-        var aim = Panel("Aim", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(24, 24), new Vector2(0.5f, 0.5f), Color.clear);
-        Color aimColor = new Color(0.96f, 1f, 0.98f, 0.9f);
-        Strip(aim, "Top", Vector2.one * 0.5f, new Vector2(0, 8), new Vector2(2, 5), Vector2.one * 0.5f, aimColor);
-        Strip(aim, "Bottom", Vector2.one * 0.5f, new Vector2(0, -8), new Vector2(2, 5), Vector2.one * 0.5f, aimColor);
-        Strip(aim, "Left", Vector2.one * 0.5f, new Vector2(-8, 0), new Vector2(5, 2), Vector2.one * 0.5f, aimColor);
-        Strip(aim, "Right", Vector2.one * 0.5f, new Vector2(8, 0), new Vector2(5, 2), Vector2.one * 0.5f, aimColor);
-        Strip(aim, "Dot", Vector2.one * 0.5f, Vector2.zero, new Vector2(2, 2), Vector2.one * 0.5f, aimColor);
+        canvas = EcoUI.CreateCanvas("EcoQuest HUD", 20, out scaler);
+        BuildCards();
+        BuildDock();
+        EcoUI.LayoutChanged += MarkDirty;
+        lastMode = EcoUI.Mode;
         ApplyLayout();
         if (weapons != null) weapons.Changed += OnInventoryChanged;
+        Refresh();
+    }
+
+    private void MarkDirty() => dirty = true;
+
+    private void BuildCards()
+    {
+        // Vitals: character energy, tool electricity, water tank and the day/weather strip.
+        vitalsCard = new EcoUI.Card("vitals", canvas.transform, new Vector2(0, 1), new Vector2(0, 1), "energy", "DURUM",
+            "Karakter enerjisi, araç elektriği ve su. Kartı daralt / genişlet.");
+        string[] icons = { "energy", "electricity", "water" };
+        string[] names = { "Karakter enerjisi", "Araç elektriği", "Temiz su" };
+        string[] tips =
+        {
+            "Karakter enerjisi: hasar alınca azalır. Sıfırda 5 sn toparlanırsın (ölüm yok).",
+            "Araç elektriği (EB): araçlar harcar; şarj istasyonundan dolar.",
+            "Araç su tankı (SB): sulama ve söndürme. Kirli su tıkanma yapar.",
+        };
+        for (int i = 0; i < 3; i++)
+        {
+            meterIcons[i] = EcoUI.Icon("Meter icon " + i, vitalsCard.body, icons[i], new Vector2(0, 1), new Vector2(0, 1), 22f);
+            meterNames[i] = EcoUI.Label("Meter name " + i, vitalsCard.body, names[i], 15, TextAnchor.MiddleLeft, EcoUI.Muted);
+            meterValues[i] = EcoUI.Label("Meter value " + i, vitalsCard.body, "", 15, TextAnchor.MiddleRight, EcoUI.Ink, true);
+            meterFills[i] = EcoUI.Meter("Meter " + i, vitalsCard.body, out meterTracks[i]);
+            var hit = EcoUI.Panel("Hit " + i, vitalsCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
+            hit.rectTransform.anchoredPosition = new Vector2(0, -6 - i * 36); hit.rectTransform.sizeDelta = new Vector2(300, 34);
+            EcoUI.AddTooltip(hit.gameObject, tips[i]);
+        }
+        clockIcon = EcoUI.Icon("Clock", vitalsCard.body, "clock", new Vector2(0, 1), new Vector2(0, 1), 18f);
+        weatherIcon = EcoUI.Icon("Weather", vitalsCard.body, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 22f);
+        weatherText = EcoUI.Label("Weather text", vitalsCard.body, "", 14, TextAnchor.MiddleLeft, EcoUI.Ink);
+        windIcon = EcoUI.Icon("Wind", vitalsCard.body, "w_wind", new Vector2(0, 1), new Vector2(0, 1), 22f);
+        windText = EcoUI.Label("Wind text", vitalsCard.body, "", 14, TextAnchor.MiddleRight, EcoUI.Ink, true);
+
+        // Resources: icon chips in two columns plus the YEP progress bar.
+        resourcesCard = new EcoUI.Card("resources", canvas.transform, new Vector2(1, 1), new Vector2(1, 1), "metal", "KAYNAKLAR",
+            "Ortak stok: malzeme, ürün, filtre ve YEP. Kartı daralt / genişlet.");
+        for (int i = 0; i < Chips.Length; i++)
+        {
+            var hit = EcoUI.Panel("Chip " + i, resourcesCard.body, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0.035f));
+            chipHits[i] = hit.gameObject; EcoUI.AddTooltip(hit.gameObject, Chips[i].tip);
+            chipIcons[i] = EcoUI.Icon("Icon", hit.transform, Chips[i].icon, new Vector2(0, 1), new Vector2(0, 1), 22f);
+            chipValues[i] = EcoUI.Label("Value", hit.transform, "0", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+            chipNames[i] = EcoUI.Label("Name", hit.transform, Chips[i].name, 11, TextAnchor.MiddleLeft, EcoUI.Muted);
+        }
+        yepIcon = EcoUI.Icon("YEP", resourcesCard.body, "yep", new Vector2(0, 1), new Vector2(0, 1), 24f);
+        yepText = EcoUI.Label("YEP text", resourcesCard.body, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+        yepFill = EcoUI.Meter("YEP meter", resourcesCard.body, out yepTrack);
+        var yepHit = EcoUI.Panel("YEP hit", resourcesCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
+        yepHit.rectTransform.anchoredPosition = new Vector2(0, -170); yepHit.rectTransform.sizeDelta = new Vector2(280, 36);
+        EcoUI.AddTooltip(yepHit.gameObject, "YEP: Yenilenebilir Enerji Puanı. Projeler ve bakım anları kalıcı YEP verir; her 40 YEP bir uzmanlık hakkı.");
+
+        // Objective.
+        objectiveCard = new EcoUI.Card("objective", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), "poi_quest", "SIRADAKİ HEDEF",
+            "Önerilen sonraki adım. Kartı daralt / genişlet.");
+        // Keep the objective first among the card's labels for existing scene consumers which query the first Text.
+        objective = EcoUI.Label("Current objective", objectiveCard.body, "", 17, TextAnchor.UpperLeft, EcoUI.Ink, true);
+        objective.transform.SetAsFirstSibling();
+    }
+
+    private void BuildDock()
+    {
+        dock = EcoUI.Rect("Toolbelt", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0));
+        for (int i = 0; i < 5; i++)
+        {
+            int index = i;
+            slotBg[i] = EcoUI.Panel(ToolNames[i], dock, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface);
+            slotRects[i] = slotBg[i].rectTransform;
+            var button = slotBg[i].gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
+            button.onClick.AddListener(() => SelectSlot(index));
+            EcoUI.AddTooltip(slotBg[i].gameObject, ToolTips[i]);
+            slotMarker[i] = EcoUI.Panel("Selection", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent, false, EcoUI.Circle);
+            var key = EcoUI.Panel("Key", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), new Color(0f, 0f, 0f, 0.35f), false, EcoUI.Circle);
+            EcoUI.Place(key.rectTransform, new Vector2(6, -6), new Vector2(20, 20));
+            slotKeys[i] = EcoUI.Label("Key text", key.transform, (i + 1).ToString(), 12, TextAnchor.MiddleCenter, EcoUI.Muted, true);
+            EcoUI.Layout(slotKeys[i], Vector2.zero, new Vector2(20, 20));
+            slotIcon[i] = EcoUI.Icon("Icon", slotRects[i], ToolIcons[i], new Vector2(0.5f, 1), new Vector2(0.5f, 1), 40f);
+            if (toolIcons != null && i < toolIcons.Length && toolIcons[i] != null) { slotIcon[i].sprite = toolIcons[i]; slotIcon[i].enabled = true; }
+            slotTitles[i] = EcoUI.Label("Title", slotRects[i], ToolNames[i], 12, TextAnchor.MiddleCenter, EcoUI.Ink, true);
+            slotCounts[i] = EcoUI.Label("Count", slotRects[i], "", 12, TextAnchor.MiddleCenter, EcoUI.Muted);
+        }
+        modePanel = EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), EcoUI.Surface).rectTransform;
+        modeIcon = EcoUI.Icon("Mode icon", modePanel, "tool_vacuum", new Vector2(0, 1), new Vector2(0, 1), 24f);
+        mode = EcoUI.Label("Active tool", modePanel, "", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+        instructions = EcoUI.Label("Controls", modePanel, "", 13, TextAnchor.MiddleRight, EcoUI.Muted);
+        contextBg = EcoUI.Panel("Context", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
+        contextPanel = contextBg.rectTransform;
+        context = EcoUI.Label("Interaction", contextPanel, "", 17, TextAnchor.MiddleCenter, EcoUI.Ink);
+        feedbackBg = EcoUI.Panel("Feedback", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false);
+        feedbackPanel = feedbackBg.rectTransform;
+        feedback = EcoUI.Label("Notice", feedbackPanel, "", 16, TextAnchor.MiddleCenter, EcoUI.Accent, true);
+        recoveryBg = EcoUI.Panel("Recovery", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
+        recoveryPanel = recoveryBg.rectTransform;
+        recovery = EcoUI.Label("Recovery status", recoveryPanel, "", 21, TextAnchor.MiddleCenter, EcoUI.Ink, true);
+        aim = EcoUI.Rect("Aim", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+        Color aimColor = new Color(0.96f, 1f, 0.98f, 0.9f);
+        foreach (var (pos, size) in new[] { (new Vector2(0, 8), new Vector2(2, 5)), (new Vector2(0, -8), new Vector2(2, 5)), (new Vector2(-8, 0), new Vector2(5, 2)), (new Vector2(8, 0), new Vector2(5, 2)), (Vector2.zero, new Vector2(2, 2)) })
+        {
+            var strip = EcoUI.Fill("Aim part", aim, aimColor);
+            var rt = strip.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f); EcoUI.Place(rt, pos, size);
+        }
+    }
+
+    private void SelectSlot(int index)
+    {
+        if (weapons == null) return;
+        if (weapons.Builder != null && weapons.Builder.IsBuilding) weapons.Builder.Select(weapons.Builder.Page * 5 + index);
+        else weapons.SelectTool(index);
         Refresh();
     }
 
@@ -108,16 +199,18 @@ public sealed class EcoQuestHUD : MonoBehaviour
     {
         if (canvas == null) return;
         canvas.enabled = !EcoMarketUI.IsOpen;
-        if (lastWidth != DisplayWidth || lastHeight != DisplayHeight) ApplyLayout();
+        if (lastWidth != DisplayWidth || lastHeight != DisplayHeight || lastMode != EcoUI.Mode) dirty = true;
+        if (Mathf.Abs(laidOutMapBottom - EcoWorldHUD.MapBottom) > 0.5f) dirty = true;
         if (weapons == null) return;
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
-        if (buildingLayout != building) ApplyLayout();
+        if (buildingLayout != building) dirty = true;
+        if (dirty) ApplyLayout();
         int selected = building ? weapons.Builder.Selection % 5 : (int)weapons.Selected;
-        for (int i = 0; i < slots.Length; i++)
+        for (int i = 0; i < 5; i++)
         {
             bool active = selected == i;
-            slots[i].color = active ? new Color(0.1f, 0.44f, 0.31f, 0.98f) : surface;
-            markers[i].enabled = active; slotTitles[i].color = active ? Color.white : ink;
+            slotBg[i].color = active ? EcoUI.Selected : EcoUI.Surface;
+            slotMarker[i].enabled = active; slotTitles[i].color = active ? Color.white : EcoUI.Ink;
         }
         if (Time.unscaledTime >= refreshAt) { refreshAt = Time.unscaledTime + 0.1f; Refresh(); }
     }
@@ -128,67 +221,101 @@ public sealed class EcoQuestHUD : MonoBehaviour
     {
         if (weapons == null || canvas == null) return;
         worldClock = EcoWorldClock.Current;
-        if (worldClock != null) weather.text = "Gün " + worldClock.day + "  ·  " + Mathf.FloorToInt(worldClock.hour).ToString("00") + ":"
-            + Mathf.FloorToInt(worldClock.hour % 1f * 60f).ToString("00") + "  ·  " + worldClock.WeatherName + "\nRüzgâr %" + Mathf.RoundToInt(worldClock.windStrength * 100);
+        // Vitals
         float[] values = { vitals != null ? vitals.Energy : 100, weapons.Energy, weapons.Water };
         float[] maxima = { vitals != null ? vitals.maximumEnergy : 100, weapons.maximumEnergy, weapons.maximumWater };
-        barLabels[2].text = weapons.HasDirtyWater ? "Kirli su" : "Temiz su";
-        for (int i = 0; i < fills.Length; i++)
+        Color[] colors = { vitals != null && vitals.IsRecovering ? new Color(1f, 0.62f, 0.32f) : EnergyColor, ElectricColor, weapons.HasDirtyWater ? new Color(0.8f, 0.66f, 0.33f) : WaterColor };
+        meterNames[2].text = weapons.HasDirtyWater ? "Kirli su" : "Temiz su";
+        EcoUI.SetIcon(meterIcons[2], weapons.HasDirtyWater ? "water_dirty" : "water");
+        for (int i = 0; i < 3; i++)
         {
-            fills[i].rectTransform.sizeDelta = new Vector2(tracks[i].sizeDelta.x * Mathf.Clamp01(values[i] / Mathf.Max(1, maxima[i])), 5);
-            barValues[i].text = Mathf.CeilToInt(values[i]) + " / " + Mathf.CeilToInt(maxima[i]);
+            EcoUI.SetMeter(meterFills[i], meterTracks[i], values[i] / Mathf.Max(1f, maxima[i]), colors[i]);
+            meterValues[i].text = Mathf.CeilToInt(values[i]) + " / " + Mathf.CeilToInt(maxima[i]);
         }
-        fills[0].color = vitals != null && vitals.IsRecovering ? new Color(1f, 0.62f, 0.32f) : meterColors[0];
-        fills[2].color = weapons.HasDirtyWater ? new Color(0.8f, 0.66f, 0.33f) : meterColors[2];
-        inventory.text = "Metal " + weapons.Metal + "  ·  Plastik " + weapons.Plastic + "\nÜrün " + weapons.Food + "  ·  Gübre " + weapons.Compost
-            + "\nBalık " + weapons.CleanFish + " temiz / " + weapons.DirtyFish + " kirli"
-            + "\nFiltre " + weapons.SmallFilters + " küçük / " + weapons.LargeFilters + " büyük"
-            + "\nHam atık " + (weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap) + "  ·  Organik " + weapons.CollectedOrganicWaste;
-        if (weapons.Progression != null) inventory.text += "\nSeviye " + weapons.Progression.Level + "  ·  "
-            + (weapons.Progression.Level == EcoProgression.MaximumLevel ? "En yüksek seviye" : "YEP " + weapons.Progression.LevelProgress + " / " + weapons.Progression.LevelRequirement);
+        vitalsCard.summary.text = "<color=#" + EcoUI.Hex(colors[0]) + ">" + Mathf.CeilToInt(values[0]) + "</color>  ·  <color=#" + EcoUI.Hex(colors[1]) + ">"
+            + Mathf.CeilToInt(values[1]) + " EB</color>  ·  <color=#" + EcoUI.Hex(colors[2]) + ">" + Mathf.CeilToInt(values[2]) + " SB</color>";
+        if (worldClock != null)
+        {
+            EcoUI.SetIcon(weatherIcon, EcoIcons.Weather(worldClock));
+            weatherText.text = "Gün " + worldClock.day + "  " + Mathf.FloorToInt(worldClock.hour).ToString("00") + ":" + Mathf.FloorToInt(worldClock.hour % 1f * 60f).ToString("00")
+                + "  ·  " + worldClock.WeatherName;
+            int wind = Mathf.RoundToInt(worldClock.windStrength * 100);
+            windText.text = "%" + wind + (wind > 70 ? " güçlü" : wind < 25 ? " sakin" : "");
+        }
+        // Resources
+        int[] counts =
+        {
+            weapons.Metal, weapons.Plastic, weapons.Food, weapons.Compost, weapons.CleanFish, weapons.DirtyFish, weapons.SmallFilters, weapons.LargeFilters,
+            weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap, weapons.CollectedOrganicWaste,
+        };
+        for (int i = 0; i < counts.Length; i++) chipValues[i].text = counts[i].ToString();
+        resourcesCard.summary.text = weapons.Metal + " M  ·  " + weapons.Plastic + " P  ·  " + weapons.Food + " ürün";
+        if (weapons.Progression != null)
+        {
+            bool max = weapons.Progression.Level == EcoProgression.MaximumLevel;
+            yepText.text = "Seviye " + weapons.Progression.Level + "   " + (max ? "En yüksek seviye" : "YEP " + weapons.Progression.LevelProgress + " / " + weapons.Progression.LevelRequirement);
+            EcoUI.SetMeter(yepFill, yepTrack, max ? 1f : weapons.Progression.LevelProgress / (float)Mathf.Max(1, weapons.Progression.LevelRequirement), EcoUI.Amber);
+        }
+        // Tool belt
         slotCounts[0].text = Mathf.CeilToInt(weapons.Water) + " su";
-        slotCounts[1].text = weapons.MetalMode ? weapons.MetalAmmo + " demir top" : weapons.SeedCount(weapons.SelectedSeed) + " tohum";
+        slotCounts[1].text = weapons.MetalMode ? weapons.MetalAmmo + " demir" : weapons.SeedCount(weapons.SelectedSeed) + " tohum";
         slotCounts[2].text = (weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap + weapons.CollectedOrganicWaste) + " atık";
         slotCounts[3].text = "Analiz"; slotCounts[4].text = "Etkileşim";
         string[] modes = { "Toplama", "Anti-vakum", "Su" };
-        mode.text = names[(int)weapons.Selected] + (weapons.Selected == PlayerWeaponSystem.Tool.Vacuum ? "  ·  " + modes[(int)weapons.Mode]
-            : weapons.Selected == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate) : "");
-        instructions.text = weapons.Selected == PlayerWeaponSystem.Tool.Hands ? "" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim   ·   [1–5 / Tekerlek] Seç"
-            : weapons.Selected == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara   ·   [1–5 / Tekerlek] Seç"
-            : weapons.Selected == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " İşle / gübrele"
-            : "[Sol tık] Kullan   ·   " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod değiştir" + (weapons.Selected == PlayerWeaponSystem.Tool.SeedGun ? (weapons.MetalMode ? "   ·   Mühimmat: Market" : "   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum türü") : "");
-        context.text = weapons.Selected == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
+        string[] modeIcons = { "tool_vacuum", "w_wind", "water" };
+        var tool = weapons.Selected;
+        mode.text = ToolNames[(int)tool] + (tool == PlayerWeaponSystem.Tool.Vacuum ? "  ·  " + modes[(int)weapons.Mode]
+            : tool == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate) : "");
+        EcoUI.SetIcon(modeIcon, tool == PlayerWeaponSystem.Tool.Vacuum ? modeIcons[(int)weapons.Mode] : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "ammo" : ToolIcons[(int)tool]);
+        instructions.text = tool == PlayerWeaponSystem.Tool.Hands ? EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim"
+            : tool == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara"
+            : tool == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele"
+            : "[Sol tık] Kullan  ·  " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod" + (tool == PlayerWeaponSystem.Tool.SeedGun && !weapons.MetalMode ? "  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum" : "");
+        context.text = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
-        for (int i = 0; i < slots.Length; i++)
+        for (int i = 0; i < 5; i++)
         {
-            slotTitles[i].text = building ? weapons.Builder.SlotName(i) : names[i];
-            if (building) slotCounts[i].text = weapons.Builder.SlotCost(i);
+            slotTitles[i].text = building ? weapons.Builder.SlotName(i) : ToolNames[i];
+            if (building) { slotCounts[i].text = weapons.Builder.SlotCost(i); EcoUI.SetIcon(slotIcon[i], BuildIcon(weapons.Builder.Page * 5 + i)); }
+            else if (toolIcons == null || i >= toolIcons.Length || toolIcons[i] == null) EcoUI.SetIcon(slotIcon[i], ToolIcons[i]);
         }
         if (building)
         {
-            mode.text = "İNŞA  ·  " + weapons.Builder.SelectedName + "  ·  " + (weapons.Builder.Page + 1) + "/" + weapons.Builder.PageCount;
-            instructions.text = "[Tab] Sayfa   ·   [1–5] Seç   ·   [Sol tık] Kur   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Döndür   ·   " + EcoKeys.Tag(EcoKeys.Action.Build) + " Çık";
+            mode.text = "İNŞA  ·  " + weapons.Builder.SelectedName + "  ·  sayfa " + (weapons.Builder.Page + 1) + "/" + weapons.Builder.PageCount;
+            EcoUI.SetIcon(modeIcon, "ui_build");
+            instructions.text = "[Tab] Sayfa  ·  [Sol tık] Kur  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Döndür  ·  " + EcoKeys.Tag(EcoKeys.Action.Build) + " Çık";
             context.text = weapons.Builder.Status;
         }
-        else instructions.text += "   ·   " + EcoKeys.Tag(EcoKeys.Action.Build) + " İnşa";
-        SetVisible(contextPanel, !string.IsNullOrEmpty(context.text));
+        SetVisible(contextBg, context, !string.IsNullOrEmpty(context.text) && EcoUI.Mode != EcoUI.HudMode.Hidden);
         var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
         feedback.text = weapons.ChargingStation != null
-            ? (chargerPower != null && chargerPower.DeliveredPower > 0f ? "Silah bataryası şarj oluyor…" : "Şarj bağlı · Elektrik bekleniyor…")
+            ? (chargerPower != null && chargerPower.DeliveredPower > 0f ? "Araç bataryası şarj oluyor…" : "Şarj bağlı · Elektrik bekleniyor…")
             : Time.time < weapons.FeedbackUntil ? weapons.Feedback : "";
-        SetVisible(feedbackPanel, !string.IsNullOrEmpty(feedback.text));
+        SetVisible(feedbackBg, feedback, !string.IsNullOrEmpty(feedback.text));
         bool recovering = vitals != null && vitals.IsRecovering;
         recovery.text = recovering ? "ENERJİ TOPLANIYOR\n" + vitals.RecoveryRemaining.ToString("0.0") + " saniye" : "";
-        SetVisible(recoveryPanel, recovering);
-        // Poll external world changes twice a second; harvesting/planting refresh immediately.
+        SetVisible(recoveryBg, recovery, recovering);
         if (Time.unscaledTime >= objectiveAt) { objectiveAt = Time.unscaledTime + 0.5f; RefreshObjective(); }
+    }
+
+    private static string BuildIcon(int index)
+    {
+        if (index == EcoBuildingCatalog.Entries.Length) return "electricity";
+        if (index == EcoBuildingCatalog.Entries.Length + 1) return "water";
+        if (index < 0 || index >= EcoBuildingCatalog.Entries.Length) return "ui_build";
+        return EcoBuildingCatalog.Entries[index].Id switch
+        {
+            "solar" => "poi_solar", "wind" => "poi_turbine", "battery" => "electricity", "charger" => "poi_charge", "intake" => "water",
+            "purifier" => "filter", "tank" => "water_quality", "recycling" => "tool_recycle", "farm" => "seed", "hydro" => "poi_hydro", _ => "ui_build",
+        };
     }
 
     private void RefreshObjective()
     {
         var enemies = FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None); int alive = 0;
         for (int i = 0; i < enemies.Length; i++) if (enemies[i] != null && enemies[i].State != EnemyBrain.Behaviour.Dead && enemies[i].Health > 0f) alive++;
-        if (alive > 0) objective.text = "Alanı temizle · Kalan düşman: " + alive;
+        string text;
+        if (alive > 0) text = "Alanı temizle · Kalan düşman: " + alive;
         else
         {
             var crops = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None); bool mature = false, living = false;
@@ -197,105 +324,127 @@ public sealed class EcoQuestHUD : MonoBehaviour
                 if (crops[i] == null || crops[i].IsWithered) continue;
                 living = true; if (crops[i].IsMature) mature = true;
             }
-            objective.text = weapons.Food > 0 ? "Görev tamamlandı · Ekosistemi koru" : !living ? "Tohum ekerek çevreyi canlandır"
-                : mature ? "Olgun bitkiyi hasat et" : "Bitkini vakumun su moduyla sula";
+            var projects = EcoProjects.Current;
+            int open = -1;
+            if (projects != null) for (int i = 0; i < projects.All.Count; i++) if (!projects.All[i].done) { open = i; break; }
+            text = !living ? "Tohum ekerek çevreyi canlandır" : mature ? "Olgun bitkiyi hasat et"
+                : weapons.Food > 0 && open >= 0 ? "Proje: " + projects.All[open].name + " · " + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük"
+                : weapons.Food > 0 ? "Ekosistemi koru" : "Bitkini vakumun su moduyla sula";
         }
+        objective.text = text;
+        objectiveCard.summary.text = text.Length > 34 ? text.Substring(0, 33) + "…" : text;
     }
+
+    // ------------------------------------------------------------------ layout
 
     private void ApplyLayout()
     {
-        lastWidth = DisplayWidth; lastHeight = DisplayHeight;
-        // Keep labels readable at 800x600 while allowing high-resolution displays to grow
-        // gently. The whole HUD is at scene root, independent of camera and weapon sway.
-        float scale = Mathf.Clamp(Mathf.Min(lastWidth / 1600f, lastHeight / 900f), 0.8f, 1.5f);
+        dirty = false;
+        lastWidth = DisplayWidth; lastHeight = DisplayHeight; lastMode = EcoUI.Mode;
+        float scale = EcoUI.Scale(canvas);
         scaler.scaleFactor = scale; canvas.scaleFactor = scale;
         float width = lastWidth / scale, height = lastHeight / scale;
-        const float margin = 18f;
+        const float margin = 16f;
         bool compact = width < 1250f;
-        float vitalsWidth = compact ? 266 : 296, resourcesWidth = compact ? 248 : 274;
-        Place(vitalsPanel, new Vector2(margin, -margin), new Vector2(vitalsWidth, 202));
-        Place(resourcesPanel, new Vector2(-margin, -margin), new Vector2(resourcesWidth, 188));
-        LayoutText(inventory, new Vector2(14, -39), new Vector2(resourcesWidth - 28, 143));
-        for (int i = 0; i < tracks.Length; i++)
+        var hudMode = EcoUI.Mode;
+        bool hidden = hudMode == EcoUI.HudMode.Hidden, sade = hudMode == EcoUI.HudMode.Compact;
+        float leftWidth = compact ? 270f : 300f, rightWidth = compact ? 250f : 276f;
+
+        // Vitals card.
+        vitalsCard.SetVisible(!hidden);
+        float vh = vitalsCard.Layout(new Vector2(margin, -margin), leftWidth, 150f);
+        float inner = leftWidth - 24f;
+        for (int i = 0; i < 3; i++)
         {
-            float meterWidth = vitalsWidth - 32, y = -38 - i * 36;
-            tracks[i].sizeDelta = new Vector2(meterWidth, 5);
-            LayoutText(barLabels[i], new Vector2(16, y), new Vector2(meterWidth - 88, 22));
-            LayoutText(barValues[i], new Vector2(16 + meterWidth - 88, y), new Vector2(88, 22));
+            float y = -8f - i * 36f;
+            EcoUI.LayoutIcon(meterIcons[i], new Vector2(12f, y), 22f);
+            EcoUI.Layout(meterNames[i], new Vector2(40f, y - 1f), new Vector2(inner - 120f, 20f));
+            EcoUI.Layout(meterValues[i], new Vector2(leftWidth - 104f, y - 1f), new Vector2(92f, 20f));
+            EcoUI.Place(meterTracks[i], new Vector2(40f, y - 23f), new Vector2(leftWidth - 52f, 6f));
         }
-        LayoutText(weather, new Vector2(16, -150), new Vector2(vitalsWidth - 32, 44));
-        float objectiveWidth = Mathf.Min(416, width - vitalsWidth - resourcesWidth - 4 * margin);
-        float objectiveCenter = (vitalsWidth - resourcesWidth) * 0.5f;
-        Place(objectivePanel, new Vector2(objectiveCenter, -margin), new Vector2(objectiveWidth, 92));
-        LayoutText(objective, new Vector2(16, -32), new Vector2(objectiveWidth - 32, 54));
-        float dockWidth = Mathf.Min(700, width - 2 * margin);
-        Place(dock, new Vector2(0, margin), new Vector2(dockWidth, 96));
-        float slotWidth = (dockWidth - 40) / 5;
-        for (int i = 0; i < slots.Length; i++)
+        float wy = -8f - 3 * 36f - 2f;
+        EcoUI.LayoutIcon(weatherIcon, new Vector2(12f, wy), 22f);
+        EcoUI.Layout(weatherText, new Vector2(40f, wy - 1f), new Vector2(leftWidth - 140f, 22f));
+        EcoUI.LayoutIcon(windIcon, new Vector2(leftWidth - 104f, wy), 22f);
+        EcoUI.Layout(windText, new Vector2(leftWidth - 80f, wy - 1f), new Vector2(68f, 22f));
+        clockIcon.enabled = false;
+        VitalsBottom = hidden ? margin : margin + vh;
+
+        // Resources card, under EcoWorldHUD's map card in the right column.
+        bool showResources = !hidden;
+        resourcesCard.SetVisible(showResources);
+        laidOutMapBottom = EcoWorldHUD.MapBottom;
+        float ry = EcoWorldHUD.MapBottom + 10f;
+        float chipW = (rightWidth - 30f) * 0.5f;
+        for (int i = 0; i < Chips.Length; i++)
         {
-            Place(slotRects[i], new Vector2(i * (slotWidth + 10), 0), new Vector2(slotWidth, 96));
-            markers[i].rectTransform.sizeDelta = new Vector2(slotWidth, 3);
-            LayoutText(slotTitles[i], new Vector2(8, -25), new Vector2(slotWidth - 16, 40));
-            LayoutText(slotCounts[i], new Vector2(8, -69), new Vector2(slotWidth - 16, 21));
+            var rt = (RectTransform)chipHits[i].transform;
+            EcoUI.Place(rt, new Vector2(10f + (i % 2) * (chipW + 10f), -6f - (i / 2) * 32f), new Vector2(chipW, 28f));
+            EcoUI.LayoutIcon(chipIcons[i], new Vector2(4f, -3f), 22f);
+            EcoUI.Layout(chipValues[i], new Vector2(32f, -4f), new Vector2(40f, 20f));
+            EcoUI.Layout(chipNames[i], new Vector2(70f, -6f), new Vector2(chipW - 72f, 18f));
+        }
+        float yy = -6f - 5 * 32f - 4f;
+        EcoUI.LayoutIcon(yepIcon, new Vector2(10f, yy), 24f);
+        EcoUI.Layout(yepText, new Vector2(40f, yy), new Vector2(rightWidth - 52f, 18f));
+        EcoUI.Place(yepTrack, new Vector2(40f, yy - 21f), new Vector2(rightWidth - 52f, 6f));
+        // Sade keeps the card but shows only its header summary.
+        resourcesCard.Layout(new Vector2(-margin, -ry), rightWidth, sade ? 0f : 206f, sade);
+        if (sade) resourcesCard.body.gameObject.SetActive(false);
+
+        // Objective card (top centre, between the columns).
+        objectiveCard.SetVisible(!hidden);
+        float objectiveWidth = Mathf.Clamp(width - leftWidth - rightWidth - 4f * margin, 260f, 440f);
+        float objectiveCenter = (leftWidth - rightWidth) * 0.5f;
+        float oh = objectiveCard.Layout(new Vector2(objectiveCenter, -margin), objectiveWidth, sade ? 0f : 50f, sade);
+        if (sade) objectiveCard.body.gameObject.SetActive(false);
+        EcoUI.Layout(objective, new Vector2(14f, -2f), new Vector2(objectiveWidth - 28f, 44f));
+
+        // Tool belt + mode line.
+        float dockWidth = Mathf.Min(600f, width - 2f * margin);
+        dock.gameObject.SetActive(!hidden);
+        EcoUI.Place(dock, new Vector2(0f, margin), new Vector2(dockWidth, 86f)); // anchored and pivoted at the bottom centre
+        float slotWidth = (dockWidth - 32f) / 5f;
+        for (int i = 0; i < 5; i++)
+        {
+            EcoUI.Place(slotRects[i], new Vector2(i * (slotWidth + 8f), 0f), new Vector2(slotWidth, 86f));
+            EcoUI.Place(slotMarker[i].rectTransform, new Vector2(10f, -2f), new Vector2(slotWidth - 20f, 4f));
+            slotIcon[i].rectTransform.anchoredPosition = new Vector2(0f, -7f);
+            EcoUI.Layout(slotTitles[i], new Vector2(4f, -48f), new Vector2(slotWidth - 8f, 18f));
+            EcoUI.Layout(slotCounts[i], new Vector2(4f, -65f), new Vector2(slotWidth - 8f, 18f));
         }
         buildingLayout = weapons != null && weapons.Builder != null && weapons.Builder.IsBuilding;
-        float modeHeight = compact && buildingLayout ? 80 : 62;
-        Place(modePanel, new Vector2(0, margin + 108), new Vector2(dockWidth, modeHeight));
-        LayoutText(mode, new Vector2(14, -7), new Vector2(dockWidth - 28, 25));
-        LayoutText(instructions, new Vector2(14, -34), new Vector2(dockWidth - 28, modeHeight - 40));
-        float contextWidth = Mathf.Min(600, width - 2 * margin);
-        float contextY = Mathf.Max(-88, margin + 108 + modeHeight + 18 + 56 - height * 0.5f);
-        Place(contextPanel, new Vector2(0, contextY), new Vector2(contextWidth, 112));
-        LayoutText(context, new Vector2(16, -10), new Vector2(contextWidth - 32, 92));
-        float feedbackWidth = Mathf.Min(540, objectiveWidth + 80);
-        Place(feedbackPanel, new Vector2(objectiveCenter, -122), new Vector2(feedbackWidth, 74));
-        LayoutText(feedback, new Vector2(14, -7), new Vector2(feedbackWidth - 28, 60));
-        Place(recoveryPanel, new Vector2(0, 80), new Vector2(Mathf.Min(470, width - 2 * margin), 76));
-        LayoutText(recovery, new Vector2(16, -10), new Vector2(recoveryPanel.sizeDelta.x - 32, 56));
+        modePanel.gameObject.SetActive(!hidden);
+        float modeHeight = 36f;
+        EcoUI.Place(modePanel, new Vector2(0f, margin + 86f + 8f), new Vector2(dockWidth, modeHeight));
+        EcoUI.LayoutIcon(modeIcon, new Vector2(10f, -6f), 24f);
+        EcoUI.Layout(mode, new Vector2(42f, -8f), new Vector2(dockWidth * 0.5f, 20f));
+        instructions.gameObject.SetActive(!sade);
+        EcoUI.Layout(instructions, new Vector2(dockWidth * 0.42f, -9f), new Vector2(dockWidth * 0.58f - 12f, 20f));
+        DockTop = hidden ? margin : margin + 86f + 8f + modeHeight;
+
+        float contextWidth = Mathf.Min(560f, width - 2f * margin);
+        EcoUI.Place(contextPanel, new Vector2(0f, -height * 0.5f + DockTop + 70f), new Vector2(contextWidth, 74f));
+        EcoUI.Layout(context, new Vector2(14f, -8f), new Vector2(contextWidth - 28f, 58f));
+        float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
+        EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -(margin + oh + 10f)), new Vector2(feedbackWidth, 56f));
+        EcoUI.Layout(feedback, new Vector2(12f, -6f), new Vector2(feedbackWidth - 24f, 44f));
+        EcoUI.Place(recoveryPanel, new Vector2(0f, 80f), new Vector2(Mathf.Min(460f, width - 2f * margin), 72f));
+        EcoUI.Layout(recovery, new Vector2(14f, -8f), new Vector2(recoveryPanel.sizeDelta.x - 28f, 56f));
+        aim.gameObject.SetActive(!hidden);
     }
 
-    // Camera-space previews and split displays may have a different output size from
-    // Screen. Overlay canvases report the ordinary game-view size through pixelRect.
     private int DisplayWidth => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.width));
     private int DisplayHeight => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.height));
 
-    private void SetVisible(RectTransform panel, bool visible) => panel.GetComponent<Image>().color = visible ? surface : Color.clear;
-    private static void Place(RectTransform rect, Vector2 position, Vector2 size) { rect.anchoredPosition = position; rect.sizeDelta = size; }
-
-    private RectTransform Panel(string name, Transform parent, Vector2 anchor, Vector2 position, Vector2 size, Vector2 pivot, Color? tint = null)
+    private static void SetVisible(Image background, Text text, bool visible)
     {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image)); go.layer = 5;
-        var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false);
-        rect.anchorMin = rect.anchorMax = anchor; rect.pivot = pivot; Place(rect, position, size);
-        var image = go.GetComponent<Image>(); image.sprite = panelSprite; image.type = Image.Type.Sliced;
-        image.color = tint ?? surface; image.raycastTarget = false; return rect;
-    }
-
-    private Image Strip(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, Vector2 pivot, Color color)
-    {
-        var image = Panel(name, parent, anchor, position, size, pivot, color).GetComponent<Image>();
-        image.sprite = null; image.type = Image.Type.Simple; return image;
-    }
-
-    private Text Label(Transform parent, string name, string content, Vector2 position, Vector2 size, int fontSize, TextAnchor align, Color? color = null, bool bold = false)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Text)); go.layer = 5;
-        var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false);
-        rect.anchorMin = rect.anchorMax = new Vector2(0, 1); rect.pivot = new Vector2(0, 1);
-        var text = go.GetComponent<Text>(); LayoutText(text, position, size);
-        text.font = font; text.fontSize = fontSize * RasterScale; text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
-        text.color = color ?? ink; text.alignment = align; text.text = content; text.raycastTarget = false; text.supportRichText = false;
-        text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Truncate; return text;
-    }
-
-    private static void LayoutText(Text text, Vector2 position, Vector2 size)
-    {
-        text.rectTransform.anchoredPosition = position; text.rectTransform.sizeDelta = size * RasterScale;
-        text.rectTransform.localScale = Vector3.one / RasterScale;
+        if (background.gameObject.activeSelf != visible) background.gameObject.SetActive(visible);
     }
 
     private void OnDestroy()
     {
+        EcoUI.LayoutChanged -= MarkDirty;
         if (weapons != null) weapons.Changed -= OnInventoryChanged;
         if (canvas != null) Destroy(canvas.gameObject);
         if (vitals != null) vitals.showLegacyHUD = previousLegacyHud;
