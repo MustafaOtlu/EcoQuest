@@ -134,7 +134,7 @@ public sealed class PlantedSeed : MonoBehaviour
         else
         {
             float previous = dryTime; dryTime += seconds;
-            health = Mathf.Max(0f, health - (Mathf.Max(0f, dryTime - 15f) - Mathf.Max(0f, previous - 15f)) * 0.02f);
+            health = Mathf.Max(0f, health - (Mathf.Max(0f, dryTime - 120f) - Mathf.Max(0f, previous - 120f)) * 0.005f);
         }
         health = Mathf.Max(0, health - pests * seconds * 0.02f);
         UpdateVisual();
@@ -204,7 +204,7 @@ public sealed class PlantedSeed : MonoBehaviour
 
         GameObject dropSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         dropSphere.name = "Drop Base";
-        dropSphere.transform.SetParent( floatingDropMarker, false);
+        dropSphere.transform.SetParent(floatingDropMarker, false);
         dropSphere.transform.localPosition = Vector3.zero;
         dropSphere.transform.localScale = new Vector3(0.11f, 0.14f, 0.11f);
         Destroy(dropSphere.GetComponent<Collider>());
@@ -471,13 +471,13 @@ public sealed class PlantedSeed : MonoBehaviour
         seeds = food = 0;
         if (!IsMature || harvested || kind == EcoCropCatalog.Kind.Tree) return false;
         harvested = true;
-        seeds = contaminated ? 1 : 3; food = contaminated ? 0 : EcoCropCatalog.Get(kind).Food;
+        seeds = 1; food = contaminated ? 0 : EcoCropCatalog.Get(kind).Food;
         gameObject.SetActive(false); Destroy(gameObject); return true;
     }
 
     public bool TryCompost()
     {
-        if (!IsWithered || harvested) return false;
+        if ((!IsWithered && !(IsMature && contaminated)) || harvested) return false;
         harvested = true; gameObject.SetActive(false); Destroy(gameObject); return true;
     }
 
@@ -488,5 +488,6 @@ public sealed class PlantedSeed : MonoBehaviour
         if (ClimateSuitable) growth = Mathf.Min(1f, growth + 0.2f);
         health = Mathf.Min(1f, health + 0.25f); pests = 0; pestProtectionRemaining = 120; UpdateVisual(); return true;
     }
+
     private static bool Finite(Vector3 value) => EcoRegion.Finite(value.x) && EcoRegion.Finite(value.y) && EcoRegion.Finite(value.z);
 }
