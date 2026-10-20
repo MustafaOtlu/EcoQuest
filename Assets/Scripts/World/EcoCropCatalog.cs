@@ -16,10 +16,10 @@ public static class EcoCropCatalog
     }
     public static readonly Crop[] Entries =
     {
-        new Crop("Lahana", "Cabbage", 1, 1, 8, 28, 60, 0.008f),
-        new Crop("Havuç", "Carrot", 2, 2, 5, 22, 75, 0.007f),
-        new Crop("Domates", "Tomato", 4, 3, 18, 34, 90, 0.012f),
-        new Crop("Ağaç", "Tree", 2, 0, 4, 36, 120, 0.006f)
+        new Crop("Lahana", "Cabbage", 1, 2, 8, 28, 180, 0.00178f),
+        new Crop("Havuç", "Carrot", 1, 3, 5, 22, 240, 0.00167f),
+        new Crop("Domates", "Tomato", 1, 4, 18, 34, 300, 0.00187f),
+        new Crop("Ağaç", "Tree", 1, 0, 4, 36, 360, 0.00133f)
     };
     public static bool Valid(Kind kind) => (int)kind >= 0 && (int)kind < Count;
     public static Crop Get(Kind kind) => Entries[Valid(kind) ? (int)kind : 0];

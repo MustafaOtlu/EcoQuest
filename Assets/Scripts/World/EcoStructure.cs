@@ -18,7 +18,7 @@ public sealed class EcoStructure : MonoBehaviour
             if (!SupportsUpgrade) return "";
             if (tier >= 3) return "En yüksek kademe";
             int index = EcoBuildingCatalog.Find(buildingId); var entry = EcoBuildingCatalog.Entries[index];
-            return "[U] Kademe " + (tier + 1) + " • YEP " + NextUpgradeLevel + " • " + entry.Metal * (tier + 1) + "M / " + entry.Plastic * (tier + 1) + "P";
+            return "" + EcoKeys.Tag(EcoKeys.Action.Upgrade) + " Kademe " + (tier + 1) + " • YEP " + NextUpgradeLevel + " • " + entry.Metal * (tier + 1) + "M / " + entry.Plastic * (tier + 1) + "P";
         }
     }
     private int InvestmentMultiplier => tier * (tier + 1) / 2;
@@ -51,6 +51,13 @@ public sealed class EcoStructure : MonoBehaviour
         integrity = 100;
         if (power != null) power.condition = 1;
         owner.ShowFeedback(entry.Name + " onarıldı."); return true;
+    }
+    public void RestoreTier()
+    {
+        if (tier >= 3) return;
+        tier++;
+        if (TryGetComponent<EcoWaterNode>(out var water)) { water.capacity *= 2; water.litresPerSecond *= 2; }
+        if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) { recycler.unitsPerSecond *= 2; recycler.storageCapacity *= 2; }
     }
     public bool Upgrade(PlayerWeaponSystem owner)
     {

@@ -19,7 +19,7 @@ public sealed class EcoNavigation : MonoBehaviour
         yield return null;
         surface.collectObjects = CollectObjects.Volume; surface.center = Vector3.up * 3; surface.size = worldSize;
         surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders; surface.layerMask = ~(1 << 2 | 1 << 5);
-        surface.overrideVoxelSize = true; surface.voxelSize = 0.12f;
+        surface.overrideVoxelSize = true; surface.voxelSize = worldSize.x > 150f ? 0.2f : 0.12f; // large maps: coarser voxels keep the bake fast
         Prepare(); surface.BuildNavMesh(); initializing = false; dirty = false; nextBuild = Time.time + 1;
     }
     public static void MarkDirty() { if (Current != null) Current.dirty = true; }

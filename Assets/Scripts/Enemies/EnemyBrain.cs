@@ -215,6 +215,7 @@ public sealed class EnemyBrain : MonoBehaviour
         if (Ranged)
         {
             Vector3 direction = (aim - Eye).normalized;
+            if (direction.sqrMagnitude < 0.0001f) direction = transform.forward; // aim == eye would make LookRotation warn every attack
             // Begin the sweep at the eye; spawning beyond the capsule can skip a nearby wall or target.
             var shot = Instantiate(projectilePrefab, Eye, Quaternion.LookRotation(direction));
             shot.GetComponent<EnemyProjectile>().Launch(transform, direction, projectileSpeed, damage, species == Species.Acid ? 2f : 0f, species);

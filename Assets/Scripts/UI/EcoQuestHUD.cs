@@ -153,10 +153,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
         string[] modes = { "Toplama", "Anti-vakum", "Su" };
         mode.text = names[(int)weapons.Selected] + (weapons.Selected == PlayerWeaponSystem.Tool.Vacuum ? "  ·  " + modes[(int)weapons.Mode]
             : weapons.Selected == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate) : "");
-        instructions.text = weapons.Selected == PlayerWeaponSystem.Tool.Hands ? "[E] Etkileşim   ·   [1–5 / Tekerlek] Seç"
+        instructions.text = weapons.Selected == PlayerWeaponSystem.Tool.Hands ? "" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim   ·   [1–5 / Tekerlek] Seç"
             : weapons.Selected == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara   ·   [1–5 / Tekerlek] Seç"
-            : weapons.Selected == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür   ·   [R] İşle / gübrele"
-            : "[Sol tık] Kullan   ·   [Q] Mod değiştir" + (weapons.Selected == PlayerWeaponSystem.Tool.SeedGun ? (weapons.MetalMode ? "   ·   Mühimmat: Market" : "   ·   [R] Tohum türü") : "");
+            : weapons.Selected == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " İşle / gübrele"
+            : "[Sol tık] Kullan   ·   " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod değiştir" + (weapons.Selected == PlayerWeaponSystem.Tool.SeedGun ? (weapons.MetalMode ? "   ·   Mühimmat: Market" : "   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum türü") : "");
         context.text = weapons.Selected == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
         for (int i = 0; i < slots.Length; i++)
@@ -167,10 +167,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (building)
         {
             mode.text = "İNŞA  ·  " + weapons.Builder.SelectedName + "  ·  " + (weapons.Builder.Page + 1) + "/" + weapons.Builder.PageCount;
-            instructions.text = "[Tab] Sayfa   ·   [1–5] Seç   ·   [Sol tık] Kur   ·   [R] Döndür   ·   [B] Çık";
+            instructions.text = "[Tab] Sayfa   ·   [1–5] Seç   ·   [Sol tık] Kur   ·   " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Döndür   ·   " + EcoKeys.Tag(EcoKeys.Action.Build) + " Çık";
             context.text = weapons.Builder.Status;
         }
-        else instructions.text += "   ·   [B] İnşa";
+        else instructions.text += "   ·   " + EcoKeys.Tag(EcoKeys.Action.Build) + " İnşa";
         SetVisible(contextPanel, !string.IsNullOrEmpty(context.text));
         var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
         feedback.text = weapons.ChargingStation != null

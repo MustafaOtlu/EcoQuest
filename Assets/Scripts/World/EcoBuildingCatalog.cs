@@ -6,9 +6,8 @@ public static class EcoBuildingCatalog
     {
         public readonly string Id, Name, Prefab;
         public readonly int Metal, Plastic, Level;
-        public Vector2 Footprint => Id == "wind" ? new Vector2(3, 3) : Id == "solar" ? new Vector2(2.1f, 1.5f)
-            : Id == "purifier" ? new Vector2(2, 1.2f) : Id == "tank" ? new Vector2(1.6f, 1.6f)
-            : Id == "recycling" ? new Vector2(2.4f, 1.7f) : Id == "farm" ? new Vector2(3, 3) : new Vector2(0.9f, 0.75f);
+        public Vector2 Footprint => Id == "wind" || Id == "hydro" || Id == "farm" ? new Vector2(6, 6)
+            : Id == "solar" || Id == "purifier" || Id == "tank" || Id == "recycling" ? new Vector2(4, 4) : new Vector2(2, 2);
         public Entry(string id, string name, string prefab, int metal, int plastic, int level)
         { Id = id; Name = name; Prefab = prefab; Metal = metal; Plastic = plastic; Level = level; }
     }
@@ -23,9 +22,31 @@ public static class EcoBuildingCatalog
         new Entry("purifier", "Su arıtma", "WaterPurifier", 20, 16, 4),
         new Entry("tank", "Su deposu", "WaterTank", 10, 14, 4),
         new Entry("recycling", "Geri dönüşüm", "RecyclingFacility", 16, 8, 2),
-        new Entry("farm", "Tarla", "Farm", 2, 4, 1)
+        new Entry("farm", "Tarla", "Farm", 2, 4, 1),
+        new Entry("hydro", "Küçük hidroelektrik", "Hydro", 60, 30, 1)
     };
-    public static int Limit(int index, int level) => Entries[index].Id == "farm" ? int.MaxValue : index == 0 ? level * 2 : index == 1 ? level < 4 ? 0 : ((level - 4) / 3 + 1) * 2 : 8;
+    public static int Limit(int index, int level) => int.MaxValue;
+    public static GameObject CreateInstance(int index, Vector3 position, Quaternion rotation)
+    {
+        if (index < 0 || index >= Entries.Length) return null;
+        var entry = Entries[index];
+        var prefab = Resources.Load<GameObject>("EcoInfrastructure/" + entry.Prefab);
+        if (prefab == null && entry.Id != "hydro") return null;
+        var go = prefab != null ? Object.Instantiate(prefab, position, rotation) : EcoHydroArt.Create(position, rotation);
+        var structure = go.GetComponent<EcoStructure>(); if (structure == null) structure = go.AddComponent<EcoStructure>();
+        structure.buildingId = entry.Id;
+        if (go.TryGetComponent<EcoPowerNode>(out var power))
+        {
+            if (power.kind == EcoPowerNode.Kind.Solar) power.ratedPower = 4;
+            if (power.kind == EcoPowerNode.Kind.Wind || power.kind == EcoPowerNode.Kind.Hydro) power.ratedPower = 6;
+            if (power.kind == EcoPowerNode.Kind.Battery) power.capacity = 240;
+        }
+        if (go.TryGetComponent<EcoChargingStation>(out var charging)) charging.chargeRate = 4;
+        if (go.TryGetComponent<EcoWaterNode>(out var water)) { water.capacity = 120; water.litresPerSecond = 1; water.electricityPerLitre = water.kind == EcoWaterNode.Kind.Intake ? 1 : 2; }
+        if (go.TryGetComponent<EcoFarm>(out var farm)) { farm.growingArea = new Vector2(5,5); farm.irrigationPerSecond = 1; }
+        if (go.TryGetComponent<EcoRecyclingFacility>(out var recycler)) recycler.unitsPerSecond = 1f / 3f;
+        return go;
+    }
     public static int Find(string id)
     {
         for (int i = 0; i < Entries.Length; i++) if (Entries[i].Id == id) return i;

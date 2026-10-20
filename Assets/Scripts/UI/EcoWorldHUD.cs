@@ -79,7 +79,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (canvas == null) return;
         canvas.enabled = !EcoMarketUI.IsOpen;
         if (lastWidth != DisplayWidth || lastHeight != DisplayHeight) ApplyLayout();
-        if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) SetMap(!mapOpen);
+        if (Keyboard.current != null && EcoKeys.Pressed(EcoKeys.Action.Map)) SetMap(!mapOpen);
         if (mapOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) SetMap(false);
 
         AnimateIntro();
@@ -164,9 +164,10 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private static Color GoodColor(float g)
     {
         g = Mathf.Clamp01(g);
-        var bad = new Color(0.94f, 0.36f, 0.31f);
-        var mid = new Color(1f, 0.79f, 0.31f);
-        var fine = new Color(0.34f, 0.86f, 0.59f);
+        bool cb = EcoSettings.ColorBlind;
+        var bad = cb ? new Color(0.84f, 0.37f, 0f) : new Color(0.94f, 0.36f, 0.31f);
+        var mid = cb ? new Color(0.94f, 0.89f, 0.26f) : new Color(1f, 0.79f, 0.31f);
+        var fine = cb ? new Color(0f, 0.45f, 0.70f) : new Color(0.34f, 0.86f, 0.59f);
         return g < 0.5f ? Color.Lerp(bad, mid, g * 2f) : Color.Lerp(mid, fine, (g - 0.5f) * 2f);
     }
 
@@ -285,7 +286,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         // Mini map (below the resources panel).
         mapPanel = Panel("Map", root.transform, new Vector2(1, 1), Vector2.zero, new Vector2(274, 330), new Vector2(1, 1), Surface);
         mapHeader = Label(mapPanel, "Heading", "HARİTA", new Vector2(14, -10), new Vector2(120, 18), 12, TextAnchor.MiddleLeft, Accent, true);
-        mapHint = Label(mapPanel, "Hint", "[M] Büyüt", new Vector2(130, -10), new Vector2(130, 18), 12, TextAnchor.MiddleRight, Muted);
+        mapHint = Label(mapPanel, "Hint", "" + EcoKeys.Tag(EcoKeys.Action.Map) + " Büyüt", new Vector2(130, -10), new Vector2(130, 18), 12, TextAnchor.MiddleRight, Muted);
         miniFrame = Panel("Frame", mapPanel, new Vector2(0, 1), new Vector2(12, -32), new Vector2(250, 250), new Vector2(0, 1), new Color(0.02f, 0.04f, 0.05f, 1f));
         miniImage = MapImage(miniFrame, "Map image");
         MakeMarker(miniFrame, out miniArrow, out miniShadow, 16f);
@@ -308,7 +309,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         bigDim.sprite = null; bigDim.type = Image.Type.Simple;
         bigMap = Panel("Big map", root.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 690), new Vector2(0.5f, 0.5f), Surface);
         bigTitle = Label(bigMap, "Title", "DÜNYA HARİTASI", new Vector2(18, -12), new Vector2(300, 22), 16, TextAnchor.MiddleLeft, Accent, true);
-        bigHint = Label(bigMap, "Hint", "[M] / [Esc] Kapat", new Vector2(300, -14), new Vector2(322, 20), 13, TextAnchor.MiddleRight, Muted);
+        bigHint = Label(bigMap, "Hint", "" + EcoKeys.Tag(EcoKeys.Action.Map) + " / [Esc] Kapat", new Vector2(300, -14), new Vector2(322, 20), 13, TextAnchor.MiddleRight, Muted);
         bigFrame = Panel("Frame", bigMap, new Vector2(0, 1), new Vector2(20, -44), new Vector2(600, 600), new Vector2(0, 1), new Color(0.02f, 0.04f, 0.05f, 1f));
         bigImage = MapImage(bigFrame, "Map image");
         MakeMarker(bigFrame, out bigArrow, out bigShadow, 26f);
@@ -321,7 +322,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         introGroup = intro.gameObject.AddComponent<CanvasGroup>(); introGroup.interactable = false; introGroup.blocksRaycasts = false;
         introTitleText = Label(intro, "Title", introTitle, Vector2.zero, new Vector2(800, 70), 56, TextAnchor.MiddleCenter, Accent, true);
         introLineText = Label(intro, "Line", introLine, Vector2.zero, new Vector2(800, 60), 21, TextAnchor.MiddleCenter, Ink);
-        introHint = Label(intro, "Hint", "[M] Harita   ·   [1–5] Araçlar   ·   [B] İnşa   ·   [E] Etkileşim", Vector2.zero, new Vector2(800, 24), 15, TextAnchor.MiddleCenter, Muted);
+        introHint = Label(intro, "Hint", "" + EcoKeys.Tag(EcoKeys.Action.Map) + " Harita   ·   [1–5] Araçlar   ·   " + EcoKeys.Tag(EcoKeys.Action.Build) + " İnşa   ·   " + EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim", Vector2.zero, new Vector2(800, 24), 15, TextAnchor.MiddleCenter, Muted);
     }
 
     private RawImage MapImage(RectTransform frame, string name)

@@ -1,30 +1,51 @@
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
+// GDD §3 isometric controls: WASD moves relative to the camera, right click walks along a NavMesh route,
+// the mouse aims the selected tool, Esc pauses. The old first-person camera object is kept only as the
+// weapon mount, so the existing tool models and effects keep working.
 [RequireComponent(typeof(CharacterController), typeof(PlayerInput))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    public float walkSpeed = 3f;
-    public float runSpeed = 6f;
-    public float jumpHeight = 1.25f;
+    public float walkSpeed = 4.5f;
+    public float runSpeed = 7f;
     public float gravity = -9.81f;
-    [Header("First Person Look")]
-    public float mouseSensitivity = 0.1f;
-    public float gamepadLookSpeed = 150f;
-    public float pitchLimit = 85f;
+    public float turnSpeed = 720f;
+    [Header("Legacy camera objects (weapon mount)")]
     public GameObject thirdPersonCamera;
     public GameObject firstPersonCamera;
     public Animator characterAnimator;
 
+    public static bool Paused => EcoUIFlow.Paused;
+    public bool HasWalkOrder => hasPath || direct;
+
     private static readonly int SpeedParameter = Animator.StringToHash("Speed");
     private CharacterController controller;
     private PlayerVitals vitals;
-    private InputAction moveAction, lookAction, sprintAction, jumpAction;
-    private float verticalSpeed, pitch;
-    private Renderer[] bodyRenderers;
-    private ShadowCastingMode[] originalShadowModes;
+    private PlayerWeaponSystem weapons;
+    private EcoBuildController builder;
+    private InputAction moveAction, sprintAction;
+    private float verticalSpeed;
+    private EcoIsoCamera isoCamera;
+
+    private NavMeshPath path;
+    private bool hasPath, direct;
+    private int corner;
+    private Vector3 directTarget;
+    private GameObject marker;
+    private float markerUntil;
+
+    private void Awake()
+    {
+        // The scene stores older, slower values; the compact 200 m map needs these floors.
+        path = new NavMeshPath();
+        walkSpeed = Mathf.Max(walkSpeed, 4.5f);
+        runSpeed = Mathf.Max(runSpeed, 7f);
+        BuildIsometricCamera();
+    }
 
     private void Start()
     {
@@ -34,100 +55,217 @@ public class PlayerController : MonoBehaviour
         input.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
         input.SwitchCurrentActionMap("Player");
         moveAction = input.actions.FindAction("Player/Move", true);
-        lookAction = input.actions.FindAction("Player/Look", true);
         sprintAction = input.actions.FindAction("Player/Sprint", true);
-        jumpAction = input.actions.FindAction("Player/Jump", false);
+        EcoKeys.AttachInput(moveAction, sprintAction);
         if (characterAnimator == null) characterAnimator = GetComponentInChildren<Animator>();
         if (characterAnimator != null) characterAnimator.applyRootMotion = false;
-        ConfigureFirstPersonBody();
+        weapons = GetComponentInChildren<PlayerWeaponSystem>(true);
+        builder = GetComponent<EcoBuildController>();
         if (thirdPersonCamera != null) thirdPersonCamera.SetActive(false);
-        if (firstPersonCamera != null) firstPersonCamera.SetActive(true);
-        SetCursorLocked(true);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void BuildIsometricCamera()
+    {
+        Camera legacy = firstPersonCamera != null ? firstPersonCamera.GetComponent<Camera>() : null;
+        var go = new GameObject("EcoIso Camera", typeof(Camera), typeof(AudioListener), typeof(EcoIsoCamera));
+        go.tag = "MainCamera";
+        foreach (var other in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (other.gameObject != go) other.enabled = false; // exactly one listener
+        var cam = go.GetComponent<Camera>();
+        if (legacy != null) cam.CopyFrom(legacy);
+        cam.orthographic = true; cam.orthographicSize = 16f; cam.nearClipPlane = 0.3f; cam.farClipPlane = 450f;
+        cam.enabled = true;
+        var data = cam.GetUniversalAdditionalCameraData();
+        if (legacy != null)
+        {
+            var old = legacy.GetUniversalAdditionalCameraData();
+            data.renderPostProcessing = old.renderPostProcessing;
+            data.antialiasing = old.antialiasing;
+            data.renderShadows = old.renderShadows;
+            legacy.enabled = false;
+            var listener = legacy.GetComponent<AudioListener>();
+            if (listener != null) listener.enabled = false;
+            legacy.gameObject.tag = "Untagged";
+        }
+        isoCamera = go.GetComponent<EcoIsoCamera>();
+        isoCamera.target = transform;
+        // The mount keeps the weapon holder in front of the chest instead of in front of a first-person eye.
+        if (firstPersonCamera != null) firstPersonCamera.transform.localPosition = new Vector3(0.28f, 1.15f, 0.4f);
     }
 
     private void Update()
     {
-        if (!EcoMarketUI.BlocksGameplay && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-            SetCursorLocked(false);
-        else if (!EcoMarketUI.BlocksGameplay && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-            SetCursorLocked(true);
+        var keyboard = Keyboard.current;
+        var mouse = Mouse.current;
+        if (builder == null) builder = GetComponent<EcoBuildController>();
+        bool buildBusy = builder != null && builder.IsBuilding;
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !EcoMarketUI.IsOpen && !EcoUIFlow.IsOpen && !buildBusy)
+            SetPaused(!Paused);
 
-        bool hasControl = !EcoMarketUI.BlocksGameplay && Application.isFocused && Cursor.lockState == CursorLockMode.Locked
+        bool hasControl = !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && !buildBusy && Application.isFocused
             && (vitals == null || !vitals.IsRecovering);
-        if (hasControl && firstPersonCamera != null)
+
+        Vector2 stick = hasControl && moveAction != null ? Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f) : Vector2.zero;
+        Vector3 desired = Vector3.zero;
+        if (isoCamera != null && stick.sqrMagnitude > 0.01f)
         {
-            Vector2 look = lookAction.ReadValue<Vector2>();
-            // Mouse delta is already a per-frame displacement; only stick input needs deltaTime.
-            float sensitivity = lookAction.activeControl?.device is Gamepad
-                ? gamepadLookSpeed * Time.deltaTime : mouseSensitivity;
-            transform.Rotate(0f, look.x * sensitivity, 0f, Space.World);
-            pitch = Mathf.Clamp(pitch - look.y * sensitivity, -pitchLimit, pitchLimit);
-            firstPersonCamera.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            desired = isoCamera.FlatForward * stick.y + isoCamera.FlatRight * stick.x;
+            CancelWalkOrder(); // WASD overrides any walk order (GDD §3)
+        }
+        else if (hasControl)
+        {
+            if (mouse != null && mouse.rightButton.wasPressedThisFrame && !buildBusy && !EcoIsoCamera.PointerOverUI())
+                OrderWalk();
+            desired = FollowWalkOrder();
         }
 
-        Vector2 input = hasControl ? Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f) : Vector2.zero;
-        float speed = sprintAction.IsPressed() ? runSpeed : walkSpeed;
+        float speed = sprintAction != null && sprintAction.IsPressed() ? runSpeed : walkSpeed;
         if (vitals != null) speed *= vitals.MovementMultiplier;
-        // Backwards and sideways movement preserve the view direction.
-        Vector3 movement = (transform.forward * input.y + transform.right * input.x) * speed;
-        if (controller.isGrounded)
-        {
-            if (verticalSpeed < 0f) verticalSpeed = -2f;
-            bool jumpPressed = (jumpAction != null && jumpAction.WasPressedThisFrame())
-                || (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame);
-            if (hasControl && jumpPressed)
-            {
-                verticalSpeed = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            }
-        }
+        Vector3 movement = desired * speed;
+
+        // Facing: toward the cursor while a tool is held, otherwise toward the walking direction.
+        Vector3 aimPoint = default;
+        bool aiming = hasControl && !buildBusy && mouse != null && EcoKeys.FireHeld(mouse) && !EcoIsoCamera.PointerOverUI()
+            && EcoIsoCamera.TryCursorPoint(transform, out aimPoint);
+        Vector3 face = aiming ? Vector3.ProjectOnPlane(aimPoint - transform.position, Vector3.up) : desired;
+        if (face.sqrMagnitude > 0.01f)
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(face.normalized), turnSpeed * Time.deltaTime);
+
+        if (controller.isGrounded && verticalSpeed < 0f) verticalSpeed = -2f;
         verticalSpeed += gravity * Time.deltaTime;
         controller.Move((movement + Vector3.up * verticalSpeed) * Time.deltaTime);
 
+        UpdateWeaponMount();
+        UpdateMarker();
+
         if (characterAnimator != null)
         {
-            Vector3 planarVelocity = controller.velocity;
-            planarVelocity.y = 0f;
-            float actualSpeed = planarVelocity.magnitude;
-            float blend = actualSpeed <= walkSpeed
-                ? Mathf.InverseLerp(0f, walkSpeed, actualSpeed) * 0.5f
-                : 0.5f + Mathf.InverseLerp(walkSpeed, runSpeed, actualSpeed) * 0.5f;
+            Vector3 planar = controller.velocity; planar.y = 0f;
+            float actual = planar.magnitude;
+            float blend = actual <= walkSpeed
+                ? Mathf.InverseLerp(0f, walkSpeed, actual) * 0.5f
+                : 0.5f + Mathf.InverseLerp(walkSpeed, runSpeed, actual) * 0.5f;
             characterAnimator.SetFloat(SpeedParameter, blend, 0.1f, Time.deltaTime);
         }
     }
 
-    private static void SetCursorLocked(bool locked)
-    {
-        Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
-        Cursor.visible = !locked;
-    }
+    // ------------------------------------------------------------------ walk orders
 
-    private void ConfigureFirstPersonBody()
+    private void OrderWalk()
     {
-        if (characterAnimator == null || firstPersonCamera == null) return;
-        // The camera sits inside the full-body mesh. Keep its animated shadow,
-        // but hide the mesh surfaces that would otherwise cover the FPS view.
-        // Weapons live under the camera, outside this character hierarchy.
-        bodyRenderers = characterAnimator.GetComponentsInChildren<Renderer>(true);
-        originalShadowModes = new ShadowCastingMode[bodyRenderers.Length];
-        for (int i = 0; i < bodyRenderers.Length; i++)
+        if (!EcoIsoCamera.TryCursorHit(transform, out var hit))
+        { Notify("Oraya yürünemez."); return; }
+        if (hit.normal.y < 0.5f) { Notify("Oraya ulaşılamıyor."); return; }
+        var navigation = EcoNavigation.Current;
+        if (navigation != null && navigation.Ready)
         {
-            originalShadowModes[i] = bodyRenderers[i].shadowCastingMode;
-            bodyRenderers[i].shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            if (!NavMesh.SamplePosition(hit.point, out var goal, 2.5f, NavMesh.AllAreas)
+                || !NavMesh.SamplePosition(transform.position, out var start, 3f, NavMesh.AllAreas)
+                || !NavMesh.CalculatePath(start.position, goal.position, NavMesh.AllAreas, path)
+                || path.status != NavMeshPathStatus.PathComplete || path.corners.Length < 1)
+            { Notify("Oraya ulaşılamıyor."); return; }
+            hasPath = true; direct = false; corner = path.corners.Length > 1 ? 1 : 0;
+            ShowMarker(goal.position);
+        }
+        else
+        {
+            CancelWalkOrder(); Notify("Yürüme rotası hazırlanıyor. Şimdilik WASD ile hareket et.");
         }
     }
 
-    private void OnEnable()
+    private Vector3 FollowWalkOrder()
     {
-        if (bodyRenderers == null) return; // Start initializes the renderer list.
-        foreach (var bodyRenderer in bodyRenderers)
-            if (bodyRenderer != null) bodyRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+        if (hasPath)
+        {
+            var corners = path.corners;
+            while (corner < corners.Length)
+            {
+                Vector3 to = corners[corner] - transform.position; to.y = 0f;
+                if (to.magnitude > 0.45f) return to.normalized;
+                corner++;
+            }
+            hasPath = false;
+        }
+        else if (direct)
+        {
+            Vector3 to = directTarget - transform.position; to.y = 0f;
+            if (to.magnitude > 0.5f) return to.normalized;
+            direct = false;
+        }
+        return Vector3.zero;
+    }
+
+    public void CancelWalkOrder() { hasPath = false; direct = false; }
+    public void Teleport(Vector3 position)
+    {
+        CancelWalkOrder(); verticalSpeed = 0f;
+        if (controller == null) controller = GetComponent<CharacterController>();
+        controller.enabled = false; transform.position = position + Vector3.up * 0.1f; controller.enabled = true;
+    }
+
+    private void ShowMarker(Vector3 point)
+    {
+        if (marker == null)
+        {
+            marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            marker.name = "Walk Marker";
+            Destroy(marker.GetComponent<Collider>());
+            marker.transform.localScale = new Vector3(0.7f, 0.015f, 0.7f);
+            var renderer = marker.GetComponent<Renderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var block = new MaterialPropertyBlock();
+            block.SetColor("_BaseColor", new Color(0.35f, 0.95f, 0.55f));
+            renderer.SetPropertyBlock(block);
+        }
+        marker.transform.position = point + Vector3.up * 0.05f;
+        marker.SetActive(true);
+        markerUntil = Time.time + 1.2f;
+    }
+
+    private void UpdateMarker()
+    {
+        if (marker != null && marker.activeSelf && (Time.time > markerUntil || !HasWalkOrder)) marker.SetActive(false);
+    }
+
+    private void UpdateWeaponMount()
+    {
+        if (firstPersonCamera == null) return;
+        Vector3 direction = transform.forward;
+        if (!Paused && EcoIsoCamera.TryCursorPoint(transform, out var point))
+        {
+            Vector3 d = point - firstPersonCamera.transform.position;
+            if (d.sqrMagnitude > 0.04f) direction = d.normalized;
+        }
+        firstPersonCamera.transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+    }
+
+    private void Notify(string message)
+    {
+        if (weapons == null) weapons = GetComponentInChildren<PlayerWeaponSystem>(true);
+        if (weapons != null) weapons.ShowFeedback(message);
+    }
+
+    // ------------------------------------------------------------------ pause
+
+    public static void SetPaused(bool paused)
+    {
+        EcoUIFlow.SetPaused(paused);
+    }
+
+    private void OnGUI()
+    {
+        if (!Paused || FindFirstObjectByType<EcoGameMenu>() != null) return;
+        float width = 360f, height = 110f;
+        var rect = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+        GUI.Box(rect, "DURAKLATILDI");
+        GUI.Label(new Rect(rect.x + 20f, rect.y + 36f, width - 40f, 24f), "Dünya durdu. Devam etmek için Esc.");
+        if (GUI.Button(new Rect(rect.x + 20f, rect.y + 66f, width - 40f, 30f), "Devam et")) SetPaused(false);
     }
 
     private void OnDisable()
     {
-        SetCursorLocked(false);
-        if (bodyRenderers == null) return;
-        for (int i = 0; i < bodyRenderers.Length; i++)
-            if (bodyRenderers[i] != null) bodyRenderers[i].shadowCastingMode = originalShadowModes[i];
+        if (Paused) SetPaused(false);
+        if (marker != null) Destroy(marker);
     }
 }

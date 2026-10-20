@@ -5,6 +5,18 @@ using UnityEngine;
 [DefaultExecutionOrder(40)]
 public sealed class EcoWaterGrid : MonoBehaviour
 {
+    public static bool AreConnected(EcoWaterNode from, EcoWaterNode to, EcoWaterNode.Fluid fluid)
+    {
+        if (from == null || to == null) return false;
+        var queue = new Queue<EcoWaterNode>(); var seen = new HashSet<EcoWaterNode> { from }; queue.Enqueue(from);
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue(); if (node == to) return true;
+            foreach (var pipe in EcoWaterPipe.Active)
+                if (pipe != null && pipe.IsConnected && pipe.fluid == fluid && pipe.from == node && seen.Add(pipe.to)) queue.Enqueue(pipe.to);
+        }
+        return false;
+    }
     private void Update()
     {
         var primary = EcoWorldClock.Current;
@@ -45,6 +57,7 @@ public sealed class EcoWaterGrid : MonoBehaviour
         foreach (var request in requests)
         {
             var pipe = request.Key;
+            if (pipe.fluid == EcoWaterNode.Fluid.Dirty && pipe.from.source != null) pipe.to.source = pipe.from.source;
             float amount = request.Value * Mathf.Min(1, space[pipe.to] / incoming[pipe.to]);
             float taken = pipe.from.Take(pipe.fluid, amount);
             amount = pipe.to.Add(pipe.fluid, taken);

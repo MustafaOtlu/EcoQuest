@@ -10,6 +10,10 @@ public sealed class EcoWaterNode : MonoBehaviour
     [Min(0)] public float capacity = 100, dirtyWater, cleanWater;
     [Min(0)] public float litresPerSecond = 4, electricityPerLitre = 2;
     public WeaponWaterSource source;
+    public bool returnToLake;
+    public EcoRegion SourceRegion => source != null ? EcoRegion.At(source.transform.position) : EcoRegion.At(transform.position);
+    public float LastProcessedClean { get; private set; }
+    public float LastOutputRate { get; private set; }
     public float SlimeRemaining { get; private set; }
     public float ThroughputMultiplier => kind == Kind.Purifier && SlimeRemaining > 0f ? slimeRateMultiplier : 1f;
     private float slimeRateMultiplier = 1f;
@@ -24,6 +28,12 @@ public sealed class EcoWaterNode : MonoBehaviour
     public void Simulate(float seconds)
     {
         if (!Valid(seconds)) return;
+        LastOutputRate = 0;
+        if (returnToLake && kind == Kind.Purifier && cleanWater > 0)
+        {
+            float returned = Take(Fluid.Clean, Mathf.Min(cleanWater, litresPerSecond * seconds));
+            SourceRegion?.AddPollution(0, -returned / 20f, 0, 0);
+        }
         SlimeRemaining = Mathf.Max(0f, SlimeRemaining - seconds);
         if (SlimeRemaining <= 0f) slimeRateMultiplier = 1f;
     }
@@ -57,7 +67,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         foreach (var candidate in FindObjectsByType<WeaponWaterSource>(FindObjectsSortMode.None))
         {
             var collider = candidate.GetComponentInChildren<Collider>();
-            float distance = Vector3.Distance(transform.position, collider != null ? collider.ClosestPoint(transform.position) : candidate.transform.position);
+            float distance = Vector3.Distance(transform.position, collider != null ? collider.bounds.ClosestPoint(transform.position) : candidate.transform.position);
             if (distance <= nearest) { nearest = distance; source = candidate; }
         }
     }
@@ -74,7 +84,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         if (source == null) FindSource();
         if (source == null || !source.isActiveAndEnabled) return 0;
         var sourceCollider = source.GetComponentInChildren<Collider>();
-        if (Vector3.Distance(transform.position, sourceCollider != null ? sourceCollider.ClosestPoint(transform.position) : source.transform.position) > 3f) return 0;
+        if (Vector3.Distance(transform.position, sourceCollider != null ? sourceCollider.bounds.ClosestPoint(transform.position) : source.transform.position) > 3f) return 0;
         return (float)System.Math.Min(float.MaxValue, System.Math.Min(Space, rateLimit) * electricityPerLitre);
     }
     public float DeliverElectricity(float amount, float seconds)
@@ -85,6 +95,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         float litres = Mathf.Min(kind == Kind.Purifier ? dirtyWater : Space, accepted / electricityPerLitre);
         if (kind == Kind.Intake) return Add(source.IsClean ? Fluid.Clean : Fluid.Dirty, litres) * electricityPerLitre;
         dirtyWater = Mathf.Max(0, dirtyWater - litres); cleanWater += litres;
+        LastProcessedClean += litres; LastOutputRate = seconds > 0 ? litres / seconds : 0;
         return Mathf.Min(accepted, litres * electricityPerLitre);
     }
     public float FillWeapon(PlayerWeaponSystem user, bool allowDirty = false, float limit = float.MaxValue)

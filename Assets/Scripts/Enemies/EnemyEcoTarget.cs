@@ -18,7 +18,7 @@ public sealed class EnemyEcoTarget
         && (Component is not EcoVegetation tree || tree.health > 0)
         && (Component is not PlantedSeed crop || !crop.IsWithered);
 
-    public Vector3 AimPoint(Vector3 origin) => shape != null ? shape.ClosestPoint(origin) : Component != null ? Component.transform.position : origin;
+    public Vector3 AimPoint(Vector3 origin) => shape != null ? shape.bounds.ClosestPoint(origin) : Component != null ? Component.transform.position : origin;
     public bool VisibleFrom(Vector3 origin, Transform observer)
     {
         if (!IsAlive) return false;

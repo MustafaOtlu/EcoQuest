@@ -9,19 +9,19 @@ public sealed class EcoEquipmentUpgrades : MonoBehaviour
     public PlayerWeaponSystem weapons;
     public int Rank(Upgrade item) => (int)item >= 0 && (int)item < Count ? levels[(int)item] : 0;
     public int Purchased { get { int total = 0; foreach (int rank in levels) total += rank; return total; } }
-    public int Allowance => weapons != null && weapons.Progression != null ? weapons.Progression.Level * 3 : 0;
+    public int Allowance => Count * 3;
     public static readonly string[] Names = { "Su deposu", "Vakum menzili", "Vakum basıncı", "Tohum / top deposu", "Çoklu ekim", "Tohum menzili", "İşlem kapasitesi", "Geri dönüşüm hızı", "Büyük atık işleme" };
     private static readonly int[] BaseMetal = { 4, 6, 6, 3, 5, 5, 4, 6, 8 };
     private static readonly int[] BasePlastic = { 2, 3, 4, 4, 6, 4, 4, 4, 6 };
-    public int RequiredLevel(Upgrade item) => Rank(item) switch { 0 => 2, 1 => 6, _ => 12 };
-    public int MetalCost(Upgrade item) => BaseMetal[(int)item] * (1 << Rank(item));
-    public int PlasticCost(Upgrade item) => BasePlastic[(int)item] * (1 << Rank(item));
-    public float VacuumElectricity => 1 + 0.1f * (levels[0] + levels[1] + levels[2]);
-    public float SeedElectricity => 1 + 0.1f * (levels[3] + levels[4] + levels[5]);
-    public float RecyclerElectricity => 1 + 0.1f * (levels[6] + levels[7] + levels[8]);
+    public int RequiredLevel(Upgrade item) => Rank(item) switch { 0 => 0, 1 => 2, _ => 4 };
+    public int MetalCost(Upgrade item) => 8 * (Rank(item) + 1);
+    public int PlasticCost(Upgrade item) => 4 * (Rank(item) + 1);
+    public float VacuumElectricity => (1 + 0.1f * (levels[0] + levels[1] + levels[2])) * EcoSpecialization.EnergyUse;
+    public float SeedElectricity => (1 + 0.1f * (levels[3] + levels[4] + levels[5])) * EcoSpecialization.EnergyUse;
+    public float RecyclerElectricity => (1 + 0.1f * (levels[6] + levels[7] + levels[8])) * EcoSpecialization.EnergyUse;
     public int SeedCapacity => 40 + 20 * levels[3];
     public int AmmoCapacity => 100 + 50 * levels[3];
-    public int SeedVolley => 1 + levels[4];
+    public int SeedVolley => 1;
     public float SeedVelocity => 18 * (1 + 0.2f * levels[5]);
     public float CollectionRadius => levels[1] * 0.15f;
     public float VacuumRangeBonus => levels[1] * 2;
@@ -33,8 +33,8 @@ public sealed class EcoEquipmentUpgrades : MonoBehaviour
         reason = "Geliştirme kullanılamıyor.";
         if ((int)item < 0 || (int)item >= Count || weapons == null || !weapons.CanOperate) return false;
         if (Rank(item) >= 3) { reason = "En yüksek kademe"; return false; }
-        if (!weapons.Progression.HasLevel(RequiredLevel(item))) { reason = "YEP " + RequiredLevel(item) + ". seviye gerekli"; return false; }
-        if (Purchased >= Allowance) { reason = "Yeni hak için YEP seviyeni artır"; return false; }
+        if ((EcoProjects.Current != null ? EcoProjects.Current.CompletedCount : 0) < RequiredLevel(item)) { reason = RequiredLevel(item) + " proje gerekli"; return false; }
+        if (item == Upgrade.MultiSeed) { reason = "Tek hedefli ekim kullanılıyor"; return false; }
         if (weapons.Metal < MetalCost(item) || weapons.Plastic < PlasticCost(item)) { reason = "Malzeme yetersiz"; return false; }
         reason = "Geliştir"; return true;
     }

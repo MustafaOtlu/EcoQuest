@@ -5,6 +5,7 @@ public sealed class EcoChargingStation : MonoBehaviour
 {
     [Min(0.1f)] public float chargeRate = 15f, reach = 3f;
     public PlayerWeaponSystem User { get; private set; }
+    public float TotalDeliveredEnergy { get; private set; }
     public void Toggle(PlayerWeaponSystem weapons)
     {
         if (weapons.ChargingStation == this) { weapons.StopCharging(); return; }
@@ -22,7 +23,11 @@ public sealed class EcoChargingStation : MonoBehaviour
         if (User.Energy >= User.maximumEnergy - 0.001f) { User.ShowFeedback("Silah bataryası doldu."); Stop(); return 0f; }
         return Mathf.Min(Mathf.Max(0f, chargeRate) * seconds, User.maximumEnergy - User.Energy);
     }
-    public float DeliverEnergy(float amount) => User != null ? User.ReceiveElectricity(amount) : 0f;
+    public float DeliverEnergy(float amount)
+    {
+        float delivered = User != null ? User.ReceiveElectricity(amount) : 0f;
+        TotalDeliveredEnergy += delivered; return delivered;
+    }
     public void Stop()
     {
         var previous = User; User = null;

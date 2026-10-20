@@ -8,9 +8,13 @@ public sealed class EcoGlacierMelt : MonoBehaviour
     public List<Transform> ice = new List<Transform>();
     [Range(0f, 100f)] public float safeCarbon = 12f;
     [Range(0f, 1f)] public float maxMelt = 0.7f;
+    /// <summary>Set by the glacier monitoring station: shifts the safe carbon level up so the melt line stays back.</summary>
+    public float stationBonus;
     private Vector3[] baseScale;
     private float[] baseY;
     private float meltNow, meltTarget, nextScan;
+    /// <summary>Positive while the melt line is still advancing (target above current).</summary>
+    public float MeltRate => Mathf.Max(0f, meltTarget - meltNow);
 
     private void Start()
     {
@@ -30,7 +34,7 @@ public sealed class EcoGlacierMelt : MonoBehaviour
             float sum = 0f; int count = 0;
             foreach (var region in regions) if (region != null) { sum += region.carbon; count++; }
             float average = count > 0 ? sum / count : 0f;
-            meltTarget = Mathf.Clamp01((average - safeCarbon) / 60f) * maxMelt;
+            meltTarget = Mathf.Clamp01((average - safeCarbon - stationBonus) / 60f) * maxMelt;
         }
         meltNow = Mathf.MoveTowards(meltNow, meltTarget, 0.02f * Time.deltaTime);
         for (int i = 0; i < ice.Count; i++)

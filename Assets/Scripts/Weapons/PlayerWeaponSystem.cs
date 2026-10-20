@@ -22,14 +22,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     [field: SerializeField] public EcoCropCatalog.Kind SelectedSeed { get; private set; }
     public int TotalSeeds => Seeds + otherSeeds[0] + otherSeeds[1] + otherSeeds[2];
     public int SeedCount(EcoCropCatalog.Kind kind) => !EcoCropCatalog.Valid(kind) ? 0 : kind == EcoCropCatalog.Kind.Cabbage ? Seeds : otherSeeds[(int)kind - 1];
-    private void AddSeeds(EcoCropCatalog.Kind kind, int amount)
+    public void AddSeeds(EcoCropCatalog.Kind kind, int amount)
     { if (kind == EcoCropCatalog.Kind.Cabbage) Seeds += amount; else otherSeeds[(int)kind - 1] += amount; }
     public void CycleSeed()
     {
         for (int i = 1; i <= EcoCropCatalog.Count; i++)
         {
             var next = (EcoCropCatalog.Kind)(((int)SelectedSeed + i) % EcoCropCatalog.Count);
-            if (!Progression.HasLevel(EcoCropCatalog.Get(next).Level)) continue;
+            if (!EcoDiscoveries.CanPlant(next)) continue;
             SelectedSeed = next; Notify(EcoCropCatalog.Get(next).Name + " • İklim " + EcoCropCatalog.Get(next).Climate); Changed?.Invoke(); return;
         }
     }
@@ -53,13 +53,42 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     [field: SerializeField] public string LastScan { get; private set; } = "";
     [field: SerializeField] public int Food { get; private set; }
+    [SerializeField] private int[] cleanProduce = new int[3];
+    public int CountProduce(EcoCropCatalog.Kind kind) => (int)kind >= 0 && (int)kind < 3 ? cleanProduce[(int)kind] : 0;
+    public bool HasCareFood => Food >= 2 || CleanFish >= 1;
+    public bool HasFinaleTools => holder != null && modelPrefabs.Length > 1 && modelPrefabs[1] != null;
+    public bool TrySpendElectricity(float amount)
+    { if (!CanOperate || !EcoRegion.Valid(amount) || Energy < amount) return false; Energy -= amount; Changed?.Invoke(); return true; }
+    public bool TryTakeCleanWater(float amount)
+    { if (!CanOperate || !EcoRegion.Valid(amount) || HasDirtyWater || Water < amount) return false; Water -= amount; Changed?.Invoke(); return true; }
+    public bool TrySpendMetalAmmo(int amount)
+    { if (!CanOperate || amount <= 0 || MetalAmmo < amount) return false; MetalAmmo -= amount; Changed?.Invoke(); return true; }
+    public bool TryTakeProduce(EcoCropCatalog.Kind kind, int amount)
+    { if (!CanOperate || amount <= 0 || CountProduce(kind) < amount) return false; cleanProduce[(int)kind] -= amount; Food -= amount; Changed?.Invoke(); return true; }
+    public bool TryTakeCleanProduce(int amount)
+    {
+        if (!CanOperate || amount <= 0 || Food < amount) return false;
+        int remaining = amount;
+        for (int i = 0; i < 3; i++) { int taken = Mathf.Min(remaining, cleanProduce[i]); cleanProduce[i] -= taken; remaining -= taken; }
+        Food -= amount; Changed?.Invoke(); return true;
+    }
+    public bool TryTakeCleanFish(int amount)
+    { if (!CanOperate || amount <= 0 || CleanFish < amount) return false; CleanFish -= amount; Changed?.Invoke(); return true; }
+    public bool TryConsumeCareFood() => Food >= 2 ? TryTakeCleanProduce(2) : TryTakeCleanFish(1);
+    public void EmergencySupplies()
+    { if (TotalSeeds == 0 && Food == 0) AddSeeds(EcoCropCatalog.Kind.Cabbage, 1); if (Water < 2) { dirtyWater = false; Water = 2; } Changed?.Invoke(); }
+    public void HandSort()
+    {
+        TakeRawResources(1, out int m, out int p, out int o);
+        if (m + p + o > 0) ReceiveProcessedResources(m, p, o);
+    }
     [field: SerializeField] public int CleanFish { get; private set; }
     [field: SerializeField] public int DirtyFish { get; private set; }
     public bool ReceiveFish(bool clean)
     {
         if (!CanOperate || CleanFish + DirtyFish >= 20) return false;
         if (clean) CleanFish++; else DirtyFish++;
-        Progression.Award(clean ? 3 : 1); Notify(clean ? "Temiz balık yakalandı." : "Kirli balık yakalandı • Yemek olarak kullanma."); Changed?.Invoke(); return true;
+        if (clean) EcoDiscoveries.NotifyCleanFish(EcoRegion.At(owner.position)); Notify(clean ? "Temiz balık yakalandı." : "Kirli balık yakalandı • Yemek olarak kullanma."); Changed?.Invoke(); return true;
     }
     [field: SerializeField] public int Compost { get; private set; }
     public string Feedback { get; private set; }
@@ -94,17 +123,43 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         Energy += received; Changed?.Invoke(); return received;
     }
     public void ShowFeedback(string message) => Notify(message);
+    public void SpendFraction(float fraction) { Energy = Mathf.Max(0f, Energy - Energy * Mathf.Clamp01(fraction)); Changed?.Invoke(); }
     private Transform[] models = new Transform[4];
     private Transform owner;
     private PlayerVitals vitals;
     private Camera view;
+    private int aimFrame = -1;
+    private Vector3 aimDirection = Vector3.forward;
+    // Isometric aiming: shots start at the character's chest and travel toward the point under the cursor.
+    private Vector3 AimOrigin => owner != null ? owner.position + Vector3.up * 1.15f : transform.position;
+    private Vector3 AimDir { get { RefreshAim(); return aimDirection; } }
+    private Vector3 AimRight
+    {
+        get
+        {
+            Vector3 right = Vector3.Cross(Vector3.up, AimDir);
+            return right.sqrMagnitude > 0.0001f ? right.normalized : (owner != null ? owner.right : Vector3.right);
+        }
+    }
+    private void RefreshAim()
+    {
+        if (aimFrame == Time.frameCount) return;
+        aimFrame = Time.frameCount;
+        Vector3 direction = owner != null ? owner.forward : Vector3.forward;
+        if (owner != null && EcoIsoCamera.TryCursorPoint(owner, out var point))
+        {
+            Vector3 delta = point - AimOrigin;
+            if (delta.sqrMagnitude > 0.04f) direction = delta.normalized;
+        }
+        aimDirection = direction;
+    }
     private WeaponVisualEffects streamEffects;
     private float nextShot, nextScan;
     private float nextHitFeedback;
     private RecyclableResource processing;
     private float progress;
     private bool dirtyWater;
-    private float jamUntil;
+    private float jamUntil, clog;
     [SerializeField] private string sessionKey = "EcoQuest.Session";
 
     private void Start()
@@ -129,7 +184,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             enabled = false;
             return;
         }
-        Energy = maximumEnergy; Water = maximumWater;
+        maximumWater = 50f; baseWaterCapacity = maximumWater; ApplyEquipmentCapacity();
+        Energy = maximumEnergy; Water = 20f; Seeds = 5;
+        Metal = 50; Plastic = 40;
         models[0] = holder.EquippedWeapon;
         for (int i = 1; i < models.Length; i++)
         {
@@ -181,9 +238,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     private void Update()
     {
-        bool locked = Cursor.lockState == CursorLockMode.Locked && Application.isFocused;
+        bool locked = Application.isFocused && !PlayerController.Paused;
         var mouse = Mouse.current;
-        if (!locked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) { ResetProcessing(); return; }
+        if (!locked || EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) { ResetProcessing(); return; }
         if (Builder != null && Builder.IsBuilding) { ResetProcessing(); return; }
         var keyboard = Keyboard.current;
         if (keyboard != null)
@@ -193,28 +250,27 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (keyboard.digit3Key.wasPressedThisFrame) SelectTool(2);
             if (keyboard.digit4Key.wasPressedThisFrame) SelectTool(3);
             if (keyboard.digit5Key.wasPressedThisFrame) SelectTool(4);
-            if (keyboard.eKey.wasPressedThisFrame) Interact();
+            if (EcoKeys.Pressed(EcoKeys.Action.Interact)) Interact();
             if (EcoMarketUI.IsOpen) return;
-            if (keyboard.qKey.wasPressedThisFrame) CycleMode();
-            if (keyboard.rKey.wasPressedThisFrame && Selected == Tool.SeedGun && !MetalMode) CycleSeed();
-            if (keyboard.rKey.wasPressedThisFrame && Selected == Tool.Recycler)
+            if (EcoKeys.Pressed(EcoKeys.Action.Mode)) CycleMode();
+            if (EcoKeys.Pressed(EcoKeys.Action.Rotate) && Selected == Tool.SeedGun && !MetalMode) CycleSeed();
+            if (EcoKeys.Pressed(EcoKeys.Action.Rotate) && Selected == Tool.Vacuum && HasDirtyWater) { clog = 0; jamUntil = Time.time + 2f; Water = Mathf.Max(0, Water - 2f); Notify("Kirli su hattı temizleniyor…"); }
+            if (EcoKeys.Pressed(EcoKeys.Action.Rotate) && Selected == Tool.Recycler)
             {
                 if (!TryFertilize()) RecycleInventory();
             }
-            if (keyboard.f5Key.wasPressedThisFrame) SaveSession();
-            if (keyboard.f9Key.wasPressedThisFrame) LoadSession();
+            // World saves own F5/F9; inventory is captured in the same atomic snapshot.
         }
-        if (mouse != null && mouse.scroll.ReadValue().y != 0f)
-            SelectTool(((int)Selected + (mouse.scroll.ReadValue().y > 0 ? 1 : 4)) % 5);
+        // Mouse wheel zooms the isometric camera (GDD §3); it no longer cycles tools.
         // A press/release within one input update is still a shot. Never retain clicks from menus or focus loss.
-        bool firing = mouse != null && (mouse.leftButton.isPressed || mouse.leftButton.wasPressedThisFrame);
+        bool firing = mouse != null && (EcoKeys.FireHeld(mouse) || mouse.leftButton.wasPressedThisFrame) && !EcoIsoCamera.PointerOverUI();
         if (firing) Use(Time.deltaTime);
         else { processing = null; progress = 0f; if (streamEffects != null) streamEffects.Stop(false); }
         Changed?.Invoke();
     }
     public void Use(float deltaTime)
     {
-        if (view == null || deltaTime <= 0f || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
+        if (view == null || deltaTime <= 0f || EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
         if (Builder != null && Builder.IsBuilding) return;
         if (Selected == Tool.Hands) return;
         StopCharging();
@@ -223,25 +279,31 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (Time.time >= nextScan)
             {
                 nextScan = Time.time + 0.3f;
-                if (Energy < 1f) { Notify("Elektrik yetersiz. Şarj istasyonuna bağlan."); return; }
-                Energy -= 1f; Scan();
+                Scan();
             }
             return;
         }
         if (Selected == Tool.SeedGun) { FireSeedGun(); return; }
-        float cost = (Selected == Tool.Recycler ? 8f * Upgrades.RecyclerElectricity : 5f * Upgrades.VacuumElectricity) * deltaTime;
+        float cost = (Selected == Tool.Recycler ? 1f * Upgrades.RecyclerElectricity : (Mode == VacuumMode.Disperse ? 3f : Mode == VacuumMode.Water ? 1f : 2f) * Upgrades.VacuumElectricity) * deltaTime;
         if (Energy < cost || Time.time < jamUntil) { ResetProcessing(); Notify(Time.time < jamUntil ? "Silah tıkandı, kısa süre bekle." : "Elektrik yetersiz. Şarj istasyonuna bağlan."); return; }
-        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && Water < 10f * deltaTime) { Notify("Su bitti. Toplama moduyla su kaynağından doldur."); return; }
+        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && Water < 2f * deltaTime) { Notify("Su bitti. Toplama moduyla su kaynağından doldur."); return; }
         Energy -= cost;
         if (Selected == Tool.Vacuum && Mode == VacuumMode.Water)
         {
-            Water = Mathf.Max(0, Water - 10f * deltaTime);
-            if (dirtyWater && UnityEngine.Random.value < deltaTime * 0.08f) jamUntil = Time.time + 1.2f;
+            Water = Mathf.Max(0, Water - 2f * deltaTime);
+            if (dirtyWater) { clog += deltaTime * 0.1f; if (clog >= 1f) jamUntil = float.PositiveInfinity; }
         }
-        float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 12f : 8f) + Upgrades.VacuumRangeBonus;
+        float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 6f : 5f) + Upgrades.VacuumRangeBonus;
         bool found = Aim(range, out var hit, Selected == Tool.Vacuum && Mode == VacuumMode.Collect ? Upgrades.CollectionRadius : 0);
-        ShowStream(found ? hit.point : view.transform.position + view.transform.forward * range, found, found ? hit.normal : -view.transform.forward, deltaTime);
+        ShowStream(found ? hit.point : AimOrigin + AimDir * range, found, found ? hit.normal : -AimDir, deltaTime);
         if (!found) { processing = null; progress = 0; return; }
+        var focus = hit.collider.GetComponentInParent<EcoFinaleFocus>();
+        if (focus != null && Selected == Tool.Vacuum)
+        {
+            if (Mode == VacuumMode.Water && !dirtyWater) focus.TryUseWater(2f * deltaTime);
+            if (Mode == VacuumMode.Disperse) focus.TryUseAir(deltaTime);
+            return;
+        }
         var fire = hit.collider.GetComponentInParent<EcoFire>();
         if (fire != null && Selected == Tool.Vacuum && Mode == VacuumMode.Water)
         {
@@ -308,7 +370,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         StopCharging();
         Energy -= total * unitCost; CollectedMetalScrap -= metal; CollectedPlasticScrap -= plastic; CollectedOrganicWaste -= organic;
         int reward = AddProcessedResources(metal, plastic, organic);
-        Notify(total + " atık işlendi • +" + reward + " YEP" + (organic > 0 ? " • Organik birikim " + ProcessedOrganicRemainder + "/3" : ""));
+        Notify(total + " atık işlendi" + (organic > 0 ? " • Organik birikim " + ProcessedOrganicRemainder + "/3" : ""));
         Changed?.Invoke();
     }
     private int AddProcessedResources(int metal, int plastic, int organic)
@@ -316,7 +378,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         Metal += metal; Plastic += plastic;
         int organics = ProcessedOrganicRemainder + organic;
         Compost += organics / 3; ProcessedOrganicRemainder = organics % 3;
-        return Progression.Award((metal + plastic + organic) * 2);
+        return metal + plastic + organic;
     }
     public void TakeRawResources(int capacity, out int metal, out int plastic, out int organic)
     {
@@ -350,8 +412,13 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         reason = "İşlem kullanılamıyor";
         if ((int)offer < 0 || (int)offer >= EcoMarket.Titles.Length || !CanOperate || Upgrades == null) return false;
-        if (!Progression.HasLevel(EcoMarket.Level(offer))) { reason = "YEP " + EcoMarket.Level(offer) + ". seviye gerekli"; return false; }
-        if (offer == EcoMarket.Offer.SellProduce) { reason = Food > 0 ? "Sat" : "Satılacak ürün yok"; return Food > 0; }
+        if (EcoMarket.IsSeedOffer(offer))
+        {
+            var seed = offer == EcoMarket.Offer.CarrotSeeds ? EcoCropCatalog.Kind.Carrot : offer == EcoMarket.Offer.TomatoSeeds ? EcoCropCatalog.Kind.Tomato : offer == EcoMarket.Offer.TreeSeeds ? EcoCropCatalog.Kind.Tree : EcoCropCatalog.Kind.Cabbage;
+            if (!EcoDiscoveries.CanPlant(seed)) { reason = "Önce ilgili bölgeyi tara"; return false; }
+        }
+        if (offer == EcoMarket.Offer.SellProduce) { reason = CountProduce(SelectedSeed) > 0 ? "Sat" : "Seçili türden temiz ürün yok"; return CountProduce(SelectedSeed) > 0; }
+        if (offer == EcoMarket.Offer.SellFish) { reason = CleanFish > 0 ? "Sat" : "Temiz balık yok"; return CleanFish > 0; }
         if (offer == EcoMarket.Offer.SellSeeds) { reason = SeedCount(SelectedSeed) >= 5 ? "Sat" : "Seçili türden en az 5 tohum gerekli"; return SeedCount(SelectedSeed) >= 5; }
         if ((offer == EcoMarket.Offer.IronAmmo && MetalAmmo > Upgrades.AmmoCapacity - 5) || (EcoMarket.IsSeedOffer(offer) && TotalSeeds > Upgrades.SeedCapacity - 5)
             || (offer == EcoMarket.Offer.SmallFilter && SmallFilters >= 20) || (offer == EcoMarket.Offer.LargeFilter && LargeFilters >= 10))
@@ -359,10 +426,27 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Metal < EcoMarket.MetalPrice(offer) || Plastic < EcoMarket.PlasticPrice(offer)) { reason = "Malzeme yetersiz"; return false; }
         reason = "Satın al"; return true;
     }
+    /// <summary>Hands over produce for an order reward (EcoOrders). Returns false when the produce is missing.</summary>
+    public bool DeliverTypedOrder(int cropKind, bool fish, int amount, int metal, int plastic)
+    {
+        bool taken = fish ? TryTakeCleanFish(amount) : TryTakeProduce((EcoCropCatalog.Kind)cropKind, amount);
+        if (!taken) return false;
+        ReturnMaterials(metal, plastic); return true;
+    }
+    public bool DeliverOrder(int food, int metal, int plastic)
+    {
+        if (food < 0 || Food < food) return false;
+        if (food > 0 && !TryTakeCleanProduce(food)) return false;
+        Metal += Mathf.Max(0, metal); Plastic += Mathf.Max(0, plastic);
+        Changed?.Invoke();
+        return true;
+    }
     internal bool ExecuteMarketTrade(EcoMarket.Offer offer)
     {
         if (!CanMarketTrade(offer, out string reason)) { Notify(reason); return false; }
-        if (offer == EcoMarket.Offer.SellProduce) { Food--; Metal++; Plastic++; }
+        if (offer == EcoMarket.Offer.SellProduce)
+        { var price = EcoMarket.ProduceValue(SelectedSeed); if (!TryTakeProduce(SelectedSeed, 1)) return false; Metal += price.x; Plastic += price.y; }
+        else if (offer == EcoMarket.Offer.SellFish) { if (!TryTakeCleanFish(1)) return false; Metal += 4; Plastic += 2; }
         else if (offer == EcoMarket.Offer.SellSeeds) { AddSeeds(SelectedSeed, -5); Plastic++; }
         else
         {
@@ -399,7 +483,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         DamageEnemy(enemy, enemy.species == EnemyBrain.Species.Tin ? 45f : 8f);
         enemy.StunFromMetal();
         enemy.ApplyKnockback(enemy.transform.position - owner.position, 1.15f);
-        Notify(enemy.IsStunned ? "Teneke sersemledi • Yaklaş ve [E] ile küçük filtre tak" : "İsabet • " + enemy.species + " savruldu");
+        Notify(enemy.IsStunned ? "Teneke sersemledi • Yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile küçük filtre tak" : "İsabet • " + enemy.species + " savruldu");
     }
     private void DamageEnemy(EnemyBrain enemy, float amount)
     {
@@ -407,17 +491,13 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         enemy.TakeDamage(amount);
         if (Time.time >= nextHitFeedback)
         { Notify("İsabet • " + enemy.species + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
-        if (enemy.Health <= 0)
-        {
-            Progression.Award(enemy.species == EnemyBrain.Species.Tin ? 12 : 8);
-            Changed?.Invoke();
-        }
+        if (enemy.Health <= 0) Changed?.Invoke();
     }
     private bool Aim(float range, out RaycastHit nearest, float radius = 0)
     {
         nearest = default; float closest = float.PositiveInfinity;
-        var hits = radius > 0 ? Physics.SphereCastAll(view.transform.position, radius, view.transform.forward, range, ~0, QueryTriggerInteraction.Ignore)
-            : Physics.RaycastAll(view.transform.position, view.transform.forward, range, ~0, QueryTriggerInteraction.Ignore);
+        var hits = radius > 0 ? Physics.SphereCastAll(AimOrigin, radius, AimDir, range, ~0, QueryTriggerInteraction.Ignore)
+            : Physics.RaycastAll(AimOrigin, AimDir, range, ~0, QueryTriggerInteraction.Ignore);
         foreach (var hit in hits)
         {
             if (hit.transform.IsChildOf(owner) || hit.distance >= closest) continue;
@@ -428,23 +508,23 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     private void FireSeedGun()
     {
         if (Time.time < nextShot) return;
-        float unitCost = 2f * Upgrades.SeedElectricity;
+        float unitCost = (MetalMode ? 3f : 2f) * Upgrades.SeedElectricity;
         if (Energy < unitCost) { Notify("Elektrik yetersiz. Şarj istasyonuna bağlan."); return; }
         if (MetalMode ? MetalAmmo <= 0 : SeedCount(SelectedSeed) <= 0)
         { Notify(MetalMode ? "Demir top bitti. Marketten metal karşılığında al." : "Tohum bitti. Hasat yap veya markete uğra."); return; }
-        int count = MetalMode ? 1 : Mathf.Min(Upgrades.SeedVolley, SeedCount(SelectedSeed), Mathf.FloorToInt(Energy / unitCost));
+        int count = 1;
         if (!MetalMode)
         {
             bool aimed = Aim(35, out var ground);
             for (int i = 0; i < count; i++)
             {
             var seed = GameObject.CreatePrimitive(PrimitiveType.Sphere); seed.name = "Flying Seed";
-            seed.transform.position = view.transform.position; seed.transform.localScale = new Vector3(0.075f, 0.075f, 0.105f);
+            seed.transform.position = AimOrigin; seed.transform.localScale = new Vector3(0.075f, 0.075f, 0.105f);
             Destroy(seed.GetComponent<Collider>()); seed.GetComponent<Renderer>().sharedMaterial = effectMaterial;
             float offset = i - (count - 1) * 0.5f;
-            Vector3 direction = count == 1 ? view.transform.forward : aimed
-                ? (ground.point + view.transform.right * offset * 0.9f - view.transform.position).normalized
-                : Quaternion.AngleAxis(offset * 8, view.transform.up) * view.transform.forward;
+            Vector3 direction = count == 1 ? AimDir : aimed
+                ? (ground.point + AimRight * offset * 0.9f - AimOrigin).normalized
+                : Quaternion.AngleAxis(offset * 8, Vector3.up) * AimDir;
             seed.AddComponent<PlayerSeedProjectile>().Launch(owner, this, direction);
             AddSeeds(SelectedSeed, -1);
             }
@@ -453,17 +533,17 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         {
             // Spawn at the camera ray to avoid firing through a wall next to the weapon barrel.
             var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere); ball.name = "Player Metal Ball";
-            ball.transform.position = view.transform.position; ball.transform.localScale = Vector3.one * 0.12f;
+            ball.transform.position = AimOrigin; ball.transform.localScale = Vector3.one * 0.12f;
             Destroy(ball.GetComponent<Collider>()); ball.GetComponent<Renderer>().sharedMaterial = effectMaterial;
-            ball.AddComponent<PlayerMetalProjectile>().Launch(owner, this, view.transform.forward); MetalAmmo--;
+            ball.AddComponent<PlayerMetalProjectile>().Launch(owner, this, AimDir); MetalAmmo--;
         }
-        if (streamEffects != null) streamEffects.Shot(holder.transform.position + view.transform.forward * 0.25f, view.transform.forward, MetalMode);
+        if (streamEffects != null) streamEffects.Shot(holder.transform.position + AimDir * 0.25f, AimDir, MetalMode);
         Energy -= unitCost * count; nextShot = Time.time + (MetalMode ? 0.35f : 0.5f); Changed?.Invoke();
     }
     public bool TryPlant(RaycastHit hit) => TryPlant(hit, SelectedSeed);
     public bool TryPlant(RaycastHit hit, EcoCropCatalog.Kind kind)
     {
-        if (!EcoCropCatalog.Valid(kind) || !Progression.HasLevel(EcoCropCatalog.Get(kind).Level)) return false;
+        if (!EcoCropCatalog.Valid(kind) || !EcoDiscoveries.CanPlant(kind)) return false;
         if (hit.normal.y < 0.7f || (hit.collider is not TerrainCollider && hit.collider.GetComponentInParent<PlantingSurface>() == null))
         { Notify("Tohum için düz bir toprak yüzeyi gerekiyor."); return false; }
         bool tree = kind == EcoCropCatalog.Kind.Tree;
@@ -473,20 +553,25 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         foreach (var nearby in Physics.OverlapSphere(hit.point + Vector3.up * 0.1f, tree ? 1.8f : 0.45f))
             if (nearby.GetComponentInParent<PlantedSeed>() != null || nearby.GetComponentInParent<EcoVegetation>() != null
                 || (tree && nearby.GetComponentInParent<EcoStructure>() != null)) { Notify("Bitkiler ve yapılar arasında biraz boşluk bırak."); return false; }
-        if (PlantedSeed.Create(hit.point + Vector3.up * 0.01f, kind) == null) return false;
-        Progression.Award(4);
+        var planted = PlantedSeed.Create(hit.point + Vector3.up * 0.01f, kind);
+        if (planted == null) return false;
+        EcoDiscoveries.NotifyPlanting(planted);
         Notify("Tohum ekildi. Vakumun su moduyla sula."); return true;
     }
     public void Interact()
     {
-        if (EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
+        if (EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
+        if (EcoFinale.Current != null && EcoFinale.Current.TryInteractAtTerminal(this)) return;
+        if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
+        if (EcoGlacierStation.Current != null && EcoGlacierStation.Current.TryInteract(this)) return;
+        if (EcoPollutionInlet.TryInteract(this)) return;
         if (!Aim(3f, out var hit)) return;
         var tin = hit.collider.GetComponentInParent<EnemyBrain>();
         if (tin != null && tin.species == EnemyBrain.Species.Tin) { tin.InstallFilter(this); return; }
         var fishing = hit.collider.GetComponentInParent<EcoFishingSpot>();
         if (fishing != null) { fishing.Interact(this); return; }
         var factory = hit.collider.GetComponentInParent<EcoFactory>();
-        if (factory != null) { factory.InstallFilter(this); return; }
+        if (factory != null) { if (!factory.Filtered) factory.InstallFilter(this); else factory.ConvertToCleanPower(this); return; }
         var market = hit.collider.GetComponentInParent<EcoMarket>();
         if (market != null) { market.Interact(this); return; }
         var charger = hit.collider.GetComponentInParent<EcoChargingStation>();
@@ -505,12 +590,12 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
         if (plant == null) return;
-        if (plant.IsMature && TotalSeeds + (plant.contaminated ? 1 : 3) > Upgrades.SeedCapacity)
+        if (plant.IsMature && TotalSeeds + 1 > Upgrades.SeedCapacity)
         { Notify("Tohum depon dolu. Marketten kapasite geliştir veya fazla tohumları sat."); return; }
         if (plant.TryHarvest(out int seeds, out int food))
-        { AddSeeds(plant.kind, seeds); Food += food; Progression.Award(food > 0 ? 6 : 2); Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); Changed?.Invoke(); }
+        { AddSeeds(plant.kind, seeds); Food += food; if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); Changed?.Invoke(); }
         else if (Selected == Tool.Recycler && Energy >= 2f && plant.TryCompost())
-        { StopCharging(); Energy -= 2f; Compost++; Progression.Award(2); Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
+        { StopCharging(); Energy -= 2f; Compost++; Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
     }
     private bool TryFertilize()
     {
@@ -539,28 +624,30 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var power = hit.collider.GetComponentInParent<EcoPowerNode>();
         if (power != null)
             return power.Describe() + (power.kind == EcoPowerNode.Kind.Charger && hit.distance <= 3f
-                ? (ChargingStation != null ? "\n[E] Şarjı bırak" : "\n[E] Silahı şarj et") : "");
+                ? (ChargingStation != null ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Şarjı bırak" : "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Silahı şarj et") : "");
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
         if (plant != null)
             return plant.Status + " • Su %" + Mathf.RoundToInt(plant.moisture * 100) + " • Büyüme %" + Mathf.RoundToInt(plant.growth * 100)
-                + (hit.distance <= 3f && plant.IsMature ? "\n[E] Hasat et" : "")
-                + (hit.distance <= 3f && plant.IsWithered && Selected == Tool.Recycler ? "\n[E] Gübreye dönüştür" : "")
-                + (hit.distance <= 3f && !plant.IsWithered && !plant.IsMature && Selected == Tool.Recycler && Compost > 0 ? "\n[R] Gübrele" : "");
+                + (hit.distance <= 3f && plant.IsMature ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Hasat et" : "")
+                + (hit.distance <= 3f && plant.IsWithered && Selected == Tool.Recycler ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Gübreye dönüştür" : "")
+                + (hit.distance <= 3f && !plant.IsWithered && !plant.IsMature && Selected == Tool.Recycler && Compost > 0 ? "\n" + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele" : "");
         if (hit.collider.GetComponentInParent<WeaponWaterSource>() != null) return "Su kaynağı • Vakum / Toplama ile doldur";
         var waste = hit.collider.GetComponentInParent<RecyclableResource>();
         if (waste != null) return waste.requiredRecyclerRank > 0 ? "Büyük atık • Geri dönüşüm işleme kademesi " + waste.requiredRecyclerRank : "Atık • Vakumla topla veya geri dönüştür";
         var tree = hit.collider.GetComponentInParent<EcoVegetation>();
         if (tree != null) return "Ağaç • Sağlık %" + Mathf.RoundToInt(tree.health * 100) + "\nHavayı ve toprağı iyileştirir, canlılara yaşam alanı sağlar";
         var enemy = hit.collider.GetComponentInParent<EnemyBrain>();
-        return enemy == null ? "" : enemy.IsStunned ? "Teneke • Sersemleme " + enemy.StunRemaining.ToString("0.0") + " sn\n[E] Küçük hava filtresi tak"
+        return enemy == null ? "" : enemy.IsStunned ? "Teneke • Sersemleme " + enemy.StunRemaining.ToString("0.0") + " sn\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Küçük hava filtresi tak"
             : enemy.species + " • Can " + Mathf.CeilToInt(enemy.Health);
     }
     private void Notify(string text) { Feedback = text; FeedbackUntil = Time.time + 3f; }
     private void Scan()
     {
+        EcoDiscoveries.DiscoverRegion(EcoRegion.At(owner.position));
         if (!Aim(40f, out var hit)) LastScan = EcoRegion.At(owner.position)?.Describe() ?? "Bölge dışında • Hedef yok";
         else
         {
+            EcoDiscoveries.DiscoverRegion(EcoRegion.At(hit.point));
             var enemy = hit.collider.GetComponentInParent<EnemyBrain>();
             var water = hit.collider.GetComponentInParent<WeaponWaterSource>();
             var scrap = hit.collider.GetComponentInParent<RecyclableResource>();
@@ -585,7 +672,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var flow = Selected == Tool.Recycler ? WeaponVisualEffects.Flow.Recycle
             : Mode == VacuumMode.Water ? WeaponVisualEffects.Flow.Water
             : Mode == VacuumMode.Disperse ? WeaponVisualEffects.Flow.Disperse : WeaponVisualEffects.Flow.Collect;
-        streamEffects.Show(flow, holder.transform.position + view.transform.forward * 0.25f, target, contact, normal, seconds);
+        streamEffects.Show(flow, holder.transform.position + AimDir * 0.25f, target, contact, normal, seconds);
     }
     private void ResetProcessing() { processing = null; progress = 0; if (streamEffects != null) streamEffects.Stop(); }
     private void OnDisable() { ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
@@ -593,6 +680,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     [Serializable]
     private sealed class SessionData
     {
+        public int version = 2;
+        public int selected, mode; public bool metalMode;
+        public int[] produce;
         public float energy, water;
         public bool dirtyWater;
         public int metalAmmo, seeds, metal, plastic, rawMetal, rawPlastic, food, compost;
@@ -603,10 +693,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         public int cleanFish, dirtyFish;
     }
 
-    public void SaveSession()
+    public string CaptureSessionJson()
     {
         var data = new SessionData
         {
+            produce = (int[])cleanProduce.Clone(), selected = (int)Selected, mode = (int)Mode, metalMode = MetalMode,
             energy = Energy, water = Water, metalAmmo = MetalAmmo, seeds = Seeds,
             metal = Metal, plastic = Plastic, rawMetal = CollectedMetalScrap,
             rawPlastic = CollectedPlasticScrap, food = Food, compost = Compost, dirtyWater = dirtyWater,
@@ -614,19 +705,27 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             smallFilters = SmallFilters, largeFilters = LargeFilters, upgrades = Upgrades.Capture(), otherSeeds = (int[])otherSeeds.Clone(), selectedSeed = (int)SelectedSeed,
             cleanFish = CleanFish, dirtyFish = DirtyFish
         };
-        PlayerPrefs.SetString(sessionKey, JsonUtility.ToJson(data));
-        PlayerPrefs.Save();
-        Notify("Oturum kaydedildi (F5).");
+        return JsonUtility.ToJson(data);
     }
 
+    public void SaveSession()
+    {
+        if (EcoWorldSave.Current != null) { EcoWorldSave.Current.QuickSave(); return; }
+        PlayerPrefs.SetString(sessionKey, CaptureSessionJson()); PlayerPrefs.Save();
+    }
     public void LoadSession()
     {
-        StopCharging();
-        if (!PlayerPrefs.HasKey(sessionKey)) { Notify("Kayıt bulunamadı."); return; }
+        if (EcoWorldSave.Current != null) { EcoWorldSave.Current.QuickLoad(); return; }
+        if (PlayerPrefs.HasKey(sessionKey)) RestoreSessionJson(PlayerPrefs.GetString(sessionKey));
+    }
+    public bool RestoreSessionJson(string json)
+    {
+        if (string.IsNullOrEmpty(json) || Progression == null || Upgrades == null) return false;
         SessionData data;
-        try { data = JsonUtility.FromJson<SessionData>(PlayerPrefs.GetString(sessionKey)); }
-        catch (ArgumentException) { Notify("Kayıt okunamadı."); return; }
-        if (data == null) { Notify("Kayıt okunamadı."); return; }
+        try { data = JsonUtility.FromJson<SessionData>(json); }
+        catch (ArgumentException) { return false; }
+        if (data == null || !EcoRegion.Finite(data.energy) || !EcoRegion.Finite(data.water)) return false;
+        StopCharging();
         Progression.Restore(data.yep); Upgrades.Restore(data.upgrades);
         Energy = Mathf.Clamp(data.energy, 0f, maximumEnergy); Water = Mathf.Clamp(data.water, 0f, maximumWater);
         MetalAmmo = Mathf.Max(0, data.metalAmmo); Seeds = Mathf.Max(0, data.seeds);
@@ -635,12 +734,16 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         SelectedSeed = EcoCropCatalog.Valid((EcoCropCatalog.Kind)data.selectedSeed) ? (EcoCropCatalog.Kind)data.selectedSeed : EcoCropCatalog.Kind.Cabbage;
         Metal = Mathf.Max(0, data.metal); Plastic = Mathf.Max(0, data.plastic);
         CollectedMetalScrap = Mathf.Max(0, data.rawMetal); CollectedPlasticScrap = Mathf.Max(0, data.rawPlastic);
-        Food = Mathf.Max(0, data.food); Compost = Mathf.Max(0, data.compost);
+        Array.Clear(cleanProduce, 0, cleanProduce.Length);
+        if (data.produce != null) for (int i = 0; i < Mathf.Min(3, data.produce.Length); i++) cleanProduce[i] = Mathf.Max(0, data.produce[i]);
+        else cleanProduce[0] = Mathf.Max(0, data.food);
+        Food = cleanProduce[0] + cleanProduce[1] + cleanProduce[2]; Compost = Mathf.Max(0, data.compost);
         CleanFish = Mathf.Clamp(data.cleanFish, 0, 20); DirtyFish = Mathf.Clamp(data.dirtyFish, 0, 20 - CleanFish);
         CollectedOrganicWaste = Mathf.Max(0, data.organic); ProcessedOrganicRemainder = Mathf.Clamp(data.organicRemainder, 0, 2);
         SmallFilters = Mathf.Clamp(data.smallFilters, 0, 20); LargeFilters = Mathf.Clamp(data.largeFilters, 0, 10);
         dirtyWater = data.dirtyWater;
         ResetProcessing();
-        Notify("Oturum yüklendi (F9)."); Changed?.Invoke();
+        Mode = (VacuumMode)Mathf.Clamp(data.mode, 0, 2); MetalMode = data.metalMode;
+        SelectTool(Mathf.Clamp(data.selected, 0, 4)); Changed?.Invoke(); return true;
     }
 }

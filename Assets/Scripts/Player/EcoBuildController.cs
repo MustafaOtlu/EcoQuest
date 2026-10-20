@@ -20,7 +20,7 @@ public sealed class EcoBuildController : MonoBehaviour
     private EcoPowerNode cableStart;
     private EcoWaterNode pipeStart;
     private float yaw;
-    private const float Reach = 8f;
+    private const float Reach = 14f;
     public string SlotName(int slot)
     {
         int i = Page * 5 + slot;
@@ -37,9 +37,9 @@ public sealed class EcoBuildController : MonoBehaviour
 
     public void SetBuildMode(bool active)
     {
-        active &= weapons != null && weapons.CanOperate && !EcoMarketUI.BlocksGameplay;
+        active &= weapons != null && weapons.CanOperate && !EcoUIFlow.WorldBlocked && !EcoMarketUI.BlocksGameplay;
         if (active == IsBuilding) return;
-        IsBuilding = active; cableStart = null; pipeStart = null;
+        IsBuilding = active; EcoUIFlow.SetBuild(active); cableStart = null; pipeStart = null;
         if (active) { weapons.StopCharging(); weapons.holder.Unequip(); Select(Selection); }
         else
         {
@@ -54,9 +54,8 @@ public sealed class EcoBuildController : MonoBehaviour
         Selection = index; cableStart = null; pipeStart = null;
         if (preview != null) { preview.SetActive(false); Destroy(preview); }
         if (!IsBuilding || index >= CableIndex) return;
-        var prefab = Resources.Load<GameObject>("EcoInfrastructure/" + EcoBuildingCatalog.Entries[index].Prefab);
-        if (prefab == null) { Status = "Yapı modeli bulunamadı."; return; }
-        preview = Instantiate(prefab); preview.name = "Build preview";
+        preview = EcoBuildingCatalog.CreateInstance(index, Vector3.zero, Quaternion.identity);
+        if (preview == null) { Status = "Yapı modeli bulunamadı."; return; } preview.name = "Build preview";
         foreach (var behaviour in preview.GetComponentsInChildren<MonoBehaviour>()) behaviour.enabled = false;
         foreach (var collider in preview.GetComponentsInChildren<Collider>()) collider.enabled = false;
         foreach (var child in preview.GetComponentsInChildren<Transform>()) child.gameObject.layer = 2;
@@ -74,11 +73,19 @@ public sealed class EcoBuildController : MonoBehaviour
     private void Update()
     {
         if (weapons == null) return;
-        if (EcoMarketUI.BlocksGameplay) return;
+        if (EcoUIFlow.WorldBlocked || EcoMarketUI.BlocksGameplay) { if (IsBuilding) SetBuildMode(false); return; }
         if (!weapons.CanOperate) { SetBuildMode(false); return; }
-        if (!Application.isFocused || Cursor.lockState != CursorLockMode.Locked) return;
+        if (!Application.isFocused || PlayerController.Paused) return;
         var keys = Keyboard.current; var mouse = Mouse.current;
-        if (keys != null && keys.bKey.wasPressedThisFrame) SetBuildMode(!IsBuilding);
+        if (IsBuilding && keys != null && keys.escapeKey.wasPressedThisFrame) { SetBuildMode(false); return; }
+        // GDD §3: in build mode right click cancels the pending placement and never sends a walk order.
+        if (IsBuilding && mouse != null && mouse.rightButton.wasPressedThisFrame)
+        {
+            if (cableStart != null || pipeStart != null) { cableStart = null; pipeStart = null; }
+            else SetBuildMode(false);
+            return;
+        }
+        if (keys != null && EcoKeys.Pressed(EcoKeys.Action.Build)) SetBuildMode(!IsBuilding);
         if (!IsBuilding) return;
         if (keys != null)
         {
@@ -89,17 +96,17 @@ public sealed class EcoBuildController : MonoBehaviour
             if (keys.digit3Key.wasPressedThisFrame) Select(offset + 2);
             if (keys.digit4Key.wasPressedThisFrame) Select(offset + 3);
             if (keys.digit5Key.wasPressedThisFrame) Select(offset + 4);
-            if (keys.qKey.wasPressedThisFrame && Selection == PipeIndex) TogglePipeFluid();
-            if (keys.rKey.wasPressedThisFrame) yaw = Mathf.Repeat(yaw + 90f, 360f);
+            if (EcoKeys.Pressed(EcoKeys.Action.Mode) && Selection == PipeIndex) TogglePipeFluid();
+            if (EcoKeys.Pressed(EcoKeys.Action.Rotate)) yaw = Mathf.Repeat(yaw + 90f, 360f);
         }
-        if (!Aim(out var hit)) { if (preview != null) preview.SetActive(false); Status = "Sekiz metre içinde düz bir zemine veya bağlantı noktasına nişan al."; return; }
-        if (keys != null && keys.uKey.wasPressedThisFrame) hit.collider.GetComponentInParent<EcoStructure>()?.Upgrade(weapons);
-        if (keys != null && keys.tKey.wasPressedThisFrame)
+        if (!Aim(out var hit)) { if (preview != null) preview.SetActive(false); Status = "Fareyle düz bir zemine veya bağlantı noktasına işaret et. [Sağ tık/Esc] iptal"; return; }
+        if (keys != null && EcoKeys.Pressed(EcoKeys.Action.Upgrade)) hit.collider.GetComponentInParent<EcoStructure>()?.Upgrade(weapons);
+        if (keys != null && EcoKeys.Pressed(EcoKeys.Action.Toggle))
         {
             var structure = hit.collider.GetComponentInParent<EcoStructure>();
             if (structure == null || !structure.Repair(weapons)) weapons.ShowFeedback("Tamir gerekmiyor veya malzeme yetersiz.");
         }
-        if (keys != null && keys.xKey.wasPressedThisFrame)
+        if (keys != null && EcoKeys.Pressed(EcoKeys.Action.Dismantle))
         {
             if (Selection == CableIndex) RemoveCable(hit.collider.GetComponentInParent<EcoPowerNode>());
             else if (Selection == PipeIndex) RemovePipe(pipeStart, hit.collider.GetComponentInParent<EcoWaterNode>(), PipeFluid);
@@ -112,7 +119,7 @@ public sealed class EcoBuildController : MonoBehaviour
         if (Selection == PipeIndex)
         {
             var node = hit.collider.GetComponentInParent<EcoWaterNode>();
-            Status = (pipeStart == null ? "Önce suyun çıkacağı tesisi seç." : "Şimdi suyun gideceği tesisi seç. X: boruyu sök") + "\n[Q] Temiz/kirli hat • " + SelectedName;
+            Status = (pipeStart == null ? "Önce suyun çıkacağı tesisi seç." : "Şimdi suyun gideceği tesisi seç. X: boruyu sök") + "\n" + EcoKeys.Tag(EcoKeys.Action.Mode) + " Temiz/kirli hat • " + SelectedName;
             if (node != null && mouse != null && mouse.leftButton.wasPressedThisFrame)
             {
                 if (pipeStart == null)
@@ -135,11 +142,11 @@ public sealed class EcoBuildController : MonoBehaviour
             }
             return;
         }
-        var position = hit.point + Vector3.up * 0.03f; var rotation = Quaternion.Euler(0, yaw, 0);
+        var position = Snap(hit.point) + Vector3.up * 0.03f; var rotation = Quaternion.Euler(0, yaw, 0);
         bool valid = CanPlace(Selection, position, rotation, out string reason);
         Status = reason;
         var targetStructure = hit.collider.GetComponentInParent<EcoStructure>();
-        if (targetStructure != null) Status = "[T] Tamir • [X] Sök • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
+        if (targetStructure != null) Status = "" + EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • " + EcoKeys.Tag(EcoKeys.Action.Dismantle) + " Sök • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
         if (preview != null)
         {
             preview.SetActive(true); preview.transform.SetPositionAndRotation(position, rotation);
@@ -149,9 +156,10 @@ public sealed class EcoBuildController : MonoBehaviour
     }
     private bool Aim(out RaycastHit nearest)
     {
-        nearest = default; var camera = Camera.main; if (camera == null) return false;
+        nearest = default;
+        if (EcoIsoCamera.PointerOverUI() || !EcoIsoCamera.TryCursorRay(out var ray)) return false;
         float distance = float.PositiveInfinity;
-        foreach (var hit in Physics.RaycastAll(camera.transform.position, camera.transform.forward, Reach, ~(1 << 2), QueryTriggerInteraction.Ignore))
+        foreach (var hit in Physics.RaycastAll(ray, 400f, ~(1 << 2), QueryTriggerInteraction.Ignore))
             if (!hit.transform.IsChildOf(transform) && hit.distance < distance) { nearest = hit; distance = hit.distance; }
         return distance < float.PositiveInfinity;
     }
@@ -160,7 +168,8 @@ public sealed class EcoBuildController : MonoBehaviour
         reason = "Geçersiz yapı.";
         if (weapons == null || !weapons.CanOperate || index < 0 || index >= EcoBuildingCatalog.Entries.Length) return false;
         var entry = EcoBuildingCatalog.Entries[index];
-        if (!weapons.Progression.HasLevel(entry.Level)) { reason = "Bu yapı YEP " + entry.Level + ". seviyede açılır."; return false; }
+        if (!EcoDiscoveries.CanBuild(entry.Id)) { reason = EcoDiscoveries.UnlockReason(entry.Id); return false; }
+        if (entry.Id == "hydro" && EcoHydroSite.At(position) == null) { reason = "Hidroelektrik için doğal debi ve balık geçitli uygun kıyı alanı gerekli."; return false; }
         if (EcoStructure.Active.Count(s => s != null && s.buildingId == entry.Id) >= EcoBuildingCatalog.Limit(index, weapons.Progression.Level))
         { reason = "Bu seviyedeki yapı sınırına ulaştın."; return false; }
         if (Vector3.Distance(transform.position, position) > Reach) { reason = "Yapı çok uzakta."; return false; }
@@ -168,7 +177,7 @@ public sealed class EcoBuildController : MonoBehaviour
         if (entry.Id == "intake")
         {
             bool nearSource = FindObjectsByType<WeaponWaterSource>(FindObjectsSortMode.None).Any(s =>
-                Vector3.Distance(position, s.GetComponentInChildren<Collider>() is Collider c ? c.ClosestPoint(position) : s.transform.position) <= 3f);
+                Vector3.Distance(position, s.GetComponentInChildren<Collider>() is Collider c ? c.bounds.ClosestPoint(position) : s.transform.position) <= 3f);
             if (!nearSource) { reason = "Pompa bir su kaynağının en fazla üç metre yakınına kurulmalı."; return false; }
         }
         rotation = Quaternion.Euler(0, rotation.eulerAngles.y, 0);
@@ -182,14 +191,16 @@ public sealed class EcoBuildController : MonoBehaviour
             { reason = "Yapının tamamı düz, sağlam zeminde olmalı."; return false; }
         }
         var prefab = Resources.Load<GameObject>("EcoInfrastructure/" + entry.Prefab);
-        if (prefab == null) { reason = "Yapı modeli bulunamadı."; return false; }
-        float height = prefab.GetComponent<BoxCollider>().size.y;
+        if (prefab == null && entry.Id != "hydro") { reason = "Yapı modeli bulunamadı."; return false; }
+        float height = prefab != null && prefab.TryGetComponent<BoxCollider>(out var box) ? box.size.y : 2f;
+        foreach (var area in FindObjectsByType<EcoNoBuildZone>(FindObjectsSortMode.None))
+            if (area.Contains(position, entry.Footprint * 0.5f)) { reason = "Yol, geçiş veya korunan habitat üzerine yapı kurulamaz."; return false; }
         foreach (var obstacle in Physics.OverlapBox(position + Vector3.up * (height * 0.5f + 0.03f), new Vector3(entry.Footprint.x * 0.48f, height * 0.5f, entry.Footprint.y * 0.48f), rotation, ~(1 << 2), QueryTriggerInteraction.Ignore))
             if (obstacle.GetComponentInParent<EcoStructure>() != null || (obstacle is not TerrainCollider && obstacle.GetComponent<PlantingSurface>() == null))
             { reason = "Başka bir nesneyle veya oyuncuyla çakışıyor."; return false; }
         reason = "Sol tık: kur • R: döndür • T: tamir • X: sök";
         string warning = EcoRegion.PlacementWarning(entry.Id, position);
-        if (warning.Length > 0) reason += "\n" + warning;
+        if (warning.Length > 0) { reason += "\n" + warning; EcoDiscoveries.NotifyPlacementWarning(warning); }
         return true;
     }
     public bool TryPlace(int index, Vector3 position, Quaternion rotation)
@@ -197,10 +208,17 @@ public sealed class EcoBuildController : MonoBehaviour
         if (!IsBuilding || !CanPlace(index, position, rotation, out string reason)) { weapons?.ShowFeedback("Buraya yapı kurulamıyor."); return false; }
         var entry = EcoBuildingCatalog.Entries[index];
         if (!weapons.TrySpendMaterials(entry.Metal, entry.Plastic)) return false;
-        var go = Instantiate(Resources.Load<GameObject>("EcoInfrastructure/" + entry.Prefab), position, Quaternion.Euler(0, rotation.eulerAngles.y, 0));
+        var go = EcoBuildingCatalog.CreateInstance(index, position, Quaternion.Euler(0, rotation.eulerAngles.y, 0));
+        if (go == null) { weapons.ReturnMaterials(entry.Metal, entry.Plastic); return false; }
         var structure = go.GetComponent<EcoStructure>(); structure.playerBuilt = true;
         if (go.TryGetComponent<EcoWaterNode>(out var water) && water.kind == EcoWaterNode.Kind.Intake) water.FindSource();
-        weapons.Progression.Award(12); weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla.")); return true;
+        EcoDiscoveries.NotifySafePlacement(entry.Id, position); weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla.")); return true;
+    }
+    private static Vector3 Snap(Vector3 position)
+    {
+        position.x = Mathf.Round(position.x / 2f) * 2f; position.z = Mathf.Round(position.z / 2f) * 2f;
+        if (Physics.Raycast(position + Vector3.up * 2, Vector3.down, out var ground, 4, ~(1 << 2), QueryTriggerInteraction.Ignore)) position.y = ground.point.y;
+        return position;
     }
     public bool TryConnect(EcoPowerNode a, EcoPowerNode b)
     {

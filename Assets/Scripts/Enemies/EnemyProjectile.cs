@@ -10,6 +10,8 @@ public sealed class EnemyProjectile : MonoBehaviour
     public void Launch(Transform shooter, Vector3 direction, float speed, float hitDamage, float slowSeconds, EnemyBrain.Species? sourceSpecies = null)
     {
         owner = shooter;
+        var finaleActor = shooter != null ? shooter.GetComponentInParent<EcoFinaleActor>() : null;
+        if (finaleActor != null) finaleActor.AttachTransient(gameObject);
         species = sourceSpecies ?? (shooter != null && shooter.TryGetComponent<EnemyBrain>(out var enemy) ? enemy.species : (EnemyBrain.Species?)null);
         if (!EcoRegion.Valid(speed) || !EcoRegion.Finite(hitDamage) || hitDamage < 0 || !EcoRegion.Finite(slowSeconds)
             || !EcoRegion.Finite(direction.x) || !EcoRegion.Finite(direction.y) || !EcoRegion.Finite(direction.z) || direction.sqrMagnitude < 0.001f)

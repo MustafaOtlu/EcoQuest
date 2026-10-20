@@ -25,7 +25,7 @@ public sealed class EcoFarm : MonoBehaviour
         if (crops.Length == 0) return;
         // Healthy irrigation uses the clean chamber only; dirty water must be treated first.
         float requested = crops.Sum(p => (0.8f - p.moisture) / moisturePerLitre);
-        float supplied = water.Take(EcoWaterNode.Fluid.Clean, Mathf.Min(requested, irrigationPerSecond * seconds));
+        float supplied = water.Take(EcoWaterNode.Fluid.Clean, Mathf.Min(requested, irrigationPerSecond * EcoSpecialization.WaterEfficiency * seconds));
         foreach (var crop in crops) crop.WaterPlant(supplied * ((0.8f - crop.moisture) / moisturePerLitre) / requested * moisturePerLitre, true);
     }
     public string Describe() => "Tarla • Tohum silahıyla toprağa ekim yap\nTemiz su " + water.cleanWater.ToString("0.0") + "/" + water.capacity.ToString("0") + " • Depoya temiz su borusu bağla";

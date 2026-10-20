@@ -6,6 +6,22 @@ using UnityEngine;
 public sealed class EcoPowerGrid : MonoBehaviour
 {
     public EcoWorldClock clock;
+    public static IEnumerable<EcoPowerNode> ComponentOf(EcoPowerNode start)
+    {
+        if (start == null || !start.Operational) yield break;
+        var seen = new HashSet<EcoPowerNode> { start }; var queue = new Queue<EcoPowerNode>(); queue.Enqueue(start);
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue(); yield return node;
+            foreach (var edge in EcoPowerCable.Active)
+            {
+                if (edge == null || !edge.IsConnected) continue;
+                var next = edge.a == node ? edge.b : edge.b == node ? edge.a : null;
+                if (next != null && next.Operational && seen.Add(next)) queue.Enqueue(next);
+            }
+        }
+    }
+    public static bool AreConnected(EcoPowerNode a, EcoPowerNode b) => b != null && ComponentOf(a).Contains(b);
     private void Awake() { if (clock == null) clock = EcoWorldClock.Current; }
     private void Update()
     {
@@ -62,21 +78,31 @@ public sealed class EcoPowerGrid : MonoBehaviour
             float requested = Mathf.Max(0f, node.Demand(seconds));
             requests[node] = requested; demand += requested;
         }
-        float fraction = demand > 0f ? Mathf.Clamp01((generated + stored) / demand) : 0f;
+        float discharge = circuit.Where(n => n.kind == EcoPowerNode.Kind.Battery).Sum(n => Mathf.Min(n.storedEnergy, n.batteryRate * seconds));
+        float remaining = generated + discharge;
         float delivered = 0f;
-        foreach (var node in circuit) delivered += node.Supply(requests[node] * fraction, seconds);
+        foreach (var group in circuit.GroupBy(Priority).OrderBy(g => g.Key))
+        {
+            float wanted = group.Sum(n => requests[n]);
+            float fraction = wanted > 0 ? Mathf.Clamp01(remaining / wanted) : 0;
+            foreach (var node in group)
+            {
+                float amount = node.Supply(requests[node] * fraction, seconds);
+                delivered += amount; remaining -= amount;
+            }
+        }
         float balance = generated - delivered;
         foreach (var battery in circuit)
         {
             if (battery.kind != EcoPowerNode.Kind.Battery) continue;
             if (balance >= 0f)
             {
-                float amount = Mathf.Min(balance, battery.capacity - battery.storedEnergy);
+                float amount = Mathf.Min(balance, battery.capacity - battery.storedEnergy, battery.batteryRate * seconds);
                 battery.storedEnergy += amount; balance -= amount;
             }
             else
             {
-                float amount = Mathf.Min(-balance, battery.storedEnergy);
+                float amount = Mathf.Min(-balance, battery.storedEnergy, battery.batteryRate * seconds);
                 battery.storedEnergy -= amount; balance += amount;
             }
         }
@@ -87,5 +113,12 @@ public sealed class EcoPowerGrid : MonoBehaviour
             node.NetworkGeneration = generated / seconds; node.NetworkDemand = demand / seconds;
             node.NetworkStored = stored; node.NetworkCapacity = capacity;
         }
+    }
+    private static int Priority(EcoPowerNode node)
+    {
+        if (node.TryGetComponent<EcoWaterNode>(out _)) return 0;
+        if (node.kind == EcoPowerNode.Kind.Charger) return 1;
+        if (node.TryGetComponent<EcoRecyclingFacility>(out _)) return 2;
+        return 3;
     }
 }

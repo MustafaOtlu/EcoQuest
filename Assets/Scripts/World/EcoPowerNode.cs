@@ -3,9 +3,12 @@ using UnityEngine;
 
 public sealed class EcoPowerNode : MonoBehaviour
 {
-    public enum Kind { Solar, Wind, Battery, Charger, Consumer }
+    public enum Kind { Solar, Wind, Battery, Charger, Consumer, Hydro }
     internal static readonly HashSet<EcoPowerNode> Active = new HashSet<EcoPowerNode>();
     public Kind kind;
+    public bool manuallyDisabled;
+    public bool GenerationIsDisabled => manuallyDisabled;
+    public float batteryRate = 6f;
     [Min(0f)] public float ratedPower = 4f, capacity = 150f, storedEnergy;
     [Range(0f, 1f)] public float condition = 1f, solarExposure = 1f, windExposure = 1f;
     public bool checkShade = true;
@@ -43,25 +46,28 @@ public sealed class EcoPowerNode : MonoBehaviour
     private void OnDisable() { Active.Remove(this); DeliveredPower = NetworkGeneration = NetworkDemand = NetworkStored = NetworkCapacity = 0f; }
     public float Generation(EcoWorldClock clock)
     {
-        if (!Operational || clock == null) return 0f;
+        if (!Operational || clock == null || manuallyDisabled) return 0f;
+        if (kind == Kind.Hydro) return TryGetComponent<EcoHydroPlant>(out var hydro) ? hydro.Generation(clock) * condition * EcoSpecialization.PowerOutput : 0f;
         if (kind == Kind.Solar)
         {
             if (clock.SolarFactor <= 0f) return 0f;
             if (checkShade)
                 foreach (var hit in Physics.RaycastAll(SocketPosition + Vector3.up * 0.1f, clock.SunDirection, 100f, ~0, QueryTriggerInteraction.Ignore))
                     if (!hit.transform.IsChildOf(transform)) return 0f;
-            return ratedPower * clock.SolarFactor * solarExposure * condition * (EcoRegion.At(transform.position)?.SolarTransmission ?? 1) * EfficiencyMultiplier;
+            return ratedPower * clock.SolarFactor * solarExposure * condition * (EcoRegion.At(transform.position)?.SolarTransmission ?? 1) * EfficiencyMultiplier * EcoSpecialization.PowerOutput;
         }
         if (kind == Kind.Wind)
         {
             float wind = Mathf.Clamp01(clock.windStrength * windExposure);
-            return ratedPower * Mathf.Pow(Mathf.InverseLerp(0.15f, 1f, wind), 3f) * condition;
+            return ratedPower * Mathf.Pow(Mathf.InverseLerp(0.15f, 1f, wind), 3f) * condition * EcoSpecialization.PowerOutput;
         }
         return 0f;
     }
     internal float Demand(float seconds)
     {
         if (!Operational) return 0f;
+        if (TryGetComponent<EcoGlacierStation>(out var station)) return station.RequestElectricity(seconds);
+        if (TryGetComponent<EcoFactory>(out var factory)) return factory.Converted ? 2f * seconds : 0f;
         if (kind == Kind.Charger)
         {
             var charger = GetComponent<EcoChargingStation>();
@@ -73,6 +79,7 @@ public sealed class EcoPowerNode : MonoBehaviour
     }
     internal float Supply(float amount, float seconds)
     {
+        if (TryGetComponent<EcoGlacierStation>(out var station)) { DeliveredPower = seconds > 0 ? amount / seconds : 0; return station.DeliverElectricity(amount, seconds); }
         if (kind == Kind.Charger)
         {
             var charger = GetComponent<EcoChargingStation>();

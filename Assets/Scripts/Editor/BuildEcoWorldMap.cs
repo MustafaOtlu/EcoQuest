@@ -21,15 +21,19 @@ public static class BuildEcoWorldMap
     private const string TargetScene = "Assets/Scenes/EcoWorld.unity";
     private const string Folder = "Assets/EcoWorld/";
     private const string ResFolder = "Assets/Resources/EcoWorld/";
-    private const float Size = 640f;
-    private const float Height = 170f;
+    // Map edge length in metres. Region, road, lake and terrain positions below are authored for a 200 m map
+    // and multiplied by L, so changing Size (e.g. 240) stretches the layout while buildings keep their size.
+    private const float Size = 200f;
+    private const float L = Size / 200f;
+    private const float Height = 130f;
     private const float WaterY = 17.5f;
     private const int HeightRes = 513;
     private const int AlphaRes = 512;
-    private static readonly Vector2 Base = new Vector2(320f, 70f);
-    private static readonly Vector2 LakeA = new Vector2(105f, 95f);
-    private static readonly Vector2 LakeB = new Vector2(535f, 110f);
-    private const float LakeAR = 56f, LakeBR = 50f;
+    private static readonly Vector2 Base = new Vector2(100f * L, 24f * L);
+    private static readonly Vector2 LakeA = new Vector2(30f * L, 44f * L);
+    private static readonly Vector2 LakeB = new Vector2(170f * L, 44f * L);
+    private const float LakeAR = 16f * L, LakeBR = 14f * L;
+    private static Vector2 P(float x, float z) => new Vector2(x * L, z * L);
 
     // ---------------------------------------------------------------- definitions
 
@@ -72,25 +76,25 @@ public static class BuildEcoWorldMap
     private static void DefineRegions()
     {
         Defs.Clear();
-        Defs.Add(new RegionDef { name = "Buzul Bölgesi", kind = EcoRegionInfo.Kind.Glacier, center = new Vector2(320, 545), size = new Vector2(640, 190),
+        Defs.Add(new RegionDef { name = "Buzul Bölgesi", kind = EcoRegionInfo.Kind.Glacier, center = P(100, 173), size = P(200, 54),
             tagline = "Erime riski altındaki buzullar. Karbon ayak izi arttıkça küçülür.", air = 2, water = 2, soil = 0, carbon = 6,
             temperature = -9f, vegetation = 0.05f, habitat = 0.4f, sensitive = true, color = new Color(0.72f, 0.90f, 1.00f) });
-        Defs.Add(new RegionDef { name = "Rüzgârlı Alan", kind = EcoRegionInfo.Kind.Wind, center = new Vector2(105, 300), size = new Vector2(210, 300),
+        Defs.Add(new RegionDef { name = "Rüzgârlı Alan", kind = EcoRegionInfo.Kind.Wind, center = P(30, 110), size = P(60, 72),
             tagline = "Açık tepeler. Rüzgâr türbinleri için en verimli bölge.", air = 8, water = 6, soil = 6, carbon = 8,
             temperature = 13f, vegetation = 0.65f, habitat = 0.8f, sensitive = false, color = new Color(0.45f, 0.82f, 0.74f) });
-        Defs.Add(new RegionDef { name = "Şehir", kind = EcoRegionInfo.Kind.City, center = new Vector2(320, 360), size = new Vector2(220, 180),
+        Defs.Add(new RegionDef { name = "Şehir", kind = EcoRegionInfo.Kind.City, center = P(100, 110), size = P(80, 72),
             tagline = "Yoğun yerleşim. Orta düzey kirlilik, çocukların yaşadığı yer.", air = 38, water = 30, soil = 28, carbon = 38,
             temperature = 18f, vegetation = 0.22f, habitat = 0.3f, sensitive = false, color = new Color(0.86f, 0.80f, 0.58f) });
-        Defs.Add(new RegionDef { name = "Sanayi Bölgesi", kind = EcoRegionInfo.Kind.Industry, center = new Vector2(535, 340), size = new Vector2(210, 220),
+        Defs.Add(new RegionDef { name = "Sanayi Bölgesi", kind = EcoRegionInfo.Kind.Industry, center = P(170, 110), size = P(60, 72),
             tagline = "Filtresiz fabrikalar. Hava ve karbon kirliliğinin ana kaynağı.", air = 66, water = 60, soil = 58, carbon = 58,
             temperature = 19f, vegetation = 0.10f, habitat = 0f, sensitive = false, color = new Color(0.86f, 0.46f, 0.36f) });
-        Defs.Add(new RegionDef { name = "Güneşli Bölge", kind = EcoRegionInfo.Kind.Sun, center = new Vector2(320, 135), size = new Vector2(220, 270),
+        Defs.Add(new RegionDef { name = "Güneşli Bölge", kind = EcoRegionInfo.Kind.Sun, center = P(100, 37), size = P(76, 74),
             tagline = "Geniş açık ovalar. Güneş panelleri ve tarım için ideal.", air = 6, water = 8, soil = 10, carbon = 10,
             temperature = 24f, vegetation = 0.50f, habitat = 0.7f, sensitive = false, color = new Color(1.00f, 0.84f, 0.38f) });
-        Defs.Add(new RegionDef { name = "Batı Gölü Havzası", kind = EcoRegionInfo.Kind.Lake, center = new Vector2(105, 75), size = new Vector2(210, 150),
+        Defs.Add(new RegionDef { name = "Batı Gölü Havzası", kind = EcoRegionInfo.Kind.Lake, center = P(31, 37), size = P(62, 74),
             tagline = "Temiz tatlı su kaynağı. Su sınırlıdır, koru.", air = 5, water = 8, soil = 6, carbon = 6,
             temperature = 17f, vegetation = 0.70f, habitat = 0.85f, sensitive = true, color = new Color(0.45f, 0.74f, 1.00f) });
-        Defs.Add(new RegionDef { name = "Doğu Gölü Havzası", kind = EcoRegionInfo.Kind.Lake, center = new Vector2(535, 115), size = new Vector2(210, 230),
+        Defs.Add(new RegionDef { name = "Doğu Gölü Havzası", kind = EcoRegionInfo.Kind.Lake, center = P(169, 37), size = P(62, 74),
             tagline = "Sanayiden etkilenen göl. Arıtma ve temizlik gerekiyor.", air = 30, water = 62, soil = 35, carbon = 25,
             temperature = 20f, vegetation = 0.30f, habitat = 0.1f, sensitive = false, color = new Color(0.55f, 0.62f, 0.42f) });
     }
@@ -98,20 +102,21 @@ public static class BuildEcoWorldMap
     private static void DefineRoads()
     {
         Roads.Clear();
-        Vector2 V(float x, float z) => new Vector2(x, z);
-        Roads.Add(new RoadDef(9, false, V(320, 70), V(320, 140), V(322, 210), V(320, 272), V(320, 350), V(320, 442)));
-        Roads.Add(new RoadDef(8, false, V(250, 272), V(250, 442)));
-        Roads.Add(new RoadDef(8, false, V(390, 272), V(390, 442)));
-        Roads.Add(new RoadDef(8, false, V(215, 300), V(425, 300)));
-        Roads.Add(new RoadDef(9, false, V(215, 350), V(425, 350)));
-        Roads.Add(new RoadDef(8, false, V(215, 400), V(425, 400)));
-        Roads.Add(new RoadDef(7, false, V(215, 350), V(170, 346), V(120, 332), V(70, 305), V(30, 285)));
-        Roads.Add(new RoadDef(7, false, V(425, 350), V(470, 347), V(540, 345), V(615, 336)));
-        Roads.Add(new RoadDef(6, false, V(540, 345), V(540, 420)));
-        Roads.Add(new RoadDef(6, false, V(480, 347), V(480, 300), V(560, 300)));
-        Roads.Add(new RoadDef(6, false, V(320, 112), V(260, 108), V(200, 102), V(150, 108)));
-        Roads.Add(new RoadDef(6, false, V(320, 112), V(400, 114), V(470, 114)));
-        Roads.Add(new RoadDef(4, true, V(320, 442), V(332, 480), V(352, 520), V(376, 562)));
+        Vector2 V(float x, float z) => new Vector2(x * L, z * L);
+        // Indices matter: [6] is the west road (power line), others are only referenced by painting/furniture.
+        Roads.Add(new RoadDef(5, false, V(100, 24), V(100, 50), V(101, 70), V(100, 78), V(100, 110), V(100, 144)));
+        Roads.Add(new RoadDef(4, false, V(80, 78), V(80, 142)));
+        Roads.Add(new RoadDef(4, false, V(120, 78), V(120, 142)));
+        Roads.Add(new RoadDef(4, false, V(62, 94), V(138, 94)));
+        Roads.Add(new RoadDef(5, false, V(62, 110), V(138, 110)));
+        Roads.Add(new RoadDef(4, false, V(62, 126), V(138, 126)));
+        Roads.Add(new RoadDef(4, false, V(62, 110), V(46, 112), V(32, 106), V(16, 98), V(6, 92)));
+        Roads.Add(new RoadDef(4, false, V(138, 110), V(150, 110), V(170, 110), V(196, 106)));
+        Roads.Add(new RoadDef(3.5f, false, V(170, 110), V(170, 142)));
+        Roads.Add(new RoadDef(3.5f, false, V(170, 110), V(170, 90), V(192, 90)));
+        Roads.Add(new RoadDef(3.5f, false, V(100, 44), V(80, 44), V(62, 44), V(47, 44)));
+        Roads.Add(new RoadDef(3.5f, false, V(100, 44), V(120, 44), V(138, 44), V(153, 44)));
+        Roads.Add(new RoadDef(2.5f, true, V(100, 144), V(104, 154), V(110, 164), V(118, 182)));
     }
 
     // ---------------------------------------------------------------- math helpers
@@ -157,25 +162,35 @@ public static class BuildEcoWorldMap
 
     public static float TerrainHeight(float x, float z)
     {
-        float h = 22f + (Fbm(x * 0.004f, z * 0.004f, 4) - 0.5f) * 10f;
+        float h = 22f + (Fbm(x * 0.012f, z * 0.012f, 4) - 0.5f) * 6f;
         // Glacier mountains in the north.
-        float g = Smooth(420f, 540f, z);
-        float ridge = 1f - Mathf.Abs(2f * Fbm(x * 0.007f + 11f, z * 0.007f + 5f, 4) - 1f);
-        h += g * (16f + ridge * ridge * 58f + Fbm(x * 0.02f, z * 0.02f, 3) * 10f);
+        float g = Smooth(148f * L, 192f * L, z);
+        float ridge = 1f - Mathf.Abs(2f * Fbm(x * 0.022f + 11f, z * 0.022f + 5f, 4) - 1f);
+        h += g * (10f + ridge * ridge * 40f + Fbm(x * 0.06f, z * 0.06f, 3) * 6f);
         // Rolling windy hills in the west.
-        float w = RectMask(x, z, 105f, 300f, 105f, 150f, 70f);
-        h += w * ((Fbm(x * 0.012f + 3f, z * 0.012f + 8f, 3) - 0.42f) * 34f);
+        float w = RectMask(x, z, 30f * L, 110f * L, 30f * L, 36f * L, 22f * L);
+        h += w * ((Fbm(x * 0.04f + 3f, z * 0.04f + 8f, 3) - 0.42f) * 20f);
         // Flat building grounds.
-        h = Mathf.Lerp(h, 24.5f, RectMask(x, z, 320f, 360f, 100f, 85f, 35f));
-        h = Mathf.Lerp(h, 21.5f, RectMask(x, z, 535f, 340f, 85f, 100f, 35f));
-        h = Mathf.Lerp(h, 23f, RectMask(x, z, 320f, 140f, 95f, 110f, 60f) * 0.9f);
-        h = Mathf.Lerp(h, 23f, CircleMask(x, z, Base, 34f, 22f));
+        h = Mathf.Lerp(h, 24.5f, RectMask(x, z, 100f * L, 110f * L, 42f * L, 38f * L, 14f * L));
+        h = Mathf.Lerp(h, 21.5f, RectMask(x, z, 170f * L, 110f * L, 26f * L, 34f * L, 12f * L));
+        h = Mathf.Lerp(h, 23f, RectMask(x, z, 100f * L, 37f * L, 36f * L, 34f * L, 16f * L) * 0.9f);
+        h = Mathf.Lerp(h, 23f, CircleMask(x, z, Base, 26f, 12f));
+        // A walkable trail corridor up the glacier slope (gentle ramp) ending at the research station pad.
+        if (Roads.Count > 12)
+        {
+            var trail = Roads[12];
+            float td = float.MaxValue;
+            for (int i = 0; i + 1 < trail.points.Length; i++) td = Mathf.Min(td, DistToSegment(new Vector2(x, z), trail.points[i], trail.points[i + 1]));
+            float ramp = 24.6f + Mathf.Max(0f, z - 144f * L) * 0.2f;
+            h = Mathf.Lerp(h, ramp, 1f - Smooth(5f, 14f, td));
+        }
+        h = Mathf.Lerp(h, 29f, CircleMask(x, z, new Vector2(122f * L, 164f * L), 7f, 6f)); // research station pad
         h = LakeShape(h, x, z, LakeA, LakeAR);
         h = LakeShape(h, x, z, LakeB, LakeBR);
         // Mountain ring so the playable area is enclosed.
         float edge = Mathf.Min(Mathf.Min(x, z), Mathf.Min(Size - x, Size - z));
-        float e = 1f - Smooth(0f, 80f, edge);
-        h += e * (14f + Fbm(x * 0.015f, z * 0.015f, 3) * 32f);
+        float e = 1f - Smooth(0f, 16f, edge);
+        h += e * (10f + Fbm(x * 0.045f, z * 0.045f, 3) * 26f);
         return h;
     }
 
@@ -226,17 +241,26 @@ public static class BuildEcoWorldMap
 
     // ---------------------------------------------------------------- entry point
 
+    private static bool silent;
+
     [MenuItem("EcoQuest/Build EcoWorld map scene")]
-    public static void Build()
+    public static void Build() { silent = false; BuildInternal(); }
+
+    // Same build without any dialog (used by automation; overwrites EcoWorld.unity and saves open scenes).
+    [MenuItem("EcoQuest/Build EcoWorld map scene (no prompts)")]
+    public static void BuildSilent() { silent = true; BuildInternal(); }
+
+    private static void BuildInternal()
     {
         if (!File.Exists(SourceScene))
         {
             EditorUtility.DisplayDialog("EcoWorld", "Kaynak sahne bulunamadı:\n" + SourceScene, "Tamam");
             return;
         }
-        if (File.Exists(TargetScene) && !EditorUtility.DisplayDialog("EcoWorld",
+        if (!silent && File.Exists(TargetScene) && !EditorUtility.DisplayDialog("EcoWorld",
             "Assets/Scenes/EcoWorld.unity zaten var. Yeniden oluşturulsun mu?\n(MainScene'e dokunulmaz; yalnız EcoWorld sahnesi yenilenir.)", "Yeniden oluştur", "İptal")) return;
-        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        if (silent) EditorSceneManager.SaveOpenScenes();
+        else if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
         report = new StringBuilder("EcoWorld oluşturma raporu\n");
         rng = new System.Random(20261018);
@@ -281,6 +305,12 @@ public static class BuildEcoWorldMap
             Progress("Başlangıç üssü ve arayüz", 0.90f);
             PlaceBase();
             BuildHud();
+            new GameObject("Eco Orders").AddComponent<EcoOrders>(); // GDD §8 order board ([O] at a market)
+            new GameObject("Eco Projects").AddComponent<EcoProjects>();
+            new GameObject("Eco Finale").AddComponent<EcoFinale>(); // GDD §12 final encounter
+            new GameObject("Eco World Save").AddComponent<EcoWorldSave>();
+            new GameObject("Eco Audio").AddComponent<EcoAudio>();
+            new GameObject("Eco Specialization").AddComponent<EcoSpecialization>(); // GDD §7 specialisations ([K]) // GDD §5 procedural ambience + settings ([F2]) // GDD §13 world save (F5/F9 + autosave) // GDD §7 project log ([J]) and final readiness
             RegisterInBuildSettings();
 
             report.AppendLine("Sahne: " + TargetScene);
@@ -289,13 +319,13 @@ public static class BuildEcoWorldMap
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
             Debug.Log("ECOWORLD_READY\n" + report);
-            EditorUtility.DisplayDialog("EcoWorld hazır",
+            if (!silent) EditorUtility.DisplayDialog("EcoWorld hazır",
                 "Assets/Scenes/EcoWorld.unity oluşturuldu.\n\nMainScene değiştirilmedi.\nRapor: Assets/EcoWorld/BuildReport.txt\n\nPlay'e basıp harita üzerinde test edebilirsin. [M] tuşu haritayı açar.", "Tamam");
         }
         catch (System.Exception ex)
         {
             Debug.LogError("EcoWorld oluşturulamadı: " + ex);
-            EditorUtility.DisplayDialog("EcoWorld", "Hata: " + ex.Message + "\n\nAyrıntı Console'da. MainScene etkilenmedi.", "Tamam");
+            if (!silent) EditorUtility.DisplayDialog("EcoWorld", "Hata: " + ex.Message + "\n\nAyrıntı Console'da. MainScene etkilenmedi.", "Tamam");
         }
         finally { EditorUtility.ClearProgressBar(); }
     }
@@ -334,12 +364,15 @@ public static class BuildEcoWorldMap
         var old = Object.FindFirstObjectByType<Terrain>();
         if (old != null) terrainMaterial = old.materialTemplate;
 
+        bool alanExists = roots.Any(r => r != null && r.name == "alan");
         var keepNames = new HashSet<string> { "alan", "Enemys", "Player", "Cam's", "Daylight" };
         foreach (var root in roots)
         {
             if (root == null) continue;
             string n = root.name;
-            bool remove = n.Contains("Evler") || n.Contains("Yollar") || n.Contains("Lamba") || n.Contains("Diregi") || n.Contains("Dizisi")
+            // Root-level starter copies (the live ones sit inside "alan") and old-map scenery would otherwise stay as buried or far-away strays.
+            bool stray = alanExists && (n == "Eco Field Station" || n == "PowerStarter" || n == "Rock" || n == "WaterIntake" || n.StartsWith("WindTurbine"));
+            bool remove = stray || n.Contains("Evler") || n.Contains("Yollar") || n.Contains("Lamba") || n.Contains("Diregi") || n.Contains("Dizisi")
                 || n == "Gecici" || (n.Contains("lge1") && root.transform.childCount == 0);
             if (!remove && !keepNames.Contains(n)) remove = IsPureScenery(root);
             if (remove) { report.AppendLine("  silindi (kopyada): " + n); Object.DestroyImmediate(root); }
@@ -450,9 +483,9 @@ public static class BuildEcoWorldMap
         if (snow)
         {
             main.startLifetime = 16f; main.startSpeed = 0.5f; main.startSize = new ParticleSystem.MinMaxCurve(0.18f, 0.4f);
-            main.maxParticles = 2200; main.gravityModifier = 0.05f; main.startColor = new Color(1f, 1f, 1f, 0.85f);
-            emission.rateOverTime = 130f;
-            shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(520f, 2f, 150f);
+            main.maxParticles = 1000; main.gravityModifier = 0.05f; main.startColor = new Color(1f, 1f, 1f, 0.85f);
+            emission.rateOverTime = 70f;
+            shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(Size * 0.95f, 2f, 56f * L);
         }
         else
         {
@@ -561,14 +594,14 @@ public static class BuildEcoWorldMap
                 float x = u * Size, z = v * Size;
                 float h = data.GetInterpolatedHeight(u, v);
                 float steep = data.GetSteepness(u, v);
-                float noise = Fbm(x * 0.03f, z * 0.03f, 3);
+                float noise = Fbm(x * 0.09f, z * 0.09f, 3);
                 for (int i = 0; i < layerCount; i++) w[i] = 0f;
                 w[0] = 1f;
-                float sun = RectMask(x, z, 320f, 140f, 110f, 135f, 25f);
+                float sun = RectMask(x, z, 100f * L, 37f * L, 38f * L, 37f * L, 10f);
                 w[1] += sun * (0.55f + 0.45f * noise);
-                float industry = RectMask(x, z, 535f, 340f, 105f, 110f, 20f);
+                float industry = RectMask(x, z, 170f * L, 110f * L, 30f * L, 36f * L, 8f);
                 w[5] += industry * 0.95f; w[0] *= 1f - industry * 0.8f;
-                float city = RectMask(x, z, 320f, 360f, 108f, 90f, 10f);
+                float city = RectMask(x, z, 100f * L, 110f * L, 40f * L, 36f * L, 5f);
                 w[4] += city * 0.30f; w[0] *= 1f - city * 0.55f;
                 foreach (var lake in new[] { new Vector3(LakeA.x, LakeA.y, LakeAR), new Vector3(LakeB.x, LakeB.y, LakeBR) })
                 {
@@ -576,7 +609,7 @@ public static class BuildEcoWorldMap
                     w[1] += (1f - Smooth(lake.z * 0.78f, lake.z * 1.3f, d)) * 1.2f;
                 }
                 float snowLine = 50f + noise * 12f;
-                float snow = Mathf.Max(Smooth(snowLine - 6f, snowLine + 8f, h), Smooth(455f, 505f, z + noise * 25f) * 0.55f);
+                float snow = Mathf.Max(Smooth(snowLine - 6f, snowLine + 8f, h), Smooth(150f * L, 185f * L, z + noise * 8f) * 0.55f);
                 w[3] += snow * 4f;
                 w[2] += Smooth(27f, 43f, steep) * 3.5f + Smooth(38f, 70f, h) * 0.6f * (1f - snow);
                 w[4] += RoadPaint(x, z, false) * 8f;
@@ -697,13 +730,31 @@ public static class BuildEcoWorldMap
         var dock = Group("Dock", root); dock.position = new Vector3(start.x, WaterY + 0.55f, start.y);
         dock.rotation = Quaternion.Euler(0f, yaw, 0f);
         var wood = Mat("DockWood", new Color(0.42f, 0.29f, 0.17f), 0.1f);
-        var plank = Prim(PrimitiveType.Cube, "Planks", dock, new Vector3(0f, 0f, 7f), new Vector3(2.6f, 0.22f, 15f), wood, true);
-        for (int i = 0; i < 5; i++)
+        var plank = Prim(PrimitiveType.Cube, "Planks", dock, new Vector3(0f, 0f, 3.8f), new Vector3(2f, 0.2f, 8f), wood, true);
+        for (int i = 0; i < 3; i++)
         {
-            Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(-1.2f, -1.4f, 1.5f + i * 3f), new Vector3(0.28f, 1.6f, 0.28f), wood);
-            Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(1.2f, -1.4f, 1.5f + i * 3f), new Vector3(0.28f, 1.6f, 0.28f), wood);
+            Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(-0.9f, -1.4f, 1.2f + i * 2.8f), new Vector3(0.28f, 1.6f, 0.28f), wood);
+            Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(0.9f, -1.4f, 1.2f + i * 2.8f), new Vector3(0.28f, 1.6f, 0.28f), wood);
         }
         WorldLabel(dock, polluted ? "DOĞU GÖLÜ\nKirli • Arıtma gerekiyor" : "BATI GÖLÜ\nTemiz su • [5] Eller → [E] Balık tut", new Vector3(0f, 2.6f, 1f), 0.008f);
+        if (polluted)
+        {
+            // GDD §7/§18: the lake project needs a real polluted inlet on the east shore that the player must close.
+            Vector2 ip = center + new Vector2(radius * 0.92f, 0f);
+            var inlet = new GameObject("Kirletici giriş"); inlet.transform.SetParent(root, true);
+            inlet.transform.position = new Vector3(ip.x, Mathf.Max(GroundY(ip.x, ip.y), WaterY) + 0.05f, ip.y);
+            var inletComponent = inlet.AddComponent<EcoPollutionInlet>(); inletComponent.CreateVisual();
+            WorldLabel(inlet.transform, "KİRLETİCİ GİRİŞ\n[E] Sızıntıyı kapat • 10M + 5P", new Vector3(0f, 2.6f, 0f), 0.008f);
+        }
+        else
+        {
+            // GDD §9: small hydro may only stand on a natural-flow site with a fish pass (clean lake outflow).
+            Vector2 hp = center + new Vector2(-radius * 0.95f, 0f);
+            var site = new GameObject("Doğal akış alanı (hidro)"); site.transform.SetParent(root, true);
+            site.transform.position = new Vector3(hp.x, Mathf.Max(GroundY(hp.x, hp.y), WaterY) + 0.05f, hp.y);
+            var hydro = site.AddComponent<EcoHydroSite>(); hydro.radius = 10f;
+            WorldLabel(site.transform, "DOĞAL AKIŞ ALANI\nKüçük hidro santrali burada kurulabilir", new Vector3(0f, 2.6f, 0f), 0.008f);
+        }
         KeepOut.Add(new Rect(center.x - radius * 1.12f, center.y - radius * 1.12f, radius * 2.24f, radius * 2.24f));
         report.AppendLine("Göl: " + name + " " + (polluted ? "(kirli)" : "(temiz)") + " merkez=" + center + " yarıçap=" + radius);
     }
@@ -824,97 +875,105 @@ public static class BuildEcoWorldMap
         var bin = FindZiplerModel("cop");
         var lamp = lampPrefab != null ? lampPrefab : FindZiplerModel("lamba");
 
-        float[] xe = { 215f, 250f, 320f, 390f, 425f };
-        float[] ze = { 272f, 300f, 350f, 400f, 442f };
-        var slots = new List<(Vector2 center, Vector2 size, Vector2 blockCenter)>();
+        // Everything is laid out relative to the city region centre, so moving the region moves the town.
+        Vector2 cc = Defs[2].center;
+        float[] xe = { cc.x - 38f, cc.x - 20f, cc.x, cc.x + 20f, cc.x + 38f };
+        float[] ze = { cc.y - 32f, cc.y - 16f, cc.y, cc.y + 16f, cc.y + 32f };
+        var slots = new List<(Vector2 center, Vector2 size)>();
         for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
             {
-                float x0 = xe[i] + (i == 0 ? 3f : 6f), x1 = xe[i + 1] - (i == 3 ? 3f : 6f);
-                float z0 = ze[j] + (j == 0 ? 3f : 6f), z1 = ze[j + 1] - (j == 3 ? 3f : 6f);
+                float x0 = xe[i] + (i == 0 ? 2f : 3f), x1 = xe[i + 1] - (i == 3 ? 2f : 3f);
+                float z0 = ze[j] + (j == 0 ? 2f : 3f), z1 = ze[j + 1] - (j == 3 ? 2f : 3f);
                 float w = x1 - x0, d = z1 - z0;
-                if (w < 14f || d < 12f) continue;
-                int nx = Mathf.Max(1, Mathf.FloorToInt(w / 26f)), nz = Mathf.Max(1, Mathf.FloorToInt(d / 24f));
+                if (w < 8f || d < 7f) continue;
+                int nx = Mathf.Max(1, Mathf.FloorToInt(w / 18f)), nz = Mathf.Max(1, Mathf.FloorToInt(d / 18f));
                 for (int a = 0; a < nx; a++)
                     for (int b = 0; b < nz; b++)
                     {
                         var c = new Vector2(x0 + (a + 0.5f) * w / nx, z0 + (b + 0.5f) * d / nz);
-                        if (Vector2.Distance(c, new Vector2(320f, 350f)) < 19f) continue; // central plaza
-                        slots.Add((c, new Vector2(w / nx, d / nz), new Vector2((x0 + x1) * 0.5f, (z0 + z1) * 0.5f)));
+                        if (Vector2.Distance(c, cc) < 9f) continue; // central plaza
+                        slots.Add((c, new Vector2(w / nx, d / nz)));
                     }
             }
-        slots = slots.OrderBy(s => Vector2.Distance(s.center, new Vector2(320f, 350f))).ToList();
+        slots = slots.OrderBy(s => Vector2.Distance(s.center, cc)).ToList();
         int placed = 0;
         for (int k = 0; k < slots.Count; k++)
         {
             var slot = slots[k];
             if (k > 4 && rng.NextDouble() < 0.12) continue;
-            Vector2 toward = slot.center - slot.blockCenter;
+            Vector2 toward = slot.center - cc;
             float yaw = Mathf.Abs(toward.x) > Mathf.Abs(toward.y) ? (toward.x > 0 ? 90f : 270f) : (toward.y > 0 ? 0f : 180f);
             float maxW = slot.size.x * 0.82f, maxD = slot.size.y * 0.82f;
-            float dist = Vector2.Distance(slot.center, new Vector2(320f, 350f));
+            float dist = toward.magnitude;
             var pos = new Vector3(slot.center.x, GroundY(slot.center.x, slot.center.y), slot.center.y);
             GameObject model; float height; bool shrinkOnly = false;
-            if (k == 0) { model = market; height = 8f; }
-            else if (k == 1) { model = clinic; height = 11f; }
-            else if (k == 2) { model = library; height = 9f; }
-            else if (dist < 85f) { model = apartment; height = F(15f, 24f); }
+            if (k == 0) { model = market; height = 6f; }
+            else if (k == 1) { model = clinic; height = 8f; }
+            else if (k == 2) { model = library; height = 7f; }
+            else if (dist < 28f) { model = apartment; height = F(10f, 16f); }
             else if (housePrefab != null && rng.NextDouble() < 0.5) { model = housePrefab; height = 0f; shrinkOnly = true; }
-            else { model = modern != null ? modern : housePrefab; height = F(6.5f, 9f); shrinkOnly = model == housePrefab; }
+            else { model = modern != null ? modern : housePrefab; height = F(5f, 7f); shrinkOnly = model == housePrefab; }
             GameObject built = null;
             if (model != null) built = SpawnModel(model, root, pos, yaw, height, maxW, maxD, true, shrinkOnly);
             if (built == null)
             {
-                float bw = Mathf.Min(maxW, 22f), bd = Mathf.Min(maxD, 18f), bh = dist < 85f ? F(14f, 26f) : F(6f, 9f);
+                float bw = Mathf.Min(maxW, 12f), bd = Mathf.Min(maxD, 10f), bh = dist < 28f ? F(8f, 14f) : F(4.5f, 6.5f);
                 built = ProceduralBuilding(root, pos, yaw, bw, bd, bh);
             }
             built.name = "Building " + k;
-            if (TryBounds(built, out var bounds)) KeepOut.Add(new Rect(bounds.min.x - 1f, bounds.min.z - 1f, bounds.size.x + 2f, bounds.size.z + 2f));
+            if (TryBounds(built, out var bounds)) KeepOut.Add(new Rect(bounds.min.x - 0.6f, bounds.min.z - 0.6f, bounds.size.x + 1.2f, bounds.size.z + 1.2f));
             placed++;
         }
         report.AppendLine("Şehir: " + placed + " bina yerleştirildi");
 
-        // Central plaza: stone disc, ring of trees and benches-as-blocks.
-        var plaza = Group("Plaza", root); plaza.position = new Vector3(320f, GroundY(320f, 350f), 350f);
-        Prim(PrimitiveType.Cylinder, "Plaza floor", plaza, new Vector3(0f, 0.08f, 0f), new Vector3(30f, 0.08f, 30f), Mat("PlazaStone", new Color(0.62f, 0.6f, 0.55f), 0.1f));
-        var fountain = Prim(PrimitiveType.Cylinder, "Fountain basin", plaza, new Vector3(0f, 0.45f, 0f), new Vector3(6f, 0.4f, 6f), Mat("FountainStone", new Color(0.7f, 0.7f, 0.68f), 0.2f), true);
-        Prim(PrimitiveType.Cylinder, "Fountain water", plaza, new Vector3(0f, 0.8f, 0f), new Vector3(5.2f, 0.05f, 5.2f), Mat("FountainWater", new Color(0.35f, 0.75f, 0.85f, 0.8f), 0.9f, 0f, true));
-        Prim(PrimitiveType.Cylinder, "Fountain column", plaza, new Vector3(0f, 1.6f, 0f), new Vector3(0.8f, 1.0f, 0.8f), Mat("FountainStone", new Color(0.7f, 0.7f, 0.68f), 0.2f));
-        WorldLabel(plaza, "ŞEHİR MEYDANI\nTemiz çevre, yaşanabilir şehir", new Vector3(0f, 4.5f, 0f), 0.01f);
-        KeepOut.Add(new Rect(320f - 17f, 350f - 17f, 34f, 34f));
+        // Central plaza: stone disc with a small fountain.
+        var plaza = Group("Plaza", root); plaza.position = new Vector3(cc.x, GroundY(cc.x, cc.y), cc.y);
+        Prim(PrimitiveType.Cylinder, "Plaza floor", plaza, new Vector3(0f, 0.08f, 0f), new Vector3(14f, 0.08f, 14f), Mat("PlazaStone", new Color(0.62f, 0.6f, 0.55f), 0.1f));
+        Prim(PrimitiveType.Cylinder, "Fountain basin", plaza, new Vector3(0f, 0.35f, 0f), new Vector3(3.2f, 0.3f, 3.2f), Mat("FountainStone", new Color(0.7f, 0.7f, 0.68f), 0.2f), true);
+        Prim(PrimitiveType.Cylinder, "Fountain water", plaza, new Vector3(0f, 0.62f, 0f), new Vector3(2.8f, 0.04f, 2.8f), Mat("FountainWater", new Color(0.35f, 0.75f, 0.85f, 0.8f), 0.9f, 0f, true));
+        Prim(PrimitiveType.Cylinder, "Fountain column", plaza, new Vector3(0f, 1.2f, 0f), new Vector3(0.5f, 0.8f, 0.5f), Mat("FountainStone", new Color(0.7f, 0.7f, 0.68f), 0.2f));
+        WorldLabel(plaza, "ŞEHİR MEYDANI\nTemiz çevre, yaşanabilir şehir", new Vector3(0f, 3.6f, 0f), 0.008f);
+        KeepOut.Add(new Rect(cc.x - 9f, cc.y - 9f, 18f, 18f));
 
         // Street furniture.
         int lamps = 0;
         foreach (var road in Roads)
         {
-            if (road.width < 8f || road.trail) continue;
+            if (road.width < 4f || road.trail) continue;
             for (int i = 0; i + 1 < road.points.Length; i++)
             {
                 Vector2 a = road.points[i], b = road.points[i + 1], dir = (b - a).normalized, normal = new Vector2(-dir.y, dir.x);
                 float length = Vector2.Distance(a, b);
-                for (float t = 12f; t < length - 6f; t += 24f)
+                for (float t = 6f; t < length - 3f; t += 12f)
                 {
-                    Vector2 p = a + dir * t + normal * (road.width * 0.5f + 1.4f) * (((int)(t / 24f)) % 2 == 0 ? 1f : -1f);
-                    if (Vector2.Distance(p, new Vector2(320f, 350f)) < 20f) continue;
-                    if (p.x < 212f || p.x > 428f || p.y < 270f || p.y > 444f) continue;
+                    Vector2 p = a + dir * t + normal * (road.width * 0.5f + 0.8f) * (((int)(t / 12f)) % 2 == 0 ? 1f : -1f);
+                    if (Vector2.Distance(p, cc) < 9f) continue;
+                    if (Mathf.Abs(p.x - cc.x) > 40f || Mathf.Abs(p.y - cc.y) > 34f) continue;
                     PlaceLamp(root, lamp, p); lamps++;
                 }
             }
         }
         report.AppendLine("Şehir: " + lamps + " sokak lambası");
         if (traffic != null)
-            foreach (var p in new[] { new Vector2(256f, 356f), new Vector2(384f, 344f), new Vector2(326f, 306f), new Vector2(314f, 394f) })
-                SpawnModel(traffic, root, new Vector3(p.x, GroundY(p.x, p.y), p.y), 0f, 5f, 0f, 0f, true);
+            foreach (var o in new[] { new Vector2(-17.4f, -13.4f), new Vector2(22.6f, -13.4f), new Vector2(-17.4f, 18.6f), new Vector2(22.6f, 18.6f) })
+            {
+                var p = cc + o;
+                SpawnModel(traffic, root, new Vector3(p.x, GroundY(p.x, p.y), p.y), 0f, 4f, 0f, 0f, true);
+            }
         if (bin != null)
-            foreach (var p in new[] { new Vector2(306f, 336f), new Vector2(334f, 364f), new Vector2(306f, 364f) })
-                SpawnModel(bin, root, new Vector3(p.x, GroundY(p.x, p.y), p.y), F(0f, 360f), 1.1f, 0f, 0f, true);
+            foreach (var o in new[] { new Vector2(-5.5f, -4.5f), new Vector2(5.5f, 4.5f), new Vector2(-5.5f, 4.5f) })
+            {
+                var p = cc + o;
+                SpawnModel(bin, root, new Vector3(p.x, GroundY(p.x, p.y), p.y), F(0f, 360f), 0.9f, 0f, 0f, true);
+            }
     }
 
     private static void PlaceLamp(Transform parent, GameObject lampModel, Vector2 p)
     {
         var pos = new Vector3(p.x, GroundY(p.x, p.y), p.y);
-        if (lampModel != null && SpawnModel(lampModel, parent, pos, 0f, 5.2f, 0f, 0f, false, false) != null) return;
-        var lamp = Group("Street lamp", parent); lamp.position = pos;
+        if (lampModel != null && SpawnModel(lampModel, parent, pos, 0f, 3.8f, 0f, 0f, false, false) != null) return;
+        var lamp = Group("Street lamp", parent); lamp.position = pos; lamp.localScale = Vector3.one * 0.72f;
         var metal = Mat("LampMetal", new Color(0.18f, 0.2f, 0.22f), 0.4f, 0.6f);
         Prim(PrimitiveType.Cylinder, "Pole", lamp, new Vector3(0f, 2.6f, 0f), new Vector3(0.14f, 2.6f, 0.14f), metal);
         Prim(PrimitiveType.Cube, "Arm", lamp, new Vector3(0.5f, 5.1f, 0f), new Vector3(1.2f, 0.1f, 0.12f), metal);
@@ -940,32 +999,33 @@ public static class BuildEcoWorldMap
     private static void BuildIndustry()
     {
         var root = Groups["Industry"];
-        BuildFactory(root, "Fabrika A", new Vector2(500f, 385f), 0f, new Vector3(34f, 12f, 20f), 2, true);
-        BuildFactory(root, "Fabrika B", new Vector2(578f, 372f), 0f, new Vector3(30f, 11f, 22f), 2, true);
-        BuildFactory(root, "Depo C", new Vector2(520f, 262f), 0f, new Vector3(38f, 9f, 24f), 1, false);
-        BuildFactory(root, "Depo D", new Vector2(595f, 268f), 0f, new Vector3(28f, 10f, 20f), 1, false);
+        Vector2 ic = Defs[3].center;
+        BuildFactory(root, "Fabrika A", ic + new Vector2(14f, 26f), 0f, new Vector3(20f, 9f, 12f), 2, true);
+        BuildFactory(root, "Fabrika B", ic + new Vector2(-12f, 30f), 0f, new Vector3(18f, 8f, 12f), 2, true);
+        BuildFactory(root, "Depo C", ic + new Vector2(-12f, -28f), 0f, new Vector3(20f, 6f, 12f), 1, false);
+        BuildFactory(root, "Depo D", ic + new Vector2(18f, -30f), 0f, new Vector3(14f, 6f, 10f), 1, false);
 
         var tankMat = Mat("TankSteel", new Color(0.62f, 0.66f, 0.68f), 0.5f, 0.5f);
         var tanks = Group("Tank farm", root);
         for (int i = 0; i < 4; i++)
         {
-            float x = 452f + (i % 2) * 14f, z = 395f + (i / 2) * 14f;
-            var t = Prim(PrimitiveType.Cylinder, "Tank", tanks, new Vector3(x, GroundY(x, z) + 5f, z), new Vector3(10f, 5f, 10f), tankMat, true);
+            float x = ic.x - 24f + (i % 2) * 8f, z = ic.y + 8f + (i / 2) * 8f;
+            var t = Prim(PrimitiveType.Cylinder, "Tank", tanks, new Vector3(x, GroundY(x, z) + 3.5f, z), new Vector3(6f, 3.5f, 6f), tankMat, true);
             Prim(PrimitiveType.Cylinder, "Tank cap", t.transform, new Vector3(0f, 1.02f, 0f), new Vector3(0.9f, 0.04f, 0.9f), Mat("TankCap", new Color(0.3f, 0.33f, 0.35f), 0.3f, 0.5f));
         }
-        KeepOut.Add(new Rect(444f, 388f, 32f, 32f));
+        KeepOut.Add(new Rect(ic.x - 29f, ic.y + 3f, 18f, 18f));
 
         var yard = Group("Container yard", root);
         Color[] colors = { new Color(0.75f, 0.25f, 0.2f), new Color(0.2f, 0.4f, 0.6f), new Color(0.8f, 0.6f, 0.2f), new Color(0.25f, 0.5f, 0.35f) };
         for (int i = 0; i < 14; i++)
         {
-            float x = 560f + (i % 4) * 7f, z = 405f + (i / 4) * 9f;
+            float x = ic.x + 6f + (i % 4) * 4.5f, z = ic.y + 2f + (i / 4) * 5.5f;
             int stack = 1 + rng.Next(3);
             for (int s = 0; s < stack; s++)
-                Prim(PrimitiveType.Cube, "Container", yard, new Vector3(x, GroundY(x, z) + 1.3f + s * 2.6f, z), new Vector3(6f, 2.5f, 2.5f),
+                Prim(PrimitiveType.Cube, "Container", yard, new Vector3(x, GroundY(x, z) + 0.9f + s * 1.8f, z), new Vector3(4.2f, 1.75f, 1.8f),
                     Mat("Container" + (i % 4), colors[i % 4], 0.3f, 0.3f), true);
         }
-        KeepOut.Add(new Rect(554f, 400f, 36f, 40f));
+        KeepOut.Add(new Rect(ic.x + 3f, ic.y, 24f, 24f));
 
         // Dumped waste by the road: gives the recycler something to do in the worst region.
         var junk = Group("Dump site", root);
@@ -973,9 +1033,9 @@ public static class BuildEcoWorldMap
         {
             var prefab = Resources.Load<GameObject>("EcoArt/" + name);
             if (prefab == null) continue;
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 5; i++)
             {
-                float x = F(488f, 530f), z = F(318f, 336f);
+                float x = F(ic.x + 6f, ic.x + 24f), z = F(ic.y - 16f, ic.y - 10f);
                 if (RoadEdgeDistance(x, z) < 2f) continue;
                 var item = (GameObject)PrefabUtility.InstantiatePrefab(prefab, junk);
                 item.transform.position = new Vector3(x, GroundY(x, z) + 0.05f, z); item.transform.rotation = Quaternion.Euler(0f, F(0f, 360f), 0f);
@@ -994,34 +1054,34 @@ public static class BuildEcoWorldMap
         var red = Mat("FactoryRed", new Color(0.78f, 0.2f, 0.17f), 0.1f);
         var glass = Mat("FactoryGlass", new Color(0.45f, 0.6f, 0.68f), 0.85f, 0.2f);
         Prim(PrimitiveType.Cube, "Hall", root, new Vector3(0f, size.y * 0.5f, 0f), size, concrete);
-        Prim(PrimitiveType.Cube, "Roof", root, new Vector3(0f, size.y + 0.15f, 0f), new Vector3(size.x + 0.6f, 0.3f, size.z + 0.6f), roofMat);
-        Prim(PrimitiveType.Cube, "Gate", root, new Vector3(0f, 2.3f, -size.z * 0.5f - 0.03f), new Vector3(6f, 4.6f, 0.2f), roofMat);
+        Prim(PrimitiveType.Cube, "Roof", root, new Vector3(0f, size.y + 0.15f, 0f), new Vector3(size.x + 0.5f, 0.3f, size.z + 0.5f), roofMat);
+        Prim(PrimitiveType.Cube, "Gate", root, new Vector3(0f, 1.7f, -size.z * 0.5f - 0.03f), new Vector3(4f, 3.4f, 0.2f), roofMat);
         for (int i = 0; i < 5; i++)
-            Prim(PrimitiveType.Cube, "Window", root, new Vector3(-size.x * 0.38f + i * size.x * 0.19f, size.y * 0.68f, -size.z * 0.5f - 0.03f), new Vector3(2.8f, 1.5f, 0.12f), glass);
+            Prim(PrimitiveType.Cube, "Window", root, new Vector3(-size.x * 0.38f + i * size.x * 0.19f, size.y * 0.68f, -size.z * 0.5f - 0.03f), new Vector3(2.2f, 1.2f, 0.12f), glass);
         for (int i = 0; i < 4; i++)
-            Prim(PrimitiveType.Cube, "Roof vent", root, new Vector3(-size.x * 0.3f + i * size.x * 0.2f, size.y + 0.9f, -size.z * 0.15f), new Vector3(2.4f, 1.2f, 2.4f), roofMat);
+            Prim(PrimitiveType.Cube, "Roof vent", root, new Vector3(-size.x * 0.3f + i * size.x * 0.2f, size.y + 0.7f, -size.z * 0.15f), new Vector3(1.6f, 0.9f, 1.6f), roofMat);
         ParticleSystem firstSmoke = null;
         for (int c = 0; c < chimneys; c++)
         {
-            float cx = size.x * 0.5f - 5f - c * 6f, cz = size.z * 0.5f - 3.5f, ch = size.y + 17f + c * 4f;
-            Prim(PrimitiveType.Cylinder, "Chimney", root, new Vector3(cx, ch * 0.5f, cz), new Vector3(2.6f, ch * 0.5f, 2.6f), brick);
-            Prim(PrimitiveType.Cylinder, "Chimney band", root, new Vector3(cx, ch - 1.2f, cz), new Vector3(2.75f, 0.6f, 2.75f), red);
-            Prim(PrimitiveType.Cylinder, "Chimney band", root, new Vector3(cx, ch - 4f, cz), new Vector3(2.75f, 0.6f, 2.75f), red);
-            var smoke = MakeSmoke(root, new Vector3(cx, ch + 0.4f, cz), 1f);
+            float cx = size.x * 0.5f - 3.5f - c * 4f, cz = size.z * 0.5f - 2.5f, ch = size.y + 9f + c * 3f;
+            Prim(PrimitiveType.Cylinder, "Chimney", root, new Vector3(cx, ch * 0.5f, cz), new Vector3(1.8f, ch * 0.5f, 1.8f), brick);
+            Prim(PrimitiveType.Cylinder, "Chimney band", root, new Vector3(cx, ch - 0.9f, cz), new Vector3(1.95f, 0.45f, 1.95f), red);
+            Prim(PrimitiveType.Cylinder, "Chimney band", root, new Vector3(cx, ch - 3f, cz), new Vector3(1.95f, 0.45f, 1.95f), red);
+            var smoke = MakeSmoke(root, new Vector3(cx, ch + 0.4f, cz), 0.65f);
             if (firstSmoke == null) firstSmoke = smoke;
         }
         var box = root.gameObject.AddComponent<BoxCollider>(); box.center = new Vector3(0f, size.y * 0.5f, 0f); box.size = size;
         if (functional)
         {
-            var filter = Prim(PrimitiveType.Cylinder, "Installed air filter", root, new Vector3(-size.x * 0.5f - 2.2f, 3f, -size.z * 0.25f),
-                new Vector3(3.2f, 3f, 3.2f), Mat("FactoryFilter", new Color(0.2f, 0.62f, 0.4f), 0.3f, 0.3f));
+            var filter = Prim(PrimitiveType.Cylinder, "Installed air filter", root, new Vector3(-size.x * 0.5f - 1.8f, 2.2f, -size.z * 0.25f),
+                new Vector3(2.4f, 2.2f, 2.4f), Mat("FactoryFilter", new Color(0.2f, 0.62f, 0.4f), 0.3f, 0.3f));
             var factory = root.gameObject.AddComponent<EcoFactory>();
             factory.filterVisual = filter; factory.smoke = firstSmoke;
             filter.SetActive(false);
-            WorldLabel(root, "FABRİKA\n[E] Büyük filtre tak", new Vector3(0f, size.y * 0.55f + 2f, -size.z * 0.5f - 2f), 0.012f);
+            WorldLabel(root, "FABRİKA\n[E] Büyük filtre tak", new Vector3(0f, size.y * 0.55f + 1.5f, -size.z * 0.5f - 1.5f), 0.009f);
         }
-        else WorldLabel(root, "ESKİ DEPO\nTerk edilmiş", new Vector3(0f, size.y * 0.5f + 2f, -size.z * 0.5f - 2f), 0.01f);
-        KeepOut.Add(new Rect(xz.x - size.x * 0.5f - 6f, xz.y - size.z * 0.5f - 4f, size.x + 12f, size.z + 8f));
+        else WorldLabel(root, "ESKİ DEPO\nTerk edilmiş", new Vector3(0f, size.y * 0.5f + 1.5f, -size.z * 0.5f - 1.5f), 0.008f);
+        KeepOut.Add(new Rect(xz.x - size.x * 0.5f - 4f, xz.y - size.z * 0.5f - 3f, size.x + 8f, size.z + 6f));
     }
 
     // ---------------------------------------------------------------- energy (wind + solar)
@@ -1029,27 +1089,29 @@ public static class BuildEcoWorldMap
     private static void BuildEnergy()
     {
         var root = Groups["Energy"];
-        // Wind farm: the highest ridges of the western hills, at least 46 m apart.
+        // Wind farm: the highest ridges inside the windy-hills region, at least 22 m apart.
+        var wind = Defs[1];
         var candidates = new List<(Vector2 p, float h)>();
-        for (float x = 20f; x < 195f; x += 6f)
-            for (float z = 175f; z < 435f; z += 6f)
+        for (float x = wind.center.x - wind.size.x * 0.5f + 5f; x < wind.center.x + wind.size.x * 0.5f - 5f; x += 4f)
+            for (float z = wind.center.y - wind.size.y * 0.5f + 5f; z < wind.center.y + wind.size.y * 0.5f - 5f; z += 4f)
             {
-                if (RoadEdgeDistance(x, z) < 14f) continue;
+                if (RoadEdgeDistance(x, z) < 8f) continue;
                 if (terrainData.GetSteepness(x / Size, z / Size) > 22f) continue;
                 candidates.Add((new Vector2(x, z), GroundY(x, z)));
             }
         var chosen = new List<Vector2>();
         foreach (var c in candidates.OrderByDescending(cand => cand.h))
         {
-            if (chosen.Count >= 11) break;
-            if (chosen.All(o => Vector2.Distance(o, c.p) >= 46f)) chosen.Add(c.p);
+            if (chosen.Count >= 5) break;
+            if (chosen.All(o => Vector2.Distance(o, c.p) >= 22f)) chosen.Add(c.p);
         }
         var farm = Group("Wind farm", root);
         foreach (var p in chosen) BuildTurbine(farm, p);
         report.AppendLine("Rüzgâr çiftliği: " + chosen.Count + " dekoratif türbin (rüzgâra göre döner, enerji üretmez)");
 
-        BuildSolarField(root, new Rect(232f, 160f, 74f, 90f));
-        BuildSolarField(root, new Rect(338f, 160f, 74f, 90f));
+        Vector2 sc = Defs[4].center;
+        BuildSolarField(root, new Rect(sc.x - 36f, sc.y + 9f, 30f, 26f));
+        BuildSolarField(root, new Rect(sc.x + 6f, sc.y + 9f, 30f, 26f));
 
         // Power line from the wind farm to the city along the west road.
         {
@@ -1059,29 +1121,29 @@ public static class BuildEcoWorldMap
             {
                 Vector2 a = road.points[i], b = road.points[i + 1], dir = (b - a).normalized, normal = new Vector2(-dir.y, dir.x);
                 float length = Vector2.Distance(a, b);
-                for (float t = 0f; t < length; t += 32f)
+                for (float t = 0f; t < length; t += 14f)
                 {
-                    Vector2 p = a + dir * t + normal * (road.width * 0.5f + 4f);
+                    Vector2 p = a + dir * t + normal * (road.width * 0.5f + 2.5f);
                     var pos = new Vector3(p.x, GroundY(p.x, p.y), p.y);
-                    GameObject pole = polePrefab != null ? SpawnModel(polePrefab, root, pos, Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg + 90f, 11f, 0f, 0f, true) : null;
+                    GameObject pole = polePrefab != null ? SpawnModel(polePrefab, root, pos, Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg + 90f, 6.5f, 0f, 0f, true) : null;
                     if (pole == null) pole = ProceduralPole(root, pos, Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg);
-                    poles.Add(pos + Vector3.up * 10.5f);
+                    poles.Add(pos + Vector3.up * 6.1f);
                 }
             }
             var lineMat = Mat("PowerLine", new Color(0.05f, 0.05f, 0.06f), 0.1f);
             var wires = Group("Power lines", root);
             for (int i = 0; i + 1 < poles.Count; i++)
             {
-                if (Vector3.Distance(poles[i], poles[i + 1]) > 60f) continue;
+                if (Vector3.Distance(poles[i], poles[i + 1]) > 30f) continue;
                 var go = new GameObject("Wire"); go.transform.SetParent(wires, false);
-                var line = go.AddComponent<LineRenderer>(); line.useWorldSpace = true; line.widthMultiplier = 0.06f;
+                var line = go.AddComponent<LineRenderer>(); line.useWorldSpace = true; line.widthMultiplier = 0.04f;
                 line.sharedMaterial = lineMat; line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 line.positionCount = 7;
                 for (int k = 0; k < 7; k++)
                 {
                     float t = k / 6f;
                     var p = Vector3.Lerp(poles[i], poles[i + 1], t);
-                    p.y -= Mathf.Sin(t * Mathf.PI) * 1.4f;
+                    p.y -= Mathf.Sin(t * Mathf.PI) * 0.6f;
                     line.SetPosition(k, p);
                 }
             }
@@ -1092,18 +1154,19 @@ public static class BuildEcoWorldMap
     {
         var pole = Group("Power pole", parent); pole.position = pos; pole.rotation = Quaternion.Euler(0f, yaw, 0f);
         var wood = Mat("PoleWood", new Color(0.36f, 0.26f, 0.17f), 0.1f);
-        Prim(PrimitiveType.Cylinder, "Pole", pole, new Vector3(0f, 5.5f, 0f), new Vector3(0.3f, 5.5f, 0.3f), wood, true);
-        Prim(PrimitiveType.Cube, "Crossarm", pole, new Vector3(0f, 10.2f, 0f), new Vector3(0.18f, 0.18f, 3.2f), wood);
+        Prim(PrimitiveType.Cylinder, "Pole", pole, new Vector3(0f, 3.3f, 0f), new Vector3(0.2f, 3.3f, 0.2f), wood, true);
+        Prim(PrimitiveType.Cube, "Crossarm", pole, new Vector3(0f, 6.0f, 0f), new Vector3(0.14f, 0.14f, 2.0f), wood);
         return pole.gameObject;
     }
 
     private static void BuildTurbine(Transform parent, Vector2 p)
     {
         var root = Group("Wind turbine", parent);
-        root.position = new Vector3(p.x, GroundY(p.x, p.y) - 0.3f, p.y);
+        root.position = new Vector3(p.x, GroundY(p.x, p.y) - 0.2f, p.y);
         root.rotation = Quaternion.Euler(0f, F(-15f, 15f) - 90f, 0f); // rotor faces the prevailing western wind
+        root.localScale = Vector3.one * 0.55f; // compact 200 m map: ~19 m towers
         var white = Mat("TurbineWhite", new Color(0.93f, 0.94f, 0.92f), 0.35f);
-        var tower = Prim(PrimitiveType.Cylinder, "Tower", root, new Vector3(0f, 17f, 0f), new Vector3(1.5f, 17f, 1.5f), white);
+        Prim(PrimitiveType.Cylinder, "Tower", root, new Vector3(0f, 17f, 0f), new Vector3(1.5f, 17f, 1.5f), white);
         var capsule = root.gameObject.AddComponent<CapsuleCollider>(); capsule.center = new Vector3(0f, 17f, 0f); capsule.radius = 1.2f; capsule.height = 34f;
         Prim(PrimitiveType.Cube, "Nacelle", root, new Vector3(0f, 34.6f, -0.4f), new Vector3(2.2f, 2.4f, 5.6f), white);
         var rotor = new GameObject("Rotor").transform; rotor.SetParent(root, false); rotor.localPosition = new Vector3(0f, 34.6f, 2.9f);
@@ -1116,7 +1179,7 @@ public static class BuildEcoWorldMap
             Prim(PrimitiveType.Cube, "Tip", arm, new Vector3(0f, 14.2f, 0.02f), new Vector3(0.72f, 1.6f, 0.24f), Mat("TurbineTip", new Color(0.85f, 0.2f, 0.18f), 0.3f));
         }
         var spin = rotor.gameObject.AddComponent<EcoDecorRotor>(); spin.axis = Vector3.forward; spin.degreesPerSecond = 150f;
-        KeepOut.Add(new Rect(p.x - 6f, p.y - 6f, 12f, 12f));
+        KeepOut.Add(new Rect(p.x - 4f, p.y - 4f, 8f, 8f));
     }
 
     private static void BuildSolarField(Transform parent, Rect area)
@@ -1126,12 +1189,12 @@ public static class BuildEcoWorldMap
         if (solarPrefab != null)
         {
             var probe = SpawnModel(solarPrefab, field, new Vector3(area.center.x, GroundY(area.center.x, area.center.y), area.center.y), 0f, 0f, 0f, 0f, false, false);
-            if (probe != null && TryBounds(probe, out var pb) && pb.size.x < 40f && pb.size.z < 40f && pb.size.x > 0.5f && pb.size.z > 0.5f)
+            if (probe != null && TryBounds(probe, out var pb) && pb.size.x < 30f && pb.size.z < 30f && pb.size.x > 0.5f && pb.size.z > 0.5f)
             {
-                float sx = pb.size.x + 1.5f, sz = pb.size.z + 3f;
+                float sx = pb.size.x + 1.0f, sz = pb.size.z + 2f;
                 Object.DestroyImmediate(probe);
-                for (float z = area.yMin + sz * 0.5f; z < area.yMax - sz * 0.4f && placed < 60; z += sz)
-                    for (float x = area.xMin + sx * 0.5f; x < area.xMax - sx * 0.4f && placed < 60; x += sx)
+                for (float z = area.yMin + sz * 0.5f; z < area.yMax - sz * 0.4f && placed < 30; z += sz)
+                    for (float x = area.xMin + sx * 0.5f; x < area.xMax - sx * 0.4f && placed < 30; x += sx)
                     {
                         var g = SpawnModel(solarPrefab, field, new Vector3(x, GroundY(x, z), z), 0f, 0f, 0f, 0f, true, false);
                         if (g != null) placed++;
@@ -1143,21 +1206,21 @@ public static class BuildEcoWorldMap
         {
             var frame = Mat("SolarFrame", new Color(0.7f, 0.74f, 0.78f), 0.5f, 0.6f);
             var cell = Mat("SolarCell", new Color(0.05f, 0.13f, 0.32f), 0.8f, 0.35f);
-            for (float z = area.yMin + 4f; z < area.yMax - 3f; z += 8.5f)
+            for (float z = area.yMin + 3f; z < area.yMax - 2f; z += 6f)
             {
                 var row = Group("Solar row", field);
                 float baseY = GroundY(area.center.x, z);
-                row.position = new Vector3(area.xMin + 2f, baseY, z);
-                int count = Mathf.FloorToInt((area.width - 4f) / 4.6f);
+                row.position = new Vector3(area.xMin + 1.5f, baseY, z);
+                int count = Mathf.FloorToInt((area.width - 3f) / 3.4f);
                 for (int i = 0; i < count; i++)
                 {
-                    float x = 2.3f + i * 4.6f;
-                    var panel = Prim(PrimitiveType.Cube, "Panel", row, new Vector3(x, 1.7f, 0f), new Vector3(4.3f, 0.1f, 2.8f), cell);
+                    float x = 1.7f + i * 3.4f;
+                    var panel = Prim(PrimitiveType.Cube, "Panel", row, new Vector3(x, 1.2f, 0f), new Vector3(3.1f, 0.08f, 2.0f), cell);
                     panel.transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
-                    Prim(PrimitiveType.Cube, "Frame", row, new Vector3(x, 1.68f, 0f), new Vector3(4.4f, 0.06f, 2.9f), frame).transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
-                    Prim(PrimitiveType.Cylinder, "Post", row, new Vector3(x, 0.85f, 0.2f), new Vector3(0.14f, 0.85f, 0.14f), frame);
+                    Prim(PrimitiveType.Cube, "Frame", row, new Vector3(x, 1.18f, 0f), new Vector3(3.2f, 0.05f, 2.1f), frame).transform.localRotation = Quaternion.Euler(-28f, 0f, 0f);
+                    Prim(PrimitiveType.Cylinder, "Post", row, new Vector3(x, 0.6f, 0.15f), new Vector3(0.12f, 0.6f, 0.12f), frame);
                 }
-                var col = row.gameObject.AddComponent<BoxCollider>(); col.center = new Vector3(count * 2.3f, 1.2f, 0f); col.size = new Vector3(count * 4.6f, 2.4f, 3f);
+                var col = row.gameObject.AddComponent<BoxCollider>(); col.center = new Vector3(count * 1.7f, 0.9f, 0f); col.size = new Vector3(count * 3.4f, 1.8f, 2.2f);
                 placed++;
             }
         }
@@ -1172,33 +1235,35 @@ public static class BuildEcoWorldMap
         var root = Groups["Glacier"];
         var iceMat = Mat("GlacierIce", new Color(0.62f, 0.86f, 0.96f, 0.82f), 0.95f, 0.1f, true);
         var blocks = new List<Transform>();
-        for (int i = 0; i < 60; i++)
+        var gl = Defs[0];
+        float zMin = gl.center.y - gl.size.y * 0.5f + 8f, zMax = Size - 8f;
+        for (int i = 0; i < 30; i++)
         {
-            float x = F(40f, 600f), z = F(468f, 585f);
-            if (RoadEdgeDistance(x, z) < 8f) continue;
+            float x = F(8f, Size - 8f), z = F(zMin, zMax);
+            if (RoadEdgeDistance(x, z) < 4f) continue;
             float ground = GroundY(x, z);
-            if (ground > 95f) continue;
-            float w = F(4f, 11f), hgt = F(5f, 15f), d = F(4f, 11f);
+            if (ground > 65f) continue;
+            float w = F(2.5f, 6f), hgt = F(3f, 8.5f), d = F(2.5f, 6f);
             var b = Prim(PrimitiveType.Cube, "Ice block", root, new Vector3(x, ground + hgt * 0.45f, z), new Vector3(w, hgt, d), iceMat, true);
             b.transform.rotation = Quaternion.Euler(F(-9f, 9f), F(0f, 360f), F(-9f, 9f));
             blocks.Add(b.transform);
         }
-        for (int i = 0; i < 28; i++)
+        for (int i = 0; i < 16; i++)
         {
-            float x = F(40f, 600f), z = F(466f, 560f);
-            if (RoadEdgeDistance(x, z) < 8f) continue;
+            float x = F(8f, Size - 8f), z = F(zMin, zMax - 6f);
+            if (RoadEdgeDistance(x, z) < 4f) continue;
             float ground = GroundY(x, z);
-            if (ground > 100f) continue;
-            float hgt = F(7f, 20f);
-            var spike = Prim(PrimitiveType.Cube, "Ice spire", root, new Vector3(x, ground + hgt * 0.4f, z), new Vector3(F(1.5f, 3.2f), hgt, F(1.5f, 3.2f)), iceMat, true);
+            if (ground > 70f) continue;
+            float hgt = F(5f, 12f);
+            var spike = Prim(PrimitiveType.Cube, "Ice spire", root, new Vector3(x, ground + hgt * 0.4f, z), new Vector3(F(1f, 2f), hgt, F(1f, 2f)), iceMat, true);
             spike.transform.rotation = Quaternion.Euler(F(-14f, 14f), F(0f, 360f), F(-14f, 14f));
             blocks.Add(spike.transform);
         }
         var melt = root.gameObject.AddComponent<EcoGlacierMelt>(); melt.ice = blocks;
 
-        // Research cabin at the end of the trail.
-        float cx = 345f, cz = 505f, gy = GroundY(cx, cz);
-        var cabin = Group("Glacier research station", root); cabin.position = new Vector3(cx, gy, cz);
+        // Research station beside the end of the trail (the terrain is levelled under it in TerrainHeight).
+        float cx = 122f * L, cz = 164f * L, gy = GroundY(cx, cz);
+        var cabin = Group("Glacier research station", root); cabin.position = new Vector3(cx, gy, cz); cabin.localScale = Vector3.one * 0.8f;
         var wall = Mat("CabinWall", new Color(0.72f, 0.28f, 0.22f), 0.1f);
         Prim(PrimitiveType.Cube, "Foundation", cabin, new Vector3(0f, -0.8f, 0f), new Vector3(9f, 3f, 7f), Mat("CabinStone", new Color(0.4f, 0.4f, 0.42f), 0.1f));
         Prim(PrimitiveType.Cube, "Cabin", cabin, new Vector3(0f, 2.2f, 0f), new Vector3(8f, 3.4f, 6f), wall, true);
@@ -1206,9 +1271,10 @@ public static class BuildEcoWorldMap
         Prim(PrimitiveType.Cube, "Window", cabin, new Vector3(-1.8f, 2.4f, -3.03f), new Vector3(1.8f, 1.2f, 0.1f), Mat("CabinGlow", new Color(1f, 0.9f, 0.6f), 0.5f, 0f, false, new Color(1f, 0.8f, 0.45f)));
         Prim(PrimitiveType.Cube, "Door", cabin, new Vector3(2f, 1.8f, -3.03f), new Vector3(1.3f, 2.4f, 0.1f), Mat("CabinDoor", new Color(0.25f, 0.18f, 0.12f), 0.1f));
         WorldLabel(cabin, "BUZUL İZLEME İSTASYONU\nKarbon ayak izi arttıkça buzullar erir", new Vector3(0f, 6.4f, -2f), 0.01f);
-        KeepOut.Add(new Rect(cx - 8f, cz - 7f, 16f, 14f));
+        cabin.gameObject.AddComponent<EcoGlacierStation>(); // [E] switches it on; carbon below its threshold keeps the melt line back
+        KeepOut.Add(new Rect(cx - 6f, cz - 5f, 12f, 10f));
 
-        MakeSmoke(root, new Vector3(320f, 118f, 555f), 1f, true);
+        MakeSmoke(root, new Vector3(Size * 0.5f, 95f, 172f * L), 1f, true);
         report.AppendLine("Buzul: " + blocks.Count + " buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı");
     }
 
@@ -1226,44 +1292,46 @@ public static class BuildEcoWorldMap
         var trees = Group("Trees", root); var stones = Group("Rocks", root); var small = Group("Plants", root);
         var heritageCount = new Dictionary<int, int>();
         int treeCount = 0, rockCount = 0, plantCount = 0;
+        Vector2 cc = Defs[2].center;
+        float glacierStart = Defs[0].center.y - Defs[0].size.y * 0.5f;
 
-        for (float x = 8f; x < Size - 8f && treeCount < 1100; x += 7f)
-            for (float z = 8f; z < Size - 8f && treeCount < 1100; z += 7f)
+        for (float x = 4f; x < Size - 4f && treeCount < 520; x += 5f)
+            for (float z = 4f; z < Size - 4f && treeCount < 520; z += 5f)
             {
-                float px = x + F(-3f, 3f), pz = z + F(-3f, 3f);
-                if (!CanPlant(px, pz, 3.5f)) continue;
+                float px = x + F(-2f, 2f), pz = z + F(-2f, 2f);
+                if (!CanPlant(px, pz, 2.5f)) continue;
                 float h = GroundY(px, pz);
-                if (h < WaterY + 1.2f || h > 75f) continue;
+                if (h < WaterY + 1.2f || h > 60f) continue;
                 if (terrainData.GetSteepness(px / Size, pz / Size) > 28f) continue;
                 int ri = RegionIndexAt(px, pz);
                 float density = ri < 0 ? 0f : Defs[ri].kind switch
                 {
                     EcoRegionInfo.Kind.Wind => 0.05f, EcoRegionInfo.Kind.Sun => 0.02f, EcoRegionInfo.Kind.Industry => 0.012f,
-                    EcoRegionInfo.Kind.Glacier => h < 50f ? 0.2f : 0f, EcoRegionInfo.Kind.Lake => ri == 5 ? 0.22f : 0.09f, _ => 0f,
+                    EcoRegionInfo.Kind.Glacier => h < 45f ? 0.2f : 0f, EcoRegionInfo.Kind.Lake => ri == 5 ? 0.22f : 0.09f, _ => 0f,
                 };
                 float edge = Mathf.Min(Mathf.Min(px, pz), Mathf.Min(Size - px, Size - pz));
-                density += (1f - Smooth(0f, 95f, edge)) * 0.45f;
-                density *= 0.35f + 1.65f * Fbm(px * 0.02f, pz * 0.02f, 3);
+                density += (1f - Smooth(0f, 28f, edge)) * 0.35f;
+                density *= 0.35f + 1.65f * Fbm(px * 0.06f, pz * 0.06f, 3);
                 if (rng.NextDouble() > density) continue;
-                bool pine = h > 36f || pz > 430f || edge < 110f || rng.NextDouble() < 0.12;
+                bool pine = h > 36f || pz > glacierStart - 4f || edge < 30f || rng.NextDouble() < 0.12;
                 bool heritage = ri >= 0 && Defs[ri].kind != EcoRegionInfo.Kind.Industry && Defs[ri].kind != EcoRegionInfo.Kind.Glacier
-                    && (!heritageCount.ContainsKey(ri) || heritageCount[ri] < 3) && edge > 60f;
+                    && (!heritageCount.ContainsKey(ri) || heritageCount[ri] < 3) && edge > 16f;
                 var tree = PlaceTree(trees, new Vector3(px, h, pz), pine ? pines : leafy, pine ? leafy : pines, pine, heritage);
                 if (tree == null) continue;
                 treeCount++;
                 if (heritage) heritageCount[ri] = heritageCount.TryGetValue(ri, out int c) ? c + 1 : 1;
             }
 
-        // City: a tree on every sidewalk corner plus an avenue of trees along the main axis.
-        for (float z = 285f; z < 440f && treeCount < 1250; z += 15f)
-            foreach (float x in new[] { 311f, 329f })
+        // City: trees along the two main streets and a ring around the fountain.
+        for (float d = -30f; d <= 30f; d += 8f)
+            foreach (var spot in new[] { new Vector2(cc.x - 3.6f, cc.y + d), new Vector2(cc.x + 3.6f, cc.y + d), new Vector2(cc.x + d, cc.y - 3.6f), new Vector2(cc.x + d, cc.y + 3.6f) })
             {
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(320f, 350f)) < 18f) continue;
-                if (PlaceTree(trees, new Vector3(x, GroundY(x, z), z), leafy, pines, false, treeCount % 7 == 0) != null) treeCount++;
+                if (Vector2.Distance(spot, cc) < 9f) continue;
+                if (PlaceTree(trees, new Vector3(spot.x, GroundY(spot.x, spot.y), spot.y), leafy, pines, false, treeCount % 7 == 0) != null) treeCount++;
             }
         for (int i = 0; i < 8; i++)
         {
-            float a = i * Mathf.PI / 4f, x = 320f + Mathf.Cos(a) * 14f, z = 350f + Mathf.Sin(a) * 14f;
+            float a = i * Mathf.PI / 4f + Mathf.PI / 8f, x = cc.x + Mathf.Cos(a) * 8.6f, z = cc.y + Mathf.Sin(a) * 8.6f;
             if (PlaceTree(trees, new Vector3(x, GroundY(x, z), z), leafy, pines, false, i < 3) != null) treeCount++;
         }
 
@@ -1276,7 +1344,7 @@ public static class BuildEcoWorldMap
             for (int attempt = 0; attempt < 400 && have < 3; attempt++)
             {
                 float tx = def.center.x + F(-def.size.x * 0.45f, def.size.x * 0.45f), tz = def.center.y + F(-def.size.y * 0.45f, def.size.y * 0.45f);
-                if (RegionIndexAt(tx, tz) != regionIndex || !CanPlant(tx, tz, 4f)) continue;
+                if (RegionIndexAt(tx, tz) != regionIndex || !CanPlant(tx, tz, 3f)) continue;
                 float ty = GroundY(tx, tz);
                 if (ty < WaterY + 2f || ty > 50f || terrainData.GetSteepness(tx / Size, tz / Size) > 20f) continue;
                 if (PlaceTree(trees, new Vector3(tx, ty, tz), leafy, pines, false, true) == null) continue;
@@ -1284,11 +1352,11 @@ public static class BuildEcoWorldMap
             }
         }
 
-        for (float x = 10f; x < Size - 10f && rockCount < 450; x += 12f)
-            for (float z = 10f; z < Size - 10f && rockCount < 450; z += 12f)
+        for (float x = 5f; x < Size - 5f && rockCount < 150; x += 6f)
+            for (float z = 5f; z < Size - 5f && rockCount < 150; z += 6f)
             {
-                float px = x + F(-5f, 5f), pz = z + F(-5f, 5f);
-                if (!CanPlant(px, pz, 2.5f)) continue;
+                float px = x + F(-2.5f, 2.5f), pz = z + F(-2.5f, 2.5f);
+                if (!CanPlant(px, pz, 2f)) continue;
                 float h = GroundY(px, pz);
                 if (h < WaterY - 1f) continue;
                 int ri = RegionIndexAt(px, pz);
@@ -1298,9 +1366,9 @@ public static class BuildEcoWorldMap
                     EcoRegionInfo.Kind.Glacier => 0.16f, EcoRegionInfo.Kind.Wind => 0.07f, EcoRegionInfo.Kind.Lake => 0.1f,
                     EcoRegionInfo.Kind.Industry => 0.03f, EcoRegionInfo.Kind.Sun => 0.02f, _ => 0.005f,
                 };
-                prob += (1f - Smooth(0f, 90f, edge)) * 0.2f;
+                prob += (1f - Smooth(0f, 30f, edge)) * 0.2f;
                 if (rng.NextDouble() > prob) continue;
-                float size = ri >= 0 && Defs[ri].kind == EcoRegionInfo.Kind.Glacier ? F(1.5f, 5f) : F(0.8f, 3f);
+                float size = ri >= 0 && Defs[ri].kind == EcoRegionInfo.Kind.Glacier ? F(1f, 3f) : F(0.5f, 1.8f);
                 GameObject rock;
                 if (rocks.Any)
                 {
@@ -1317,12 +1385,12 @@ public static class BuildEcoWorldMap
             }
 
         if (plants.Any)
-            for (float x = 10f; x < Size - 10f && plantCount < 320; x += 9f)
-                for (float z = 10f; z < Size - 10f && plantCount < 320; z += 9f)
+            for (float x = 5f; x < Size - 5f && plantCount < 130; x += 5f)
+                for (float z = 5f; z < Size - 5f && plantCount < 130; z += 5f)
                 {
-                    float px = x + F(-4f, 4f), pz = z + F(-4f, 4f);
+                    float px = x + F(-2f, 2f), pz = z + F(-2f, 2f);
                     int ri = RegionIndexAt(px, pz);
-                    if (ri < 0 || !CanPlant(px, pz, 2f)) continue;
+                    if (ri < 0 || !CanPlant(px, pz, 1.5f)) continue;
                     var kind = Defs[ri].kind;
                     if (kind != EcoRegionInfo.Kind.Sun && kind != EcoRegionInfo.Kind.Wind && !(kind == EcoRegionInfo.Kind.Lake && ri == 5)) continue;
                     if (rng.NextDouble() > 0.1) continue;
@@ -1338,10 +1406,11 @@ public static class BuildEcoWorldMap
 
     private static bool CanPlant(float x, float z, float roadMargin)
     {
-        if (x < 6f || z < 6f || x > Size - 6f || z > Size - 6f) return false;
+        if (x < 3f || z < 3f || x > Size - 3f || z > Size - 3f) return false;
         if (RoadEdgeDistance(x, z) < roadMargin) return false;
-        if (Vector2.Distance(new Vector2(x, z), Base) < 46f) return false;
-        if (x > 212f && x < 428f && z > 270f && z < 444f) return false;
+        if (Vector2.Distance(new Vector2(x, z), Base) < 34f) return false;
+        Vector2 cc = Defs[2].center;
+        if (Mathf.Abs(x - cc.x) < 42f && Mathf.Abs(z - cc.y) < 36f) return false;
         var p = new Vector2(x, z);
         foreach (var r in KeepOut) if (r.Contains(p)) return false;
         return true;
@@ -1350,7 +1419,7 @@ public static class BuildEcoWorldMap
     private static GameObject PlaceTree(Transform parent, Vector3 pos, ModelSet primary, ModelSet fallback, bool pine, bool heritage)
     {
         var set = primary.Any ? primary : fallback;
-        float baseHeight = pine ? F(7f, 12f) : F(5f, 9f);
+        float baseHeight = pine ? F(5f, 8.5f) : F(4f, 6.5f);
         var holder = new GameObject(pine ? "Pine" : "Tree"); holder.transform.SetParent(parent, false); holder.transform.position = pos;
         GameObject inst = null; float target = baseHeight;
         if (set.Any)
@@ -1438,16 +1507,17 @@ public static class BuildEcoWorldMap
     private static void BuildSigns()
     {
         var root = Groups["Props"];
-        AddSignpost(root, new Vector2(Base.x + 8f, Base.y + 34f), "BAŞLANGIÇ KAVŞAĞI",
+        Vector2 cc = Defs[2].center;
+        AddSignpost(root, new Vector2(Base.x + 7f, Base.y + 10f), "BAŞLANGIÇ KAVŞAĞI",
             new[]
             {
-                "KUZEY  Şehir  " + Mathf.RoundToInt(350f - Base.y) + " m",
-                "BATI  Rüzgârlı Alan  " + Mathf.RoundToInt(Vector2.Distance(Base, new Vector2(110f, 300f))) + " m",
-                "DOĞU  Sanayi  " + Mathf.RoundToInt(Vector2.Distance(Base, new Vector2(520f, 340f))) + " m",
-                "KUZEY  Buzul  " + Mathf.RoundToInt(500f - Base.y) + " m",
+                "KUZEY  Şehir  " + Mathf.RoundToInt(cc.y - Base.y) + " m",
+                "BATI  Rüzgârlı Alan  " + Mathf.RoundToInt(Vector2.Distance(Base, Defs[1].center)) + " m",
+                "DOĞU  Sanayi  " + Mathf.RoundToInt(Vector2.Distance(Base, Defs[3].center)) + " m",
+                "KUZEY  Buzul  " + Mathf.RoundToInt(Defs[0].center.y - Defs[0].size.y * 0.25f - Base.y) + " m",
             });
-        AddSignpost(root, new Vector2(327f, 286f), "ŞEHİR GİRİŞİ", new[] { "KUZEY  Meydan  " + 64 + " m", "BATI  Rüzgâr türbinleri", "DOĞU  Fabrikalar" });
-        AddSignpost(root, new Vector2(332f, 104f), "GÖL YOLLARI", new[] { "BATI  Temiz Göl (balık)", "DOĞU  Kirli Göl (arıtma)" });
+        AddSignpost(root, new Vector2(cc.x + 7f, cc.y - 36f), "ŞEHİR GİRİŞİ", new[] { "KUZEY  Meydan  " + 36 + " m", "BATI  Rüzgâr türbinleri", "DOĞU  Fabrikalar" });
+        AddSignpost(root, new Vector2(104f * L, 48f * L), "GÖL YOLLARI", new[] { "BATI  Temiz Göl (balık)", "DOĞU  Kirli Göl (arıtma)" });
     }
 
     private static void AddSignpost(Transform parent, Vector2 xz, string title, string[] lines)
@@ -1463,13 +1533,32 @@ public static class BuildEcoWorldMap
 
     private static void PlaceBase()
     {
-        GameObject alan = null;
-        foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects()) if (root.name == "alan") alan = root;
+        GameObject alan = null, enemies = null;
+        foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
+        {
+            if (root.name == "alan") alan = root;
+            else if (root.name == "Enemys") enemies = root;
+        }
         if (alan == null) { report.AppendLine("UYARI: 'alan' grubu bulunamadı; oyuncu taşınamadı."); return; }
+        Vector3 before = alan.transform.position;
         alan.transform.position = new Vector3(Base.x, GroundY(Base.x, Base.y) + 0.1f, Base.y);
         // The tutorial pockets inside the mechanic station keep priority over the big regions around them.
         foreach (var region in alan.GetComponentsInChildren<EcoRegion>(true)) region.priority = 5;
         report.AppendLine("Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) " + Base + " konumuna taşındı");
+        // Enemy placement markers were authored around the old start point; keep their offsets from the base.
+        if (enemies != null)
+        {
+            enemies.transform.position += alan.transform.position - before;
+            report.AppendLine("Düşman başlangıç noktaları 'alan' ile aynı miktarda kaydırıldı: " + (alan.transform.position - before));
+        }
+
+        // Click-to-move and enemy pathing need a NavMesh volume that covers the whole map.
+        var nav = Object.FindFirstObjectByType<EcoNavigation>();
+        if (nav == null) nav = new GameObject("Eco navigation").AddComponent<EcoNavigation>();
+        nav.transform.SetPositionAndRotation(new Vector3(Size * 0.5f, 22f, Size * 0.5f), Quaternion.identity);
+        nav.worldSize = new Vector3(Size, 80f, Size);
+        EditorUtility.SetDirty(nav);
+        report.AppendLine("Gezinme (NavMesh) hacmi: " + nav.worldSize + " @ " + nav.transform.position);
     }
 
     private static void BuildHud()
@@ -1564,7 +1653,7 @@ public static class BuildEcoWorldMap
                 float road = Mathf.Max(RoadPaint(x, z, false), RoadPaint(x, z, true) * 0.8f);
                 if (road > 0.05f) c = Color.Lerp(c, new Color(0.9f, 0.88f, 0.8f), road * 0.9f);
                 // Region borders.
-                const float e = 2.2f;
+                const float e = 0.9f;
                 if (RegionIndexAt(x + e, z) != ri || RegionIndexAt(x - e, z) != ri || RegionIndexAt(x, z + e) != ri || RegionIndexAt(x, z - e) != ri)
                     c = Color.Lerp(c, new Color(0.04f, 0.08f, 0.1f), 0.6f);
                 c.a = 1f;

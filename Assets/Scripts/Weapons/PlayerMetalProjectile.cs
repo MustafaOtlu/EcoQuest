@@ -22,6 +22,8 @@ public sealed class PlayerMetalProjectile : MonoBehaviour
         }
         if (nearest.HasValue)
         {
+            var focus = nearest.Value.collider.GetComponentInParent<EcoFinaleFocus>();
+            if (focus != null) { focus.TryHitMetal(); Destroy(gameObject); return; }
             var enemy = nearest.Value.collider.GetComponentInParent<EnemyBrain>();
             if (enemy != null && weapons != null) weapons.HitWithMetal(enemy);
             Destroy(gameObject); return;

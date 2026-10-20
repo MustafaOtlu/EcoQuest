@@ -44,6 +44,6 @@ public sealed class EcoRecyclingFacility : MonoBehaviour
         Collect(owner); owner.ReturnRawResources(rawMetal, rawPlastic, rawOrganic);
         rawMetal = rawPlastic = rawOrganic = 0; workProgress = 0;
     }
-    public string Describe() => "Geri dönüşüm tesisi • " + (Operational ? "[E] Atık bırak / ürün al" : "Tamir gerekiyor")
+    public string Describe() => "Geri dönüşüm tesisi • " + (Operational ? "" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Atık bırak / ürün al" : "Tamir gerekiyor")
         + "\nBekleyen " + RawCount + " • Hazır " + ReadyCount + " • İşlem " + GetComponent<EcoPowerNode>().DeliveredPower.ToString("0.0") + "/sn";
 }

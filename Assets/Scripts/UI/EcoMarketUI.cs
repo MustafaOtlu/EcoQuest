@@ -35,6 +35,7 @@ public sealed class EcoMarketUI : MonoBehaviour
         owner.StopCharging(); owner.Builder.SetBuildMode(false); owner.holder.Unequip();
         Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
         current.Build(); current.ShowPage(false);
+        if (!PlayerController.Paused) Time.timeScale = 0.1f; // GDD §14: planning/shopping runs the world at 10%
     }
     public static void CloseFor(PlayerWeaponSystem owner) { if (current != null && current.player == owner) current.Close(); }
     public void Close()
@@ -43,6 +44,7 @@ public sealed class EcoMarketUI : MonoBehaviour
         vendor = null;
         if (canvasRoot != null) { canvasRoot.SetActive(false); Destroy(canvasRoot); }
         closedFrame = Time.frameCount; waitForRelease = true;
+        if (!PlayerController.Paused) Time.timeScale = 1f;
         Cursor.lockState = previousLock; Cursor.visible = previousLock != CursorLockMode.Locked;
         if (player != null && player.isActiveAndEnabled) player.SelectTool((int)player.Selected);
     }
@@ -123,7 +125,9 @@ public sealed class EcoMarketUI : MonoBehaviour
             else
             {
                 var item = (EcoMarket.Offer)i;
-                valid = player.CanMarketTrade(item, out reason); descriptions[i].text = EcoMarket.Details[i];
+                valid = player.CanMarketTrade(item, out reason);
+                if (valid && !EcoMarket.WithinDailyLimit(item, out reason)) valid = false;
+                descriptions[i].text = EcoMarket.Details[i] + (EcoMarket.DailyLimits[i] > 0 && EcoMarket.IsPurchase(item) ? "\nBugün kalan: " + EcoMarket.RemainingToday(item) + "/" + EcoMarket.DailyLimits[i] : "");
                 prices[i].text = EcoMarket.IsPurchase(item) ? EcoMarket.MetalPrice(item) + " metal / " + EcoMarket.PlasticPrice(item) + " plastik • YEP " + EcoMarket.Level(item)
                     : i == 4 ? "Bedel: 1 ürün" : "Bedel: 5 tohum";
             }
