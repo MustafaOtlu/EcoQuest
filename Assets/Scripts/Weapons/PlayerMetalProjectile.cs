@@ -5,10 +5,12 @@ public sealed class PlayerMetalProjectile : MonoBehaviour
     private Transform owner;
     private PlayerWeaponSystem weapons;
     private Vector3 velocity;
-    private float lifetime = 4f;
+    // GDD §11: iron balls reach 12 m (25 m/s for 0.48 s), then drop out of play.
+    public const float Range = 12f, Speed = 25f;
+    private float lifetime = Range / Speed;
     public void Launch(Transform shooter, PlayerWeaponSystem source, Vector3 direction)
     {
-        owner = shooter; weapons = source; velocity = direction.normalized * 25f;
+        owner = shooter; weapons = source; velocity = direction.normalized * Speed;
         WeaponProjectileVisual.Attach(gameObject, source != null ? source.effectMaterial : null, true);
     }
     private void Update()

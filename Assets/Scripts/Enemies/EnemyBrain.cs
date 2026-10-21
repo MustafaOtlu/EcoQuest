@@ -238,7 +238,18 @@ public sealed class EnemyBrain : MonoBehaviour
         }
         Defeat();
     }
-    public void StunFromMetal(float seconds = 5)
+    /// <summary>Player-facing Turkish names (GDD §11 table) instead of the enum identifiers.</summary>
+    public static string NameOf(Species kind) => kind switch
+    {
+        Species.Tin => "Teneke", Species.Flame => "Alev", Species.Smoke => "Duman", Species.Slime => "Salya", Species.Acid => "Asit bulutu", _ => kind.ToString(),
+    };
+    public string DisplayName => NameOf(species);
+    public string StateName => State switch
+    {
+        Behaviour.Idle => "bekliyor", Behaviour.Patrol => "dolaşıyor", Behaviour.Chase => "takipte", Behaviour.Attack => "saldırıyor",
+        Behaviour.Return => "geri dönüyor", Behaviour.Dead => "etkisiz", Behaviour.Stunned => "sersem", _ => State.ToString(),
+    };
+    public void StunFromMetal(float seconds = 4) // GDD §11: a 4 s opening to fit the small filter
     {
         if (species != Species.Tin || State == Behaviour.Dead || !EcoRegion.Valid(seconds)) return;
         stunnedUntil = Mathf.Max(stunnedUntil, Time.time + Mathf.Min(seconds, 5));

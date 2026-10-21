@@ -483,14 +483,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         DamageEnemy(enemy, enemy.species == EnemyBrain.Species.Tin ? 45f : 8f);
         enemy.StunFromMetal();
         enemy.ApplyKnockback(enemy.transform.position - owner.position, 1.15f);
-        Notify(enemy.IsStunned ? "Teneke sersemledi • Yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile küçük filtre tak" : "İsabet • " + enemy.species + " savruldu");
+        Notify(enemy.IsStunned ? "Teneke sersemledi • Yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile küçük filtre tak" : "İsabet • " + enemy.DisplayName + " savruldu");
     }
     private void DamageEnemy(EnemyBrain enemy, float amount)
     {
         if (amount <= 0 || enemy.Health <= 0) return;
         enemy.TakeDamage(amount);
         if (Time.time >= nextHitFeedback)
-        { Notify("İsabet • " + enemy.species + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
+        { Notify("İsabet • " + enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
         if (enemy.Health <= 0) Changed?.Invoke();
     }
     private bool Aim(float range, out RaycastHit nearest, float radius = 0)
@@ -538,7 +538,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             ball.AddComponent<PlayerMetalProjectile>().Launch(owner, this, AimDir); MetalAmmo--;
         }
         if (streamEffects != null) streamEffects.Shot(holder.transform.position + AimDir * 0.25f, AimDir, MetalMode);
-        Energy -= unitCost * count; nextShot = Time.time + (MetalMode ? 0.35f : 0.5f); Changed?.Invoke();
+        Energy -= unitCost * count; nextShot = Time.time + 0.5f; // GDD §11: at most two shots per second Changed?.Invoke();
     }
     public bool TryPlant(RaycastHit hit) => TryPlant(hit, SelectedSeed);
     public bool TryPlant(RaycastHit hit, EcoCropCatalog.Kind kind)
@@ -652,7 +652,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (tree != null) return "Ağaç • Sağlık %" + Mathf.RoundToInt(tree.health * 100) + "\nHavayı ve toprağı iyileştirir, canlılara yaşam alanı sağlar";
         var enemy = hit.collider.GetComponentInParent<EnemyBrain>();
         return enemy == null ? "" : enemy.IsStunned ? "Teneke • Sersemleme " + enemy.StunRemaining.ToString("0.0") + " sn\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Küçük hava filtresi tak"
-            : enemy.species + " • Can " + Mathf.CeilToInt(enemy.Health);
+            : enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health);
     }
     private void Notify(string text) { Feedback = text; FeedbackUntil = Time.time + 3f; }
     private void Scan()
@@ -670,7 +670,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             var waterStore = hit.collider.GetComponentInParent<EcoWaterNode>();
             var recycling = hit.collider.GetComponentInParent<EcoRecyclingFacility>();
             var farm = hit.collider.GetComponentInParent<EcoFarm>();
-            LastScan = recycling != null ? recycling.Describe() : farm != null ? farm.Describe() : waterStore != null ? waterStore.Describe() : power != null ? power.Describe() : plant != null ? ContextHint() : enemy != null ? enemy.species + " | Can: " + Mathf.CeilToInt(enemy.Health) + " | " + enemy.State
+            LastScan = recycling != null ? recycling.Describe() : farm != null ? farm.Describe() : waterStore != null ? waterStore.Describe() : power != null ? power.Describe() : plant != null ? ContextHint() : enemy != null ? enemy.DisplayName + " | Can: " + Mathf.CeilToInt(enemy.Health) + " | " + enemy.StateName
                 : water != null ? (water.IsClean ? "Temiz su" : "Kirli su")
                 : scrap != null ? "Geri dönüştürülebilir: " + scrap.metal + " metal, " + scrap.plastic + " plastik, " + scrap.organic + " organik"
                 : EcoRegion.At(hit.point)?.Describe() ?? hit.collider.name;
