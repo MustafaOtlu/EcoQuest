@@ -760,3 +760,7 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Çift kamera | Düzeltildi: sahnedeki eski "MainCam" da MainCamera etiketiyle açık kalıyor, her kareyi ikinci kez çiziyor ve Camera.main'i belirsizleştiriyordu. İzometrik kamera kurulurken diğer ekran kameraları kapatılıyor; tek dinleyici |
 | Dünyadan düşme | Eklendi: oyuncu son yere bastığı noktanın 40 m altına düşerse oraya geri alınır |
 | Kayıt bildirimi | Düzenlendi: "…kaydedildi" mesajı araç çubuğunun üstünde çıplak yazıydı; artık sağ altta ikonlu küçük kart |
+| İnşa gerçek girdiyle (§9) | Gerçek tuş ve fareyle denendi: B ile inşa modu, güneş paneli (12M+6P), batarya ve şarj istasyonu fareyle yerleştirildi, Tab ile kablo sayfası, panel→batarya→şarj kablolandı; üçü tek ağda, 2,1 EB/sn üretim, batarya doluyor. Düzeltildi: mod satırında "sayfa 3/3" yazısı tuş ipuçlarının üstüne biniyordu (artık sığdırılıyor); son sayfadaki boş yuvalar "—" ve çekiç simgesi göstermiyor |
+| Çatışma ve toparlanma gerçek girdiyle (§11) | Demir topla Slime'a isabet (90→82, savrulma), bayılınca "ENERJİ TOPLANIYOR" 5 sn toparlanma çalışıyor |
+| Başlangıç düşmanlarının dağılımı (§11) | Düzeltildi: önceki düzeltme 5 başlangıç düşmanını üssün hemen dışında aynı noktada topluyordu (oyuncu 3 sn'de bayıldı). Artık her biri ayrı, güvensiz bir bölgeye dağıtılıyor (bölge başına en çok 3 kuralına uygun) |
+| İlk hedef (§4 İlk 20 dakika) | Düzeltildi: hedef kartı haritanın öbür ucundaki düşmanlar için "Alanı temizle" diyordu. Artık yalnız 30 m içindeki tehdit hedef olur; ilk hedef "Mahalle çocuğuyla konuş" |

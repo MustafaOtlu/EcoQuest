@@ -172,7 +172,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         modePanel = EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), EcoUI.Surface).rectTransform;
         modeIcon = EcoUI.Icon("Mode icon", modePanel, "tool_vacuum", new Vector2(0, 1), new Vector2(0, 1), 24f);
         mode = EcoUI.Label("Active tool", modePanel, "", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+        FitOneLine(mode, 16);
         instructions = EcoUI.Label("Controls", modePanel, "", 13, TextAnchor.MiddleRight, EcoUI.Muted);
+        FitOneLine(instructions, 13);
         contextBg = EcoUI.Panel("Context", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
         contextPanel = contextBg.rectTransform;
         context = EcoUI.Label("Interaction", contextPanel, "", 17, TextAnchor.MiddleCenter, EcoUI.Ink);
@@ -287,7 +289,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         }
         if (building)
         {
-            mode.text = "İNŞA  ·  " + weapons.Builder.SelectedName + "  ·  sayfa " + (weapons.Builder.Page + 1) + "/" + weapons.Builder.PageCount;
+            mode.text = "İNŞA  ·  " + weapons.Builder.SelectedName + "  ·  " + (weapons.Builder.Page + 1) + "/" + weapons.Builder.PageCount;
             EcoUI.SetIcon(modeIcon, "ui_build");
             instructions.text = "[Tab] Sayfa  ·  [Sol tık] Kur  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Döndür  ·  " + EcoKeys.Tag(EcoKeys.Action.Build) + " Çık";
             context.text = weapons.Builder.Status;
@@ -307,10 +309,17 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (Time.unscaledTime >= objectiveAt) { objectiveAt = Time.unscaledTime + 0.5f; RefreshObjective(); }
     }
 
+    /// <summary>One line that shrinks (down to 10 pt) instead of wrapping or running into its neighbour.</summary>
+    private static void FitOneLine(Text text, int size)
+    {
+        text.horizontalOverflow = HorizontalWrapMode.Wrap; text.resizeTextForBestFit = true;
+        text.resizeTextMaxSize = size * EcoUI.RasterScale; text.resizeTextMinSize = 10 * EcoUI.RasterScale;
+    }
     private static string BuildIcon(int index)
     {
         if (index == EcoBuildingCatalog.Entries.Length) return "electricity";
         if (index == EcoBuildingCatalog.Entries.Length + 1) return "water";
+        if (index > EcoBuildingCatalog.Entries.Length + 1) return ""; // empty slot on the last page
         if (index < 0 || index >= EcoBuildingCatalog.Entries.Length) return "ui_build";
         return EcoBuildingCatalog.Entries[index].Id switch
         {
@@ -322,14 +331,19 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private void RefreshObjective()
     {
         var enemies = FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None); int alive = 0;
-        for (int i = 0; i < enemies.Length; i++) if (enemies[i] != null && enemies[i].State != EnemyBrain.Behaviour.Dead && enemies[i].Health > 0f) alive++;
+        // Only nearby threats are an objective; enemies elsewhere on the map show on the map instead (GDD §4 first minutes).
+        Vector3 here = weapons != null ? weapons.transform.position : Vector3.zero;
+        for (int i = 0; i < enemies.Length; i++)
+            if (enemies[i] != null && enemies[i].State != EnemyBrain.Behaviour.Dead && enemies[i].Health > 0f
+                && (enemies[i].transform.position - here).sqrMagnitude < 30f * 30f) alive++;
         string text;
         var finale = EcoFinale.Current; var readiness = EcoProjects.Current;
         // GDD §12: the endgame state outranks the early-game guidance.
         if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
         else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
         else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness) text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
-        else if (alive > 0) text = "Alanı temizle · Kalan düşman: " + alive;
+        else if (alive > 0) text = "Yakında tehdit · " + alive + " düşman (aracın uygun modunu kullan)";
+        else if (EcoStory.Current != null && !EcoStory.Current.intro) text = "Mahalle çocuğuyla konuş · şehir merkezi, " + EcoKeys.Tag(EcoKeys.Action.Interact);
         else
         {
             var crops = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None); bool mature = false, living = false;
@@ -429,9 +443,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         float modeHeight = 36f;
         EcoUI.Place(modePanel, new Vector2(0f, margin + 86f + 8f), new Vector2(dockWidth, modeHeight));
         EcoUI.LayoutIcon(modeIcon, new Vector2(10f, -6f), 24f);
-        EcoUI.Layout(mode, new Vector2(42f, -8f), new Vector2(dockWidth * 0.5f, 20f));
+        EcoUI.Layout(mode, new Vector2(42f, -8f), new Vector2(dockWidth * 0.48f - 46f, 20f)); // ends where the key hints begin
         instructions.gameObject.SetActive(!sade);
-        EcoUI.Layout(instructions, new Vector2(dockWidth * 0.42f, -9f), new Vector2(dockWidth * 0.58f - 12f, 20f));
+        EcoUI.Layout(instructions, new Vector2(dockWidth * 0.5f, -9f), new Vector2(dockWidth * 0.5f - 12f, 20f));
         DockTop = hidden ? margin : margin + 86f + 8f + modeHeight;
 
         float contextWidth = Mathf.Min(560f, width - 2f * margin);

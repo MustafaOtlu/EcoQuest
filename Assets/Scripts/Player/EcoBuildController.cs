@@ -24,7 +24,7 @@ public sealed class EcoBuildController : MonoBehaviour
     public string SlotName(int slot)
     {
         int i = Page * 5 + slot;
-        return i < CableIndex ? EcoBuildingCatalog.Entries[i].Name : i == CableIndex ? "Kablo" : i == PipeIndex ? "Su borusu" : "—";
+        return i < CableIndex ? EcoBuildingCatalog.Entries[i].Name : i == CableIndex ? "Kablo" : i == PipeIndex ? "Su borusu" : "";
     }
     public string SlotCost(int slot)
     {

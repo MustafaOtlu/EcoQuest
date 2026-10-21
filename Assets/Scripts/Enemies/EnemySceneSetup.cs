@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 
@@ -22,6 +23,7 @@ public sealed class EnemySceneSetup : MonoBehaviour
             navigation.AddComponent<EcoNavigation>();
         }
         if (enemyPrefabs == null) return;
+        int relocated = 0;
         for (int i = 0; i < enemyPrefabs.Length; i++)
         {
             if (enemyPrefabs[i] == null) continue;
@@ -30,35 +32,43 @@ public sealed class EnemySceneSetup : MonoBehaviour
             if (marker == null && (additionalPositions == null || i >= additionalPositions.Length)) continue;
             Vector3 position = marker != null ? marker.position : transform.TransformPoint(additionalPositions[i]);
             if (marker != null) marker.gameObject.SetActive(false);
-            position = OutsideSafeArea(position);
+            var moved = OutsideSafeArea(position, relocated);
+            if (moved != position) { relocated++; position = moved; }
             // Snap feet onto the terrain/plane instead of keeping the static FBX pivot height.
-            if (Physics.Raycast(position + Vector3.up * 8f, Vector3.down, out var hit, 30f, ~0, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(position + Vector3.up * 60f, Vector3.down, out var hit, 120f, ~0, QueryTriggerInteraction.Ignore))
                 position.y = hit.point.y + 0.03f;
             var instance = Instantiate(enemyPrefabs[i], position, Quaternion.identity, transform);
             instance.name = enemyPrefabs[i].name;
         }
     }
-    /// <summary>GDD §11: nothing starts in the safe centre or within 12 m of the player. Placed enemies that would are
-    /// moved out along their own bearing (beyond detection range) into the nearest region that may hold enemies.</summary>
-    private Vector3 OutsideSafeArea(Vector3 position)
+    /// <summary>GDD §11: nothing starts in the safe centre or within 20 m of the player (detection is 12 m), and at most
+    /// three normal enemies share a region. Placed enemies that would break this are dealt round-robin to the nearest
+    /// regions that may hold enemies, each near its region centre.</summary>
+    private Vector3 OutsideSafeArea(Vector3 position, int relocated)
     {
         const float MinimumDistance = 20f;
         var regions = FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID);
         Vector3 offset = position - player.position; offset.y = 0f;
         if (offset.magnitude >= MinimumDistance && !Safe(position, regions)) return position;
-        float bearing = offset.sqrMagnitude > 0.01f ? Mathf.Atan2(offset.z, offset.x) * Mathf.Rad2Deg : 0f;
-        for (int step = 0; step < 12; step++)
+        var hosts = new List<EcoRegion>();
+        foreach (var region in regions)
         {
-            float angle = (bearing + (step % 2 == 0 ? 1 : -1) * ((step + 1) / 2) * 30f) * Mathf.Deg2Rad;
-            for (float distance = MinimumDistance; distance <= 34f; distance += 7f)
-            {
-                var candidate = player.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
-                candidate.y = position.y;
-                if (EcoGround.HasMap && !EcoGround.MapRect.Contains(new Vector2(candidate.x, candidate.z))) continue;
-                if (!Safe(candidate, regions)) return candidate;
-            }
+            if (region == null) continue;
+            Vector3 c = region.transform.position;
+            if (Safe(c, regions) || Vector3.Distance(new Vector3(c.x, player.position.y, c.z), player.position) < MinimumDistance) continue;
+            hosts.Add(region);
         }
-        return position;
+        if (hosts.Count == 0) return position;
+        hosts.Sort((a, b) => Vector3.Distance(a.transform.position, player.position).CompareTo(Vector3.Distance(b.transform.position, player.position)));
+        var host = hosts[relocated % hosts.Count];
+        var rng = new System.Random(relocated * 7919 + 17);
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            var candidate = host.transform.position + new Vector3((float)(rng.NextDouble() - 0.5) * host.size.x * 0.4f, 0f, (float)(rng.NextDouble() - 0.5) * host.size.y * 0.4f);
+            candidate.y = position.y;
+            if (!Safe(candidate, regions) && Vector3.Distance(candidate, player.position) >= MinimumDistance) return candidate;
+        }
+        return host.transform.position;
     }
     private static bool Safe(Vector3 point, EcoRegion[] regions)
     {
