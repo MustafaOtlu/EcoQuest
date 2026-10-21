@@ -295,6 +295,20 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 6f : 5f) + Upgrades.VacuumRangeBonus;
         bool found = Aim(range, out var hit, Selected == Tool.Vacuum && Mode == VacuumMode.Collect ? Upgrades.CollectionRadius : 0);
+        // A spray is a cone, not a laser: if the ray only meets bare ground, the water/anti-vacuum stream bends to the nearest
+        // enemy this mode affects within range and 25° of the cursor direction.
+        if (Selected == Tool.Vacuum && Mode != VacuumMode.Collect && (!found || EcoGround.IsGround(hit.collider)))
+        {
+            var assisted = SprayTarget(range);
+            if (assisted != null)
+            {
+                Vector3 at = assisted.transform.position + Vector3.up * 0.7f;
+                ShowStream(at, true, (AimOrigin - at).normalized, deltaTime);
+                processing = null; progress = 0f;
+                DamageEnemy(assisted, DamageRate(Selected, Mode, assisted.species) * deltaTime * Upgrades.VacuumStrength);
+                return;
+            }
+        }
         ShowStream(found ? hit.point : AimOrigin + AimDir * range, found, found ? hit.normal : -AimDir, deltaTime);
         if (!found) { processing = null; progress = 0; return; }
         var focus = hit.collider.GetComponentInParent<EcoFinaleFocus>();
@@ -492,6 +506,20 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Time.time >= nextHitFeedback)
         { Notify("İsabet • " + enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
         if (enemy.Health <= 0) Changed?.Invoke();
+    }
+    private EnemyBrain SprayTarget(float range)
+    {
+        EnemyBrain best = null; float bestAngle = 25f;
+        Vector3 flat = new Vector3(AimDir.x, 0f, AimDir.z);
+        foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
+        {
+            if (enemy == null || enemy.State == EnemyBrain.Behaviour.Dead || DamageRate(Selected, Mode, enemy.species) <= 0f) continue;
+            Vector3 to = enemy.transform.position - owner.position; to.y = 0f;
+            if (to.magnitude > range) continue;
+            float angle = to.magnitude < 2.5f ? 0f : Vector3.Angle(flat, to); // point-blank: inside the spray whatever the cursor
+            if (angle <= bestAngle) { bestAngle = angle; best = enemy; }
+        }
+        return best;
     }
     private bool Aim(float range, out RaycastHit nearest, float radius = 0)
     {
