@@ -24,6 +24,8 @@ public class PlayerController : MonoBehaviour
 
     private static readonly int SpeedParameter = Animator.StringToHash("Speed");
     private CharacterController controller;
+    private Vector3 lastGrounded;
+    private bool hasGrounded;
     private PlayerVitals vitals;
     private PlayerWeaponSystem weapons;
     private EcoBuildController builder;
@@ -69,6 +71,14 @@ public class PlayerController : MonoBehaviour
     private void BuildIsometricCamera()
     {
         Camera legacy = firstPersonCamera != null ? firstPersonCamera.GetComponent<Camera>() : null;
+        // Any other on-screen camera tagged MainCamera is a leftover (e.g. the scene's first-person "MainCam"):
+        // it would render the whole frame a second time and make Camera.main ambiguous.
+        foreach (var other in FindObjectsByType<Camera>(FindObjectsSortMode.None))
+        {
+            if (other == legacy || other.targetTexture != null || !other.CompareTag("MainCamera")) continue;
+            if (legacy == null) legacy = other;
+            else { other.enabled = false; other.gameObject.tag = "Untagged"; }
+        }
         var go = new GameObject("EcoIso Camera", typeof(Camera), typeof(AudioListener), typeof(EcoIsoCamera));
         go.tag = "MainCamera";
         foreach (var other in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (other.gameObject != go) other.enabled = false; // exactly one listener
@@ -135,6 +145,9 @@ public class PlayerController : MonoBehaviour
         if (controller.isGrounded && verticalSpeed < 0f) verticalSpeed = -2f;
         verticalSpeed += gravity * Time.deltaTime;
         controller.Move((movement + Vector3.up * verticalSpeed) * Time.deltaTime);
+        // Safety net: never fall out of the world through a seam; return to the last grounded spot.
+        if (controller.isGrounded) { lastGrounded = transform.position; hasGrounded = true; }
+        else if (hasGrounded && transform.position.y < lastGrounded.y - 40f) Teleport(lastGrounded + Vector3.up * 0.5f);
 
         UpdateWeaponMount();
         UpdateMarker();

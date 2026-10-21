@@ -18,6 +18,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
     public static float VitalsBottom { get; private set; } = 220f;
     /// <summary>Height of the tool belt + mode line block at the bottom of the screen.</summary>
     public static float DockTop { get; private set; } = 170f;
+    /// <summary>Bottom of the objective card in screen pixels from the top (IMGUI overlays stack below it).</summary>
+    public static float ObjectiveBottomPixels { get; private set; } = 90f;
+    private float uiScale = 1f;
 
     private static readonly string[] ToolNames = { "VAKUM", "TOHUM", "GERİ DÖNÜŞÜM", "TARAYICI", "ELLER" };
     private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand" };
@@ -296,7 +299,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             : Time.time < weapons.FeedbackUntil ? weapons.Feedback : "";
         SetVisible(feedbackBg, feedback, !string.IsNullOrEmpty(feedback.text));
         // Never under the region banner: both live at the top centre.
-        feedbackPanel.anchoredPosition = new Vector2(feedbackPanel.anchoredPosition.x, -Mathf.Max(feedbackTop, EcoWorldHUD.BannerBottom + 8f));
+        feedbackPanel.anchoredPosition = new Vector2(feedbackPanel.anchoredPosition.x,
+            -Mathf.Max(feedbackTop, EcoWorldHUD.BannerBottom + 8f, EcoFinale.CardBottomPixels / Mathf.Max(0.01f, uiScale) + 8f));
         bool recovering = vitals != null && vitals.IsRecovering;
         recovery.text = recovering ? "ENERJİ TOPLANIYOR\n" + vitals.RecoveryRemaining.ToString("0.0") + " saniye" : "";
         SetVisible(recoveryBg, recovery, recovering);
@@ -352,7 +356,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         dirty = false;
         lastWidth = DisplayWidth; lastHeight = DisplayHeight; lastMode = EcoUI.Mode;
         float scale = EcoUI.Scale(canvas);
-        scaler.scaleFactor = scale; canvas.scaleFactor = scale;
+        scaler.scaleFactor = scale; canvas.scaleFactor = scale; uiScale = scale;
         float width = lastWidth / scale, height = lastHeight / scale;
         const float margin = 16f;
         bool compact = width < 1250f;
@@ -435,6 +439,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         EcoUI.Layout(context, new Vector2(14f, -8f), new Vector2(contextWidth - 28f, 58f));
         float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
         feedbackTop = margin + oh + 10f;
+        ObjectiveBottomPixels = (margin + oh) * uiScale;
         EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -feedbackTop), new Vector2(feedbackWidth, 56f));
         EcoUI.Layout(feedback, new Vector2(12f, -6f), new Vector2(feedbackWidth - 24f, 44f));
         EcoUI.Place(recoveryPanel, new Vector2(0f, 80f), new Vector2(Mathf.Min(460f, width - 2f * margin), 72f));

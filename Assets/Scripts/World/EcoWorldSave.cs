@@ -561,7 +561,18 @@ public sealed class EcoWorldSave : MonoBehaviour
     }
     private void OnGUI()
     {
-        if (Time.unscaledTime <= statusUntil && !string.IsNullOrEmpty(Status))
-            GUI.Label(new Rect(Screen.width * 0.5f - 300f, Screen.height - 100f, 600f, 48f), Status);
+        if (Time.unscaledTime > statusUntil || string.IsNullOrEmpty(Status)) return;
+        // Small themed toast in the free bottom-right corner (it used to be bare text over the toolbelt).
+        EcoTheme.Begin();
+        var style = EcoTheme.Muted;
+        float width = Mathf.Min(420f, EcoTheme.Width - 40f), height = style.CalcHeight(new GUIContent(Status), width - 58f) + 18f;
+        var card = new Rect(EcoTheme.Width - width - 16f, EcoTheme.Height - height - 16f, width, height);
+        var prev = GUI.color;
+        GUI.color = new Color(0.035f, 0.08f, 0.075f, 0.92f); GUI.DrawTexture(card, Texture2D.whiteTexture);
+        GUI.color = new Color(0.4f, 0.81f, 0.58f); GUI.DrawTexture(new Rect(card.x, card.y, 4f, card.height), Texture2D.whiteTexture);
+        GUI.color = prev;
+        EcoTheme.Icon(new Rect(card.x + 14f, card.y + (card.height - 26f) * 0.5f, 26f, 26f), "calendar");
+        GUI.Label(new Rect(card.x + 48f, card.y + 9f, width - 58f, height - 18f), Status, style);
+        EcoTheme.End();
     }
 }

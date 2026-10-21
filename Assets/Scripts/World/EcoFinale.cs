@@ -11,6 +11,8 @@ public sealed class EcoFinale : MonoBehaviour
     public const float MinimumReadiness = 0.5f;
     public const float TerminalEnergyCap = 120f, TerminalWaterCap = 60f, BalanceSeconds = 4f, TerminalReach = 9f;
     public static EcoFinale Current { get; private set; }
+    /// <summary>Bottom of the finale card in screen pixels (0 when none); the HUD feedback line stacks below it.</summary>
+    public static float CardBottomPixels { get; private set; }
 
     public bool Won { get; private set; }
     public bool Fighting => encounter != null;
@@ -40,7 +42,7 @@ public sealed class EcoFinale : MonoBehaviour
     private readonly Dictionary<EcoPowerNode, Vector2> saved = new Dictionary<EcoPowerNode, Vector2>();
 
     private void Awake() { Current = this; }
-    private void OnDestroy() { if (Current == this) Current = null; EndOutage(); }
+    private void OnDestroy() { if (Current == this) { Current = null; CardBottomPixels = 0f; } EndOutage(); }
 
     // ------------------------------------------------------------------ pressure (one at a time, spaced)
 
@@ -154,9 +156,7 @@ public sealed class EcoFinale : MonoBehaviour
         encounter.position = TerminalPosition;
         for (int i = 0; i < 3; i++)
         {
-            float angle = (i * 120f + 30f) * Mathf.Deg2Rad;
-            Vector3 position = TerminalPosition + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 12f;
-            if (Physics.Raycast(position + Vector3.up * 50f, Vector3.down, out var hit, 150f, ~0, QueryTriggerInteraction.Ignore)) position = hit.point;
+            Vector3 position = OpenFocusSpot(i * 120f + 30f);
             var go = new GameObject("Focus " + i); go.transform.SetParent(encounter, true); go.transform.position = position;
             foci[i] = go.AddComponent<EcoFinaleFocus>(); foci[i].Initialize(this, i);
         }
@@ -165,6 +165,29 @@ public sealed class EcoFinale : MonoBehaviour
         wasRecovering = vitals != null && vitals.IsRecovering;
         pressureFree = Time.time + 10f; nextOutage = nextDrought = nextSmog = 0f;
         Say("İklim Canavarı uyandı! Odakları sırayla dengele: ısı (temiz su) → duman (anti-vakum) → çekirdek (demir top + terminalde E).", 9f);
+    }
+
+    /// <summary>A focus must be visible and reachable by spray and shots: search around the preferred bearing for ground
+    /// with nothing but terrain within 2.5 m (no trees, rocks or buildings in front of the orb).</summary>
+    private Vector3 OpenFocusSpot(float preferredDegrees)
+    {
+        Vector3 fallback = Vector3.zero; bool hasFallback = false;
+        for (int step = 0; step < 24; step++)
+        {
+            float degrees = preferredDegrees + (step % 2 == 0 ? 1 : -1) * ((step + 1) / 2) * 10f;
+            for (float radius = 12f; radius >= 9f; radius -= 1.5f)
+            {
+                Vector3 p = TerminalPosition + new Vector3(Mathf.Cos(degrees * Mathf.Deg2Rad), 0f, Mathf.Sin(degrees * Mathf.Deg2Rad)) * radius;
+                if (!Physics.Raycast(p + Vector3.up * 50f, Vector3.down, out var hit, 150f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                if (!hasFallback) { fallback = hit.point; hasFallback = true; }
+                if (!EcoGround.IsGround(hit.collider) || hit.normal.y < 0.85f) continue;
+                bool clear = true;
+                foreach (var c in Physics.OverlapSphere(hit.point + Vector3.up * 1.6f, 2.5f, ~0, QueryTriggerInteraction.Ignore))
+                    if (!EcoGround.IsGround(c) && c.GetComponentInParent<PlayerController>() == null) { clear = false; break; }
+                if (clear) return hit.point;
+            }
+        }
+        return hasFallback ? fallback : TerminalPosition + Vector3.forward * 12f;
     }
 
     private void SpawnBoss(EnemyBrain template)
@@ -274,19 +297,21 @@ public sealed class EcoFinale : MonoBehaviour
 
     private void OnGUI()
     {
-        if (EcoUI.ForeignWindowOpen && !Fighting) return;
+        if (EcoUI.ForeignWindowOpen && !Fighting) { CardBottomPixels = 0f; return; }
         EcoTheme.Begin();
         if (big == null)
         {
             big = new GUIStyle(EcoTheme.Subtitle) { alignment = TextAnchor.MiddleCenter };
             small = new GUIStyle(EcoTheme.Muted) { alignment = TextAnchor.MiddleLeft, wordWrap = false, clipping = TextClipping.Clip };
         }
-        float w = EcoTheme.Width, y = 14f;
+        float pixels = Screen.width / Mathf.Max(1f, EcoTheme.Width); // theme units -> screen pixels
+        float w = EcoTheme.Width, y = EcoQuestHUD.ObjectiveBottomPixels / pixels + 10f, cardBottom = 0f;
         var projects = EcoProjects.Current;
-        if (Fighting) y = DrawFightCard(w, y) + 10f;
+        if (Fighting) { y = DrawFightCard(w, y) + 10f; cardBottom = y; }
         else if (!Won && projects != null && !EcoMarketUI.IsOpen && EcoGlacierStation.Current != null && EcoGlacierStation.Current.Active
             && weapons != null && (weapons.transform.position - TerminalPosition).sqrMagnitude < TerminalReach * TerminalReach)
-            y = DrawReadyCard(w, y, projects) + 10f;
+        { y = DrawReadyCard(w, y, projects) + 10f; cardBottom = y; }
+        if (Event.current.type == EventType.Repaint) CardBottomPixels = cardBottom * pixels;
         if (Time.unscaledTime <= messageUntil && message.Length > 0 && !(EcoSurvey.Current != null && EcoSurvey.Current.IsOpen))
         {
             float mw = Mathf.Min(720f, w - 40f), mh = big.CalcHeight(new GUIContent(message), mw - 40f) + 22f;
