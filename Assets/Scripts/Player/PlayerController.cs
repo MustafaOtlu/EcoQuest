@@ -132,7 +132,7 @@ public class PlayerController : MonoBehaviour
 
         float speed = sprintAction != null && sprintAction.IsPressed() ? runSpeed : walkSpeed;
         if (vitals != null) speed *= vitals.MovementMultiplier;
-        Vector3 movement = desired * speed;
+        Vector3 movement = KeepOutOfWater(desired * speed);
 
         // Facing: toward the cursor while a tool is held, otherwise toward the walking direction.
         Vector3 aimPoint = default;
@@ -212,6 +212,27 @@ public class PlayerController : MonoBehaviour
         return Vector3.zero;
     }
 
+    // Lakes and ponds have a solid surface collider (aiming, filling and fishing need it); the player stops at the shore
+    // and slides along it instead of walking onto the water.
+    private WeaponWaterSource[] waters;
+    private float nextWaterScan;
+    private Vector3 KeepOutOfWater(Vector3 movement)
+    {
+        if (movement.sqrMagnitude < 0.0001f) return movement;
+        if (waters == null || Time.unscaledTime >= nextWaterScan) { waters = FindObjectsByType<WeaponWaterSource>(FindObjectsSortMode.None); nextWaterScan = Time.unscaledTime + 5f; }
+        Vector3 next = transform.position + movement * Time.deltaTime * 4f;
+        foreach (var water in waters)
+        {
+            if (water == null || water.shoreRadius < 2f) continue; // barrels and small taps are not bodies of water
+            var b = new Bounds(water.transform.position, Vector3.zero); float radius = water.shoreRadius - 0.4f;
+            Vector3 toNext = next - b.center; toNext.y = 0f;
+            if (toNext.magnitude >= radius) continue;
+            Vector3 outward = toNext.sqrMagnitude > 0.001f ? toNext.normalized : -movement.normalized;
+            float inward = Vector3.Dot(movement, -outward);
+            if (inward > 0f) movement += outward * inward; // drop the part heading into the water, keep sliding along the shore
+        }
+        return movement;
+    }
     public void CancelWalkOrder() { hasPath = false; direct = false; }
     public void Teleport(Vector3 position)
     {

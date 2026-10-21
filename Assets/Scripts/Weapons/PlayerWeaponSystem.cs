@@ -88,7 +88,10 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         if (!CanOperate || CleanFish + DirtyFish >= 20) return false;
         if (clean) CleanFish++; else DirtyFish++;
-        if (clean) EcoDiscoveries.NotifyCleanFish(EcoRegion.At(owner.position)); Notify(clean ? "Temiz balık yakalandı." : "Kirli balık yakalandı • Yemek olarak kullanma."); Changed?.Invoke(); return true;
+        // The catch message first, so a field milestone granted by the same catch (SAHA BAŞARISI +20 YEP) stays visible.
+        Notify(clean ? "Temiz balık yakalandı." : "Kirli balık yakalandı • Yemek olarak kullanma.");
+        if (clean) EcoDiscoveries.NotifyCleanFish(EcoRegion.At(owner.position));
+        Changed?.Invoke(); return true;
     }
     [field: SerializeField] public int Compost { get; private set; }
     public string Feedback { get; private set; }
@@ -588,8 +591,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
                 || (tree && nearby.GetComponentInParent<EcoStructure>() != null)) { Notify("Bitkiler ve yapılar arasında biraz boşluk bırak."); return false; }
         var planted = PlantedSeed.Create(hit.point + Vector3.up * 0.01f, kind);
         if (planted == null) return false;
-        EcoDiscoveries.NotifyPlanting(planted);
-        Notify("Tohum ekildi. Vakumun su moduyla sula."); return true;
+        Notify("Tohum ekildi. Vakumun su moduyla sula.");
+        EcoDiscoveries.NotifyPlanting(planted); // may grant a field milestone; its message must not be overwritten
+        return true;
     }
     public void Interact()
     {
@@ -601,6 +605,10 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         // GDD §11: the 4 s stun window is for closing in, not for pixel aiming; E fits the filter on a stunned Tin nearby.
         foreach (var stunned in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
             if (stunned.IsStunned && (stunned.transform.position - transform.position).sqrMagnitude <= 3.5f * 3.5f) { stunned.InstallFilter(this); return; }
+        // At the bank with empty hands, E fishes without aiming down at the water.
+        if (Selected == Tool.Hands)
+            foreach (var spot in FindObjectsByType<EcoFishingSpot>(FindObjectsSortMode.None))
+                if (spot.Fisher == this || spot.CanFish(this)) { spot.Interact(this); return; }
         if (!Aim(3f, out var hit)) { NearbyMarket()?.Interact(this); return; }
         var tin = hit.collider.GetComponentInParent<EnemyBrain>();
         if (tin != null && tin.species == EnemyBrain.Species.Tin) { tin.InstallFilter(this); return; }
@@ -629,7 +637,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (plant.IsMature && TotalSeeds + 1 > Upgrades.SeedCapacity)
         { Notify("Tohum depon dolu. Marketten kapasite geliştir veya fazla tohumları sat."); return; }
         if (plant.TryHarvest(out int seeds, out int food))
-        { AddSeeds(plant.kind, seeds); Food += food; if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); Changed?.Invoke(); }
+        { AddSeeds(plant.kind, seeds); Food += food; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Changed?.Invoke(); }
         else if (Selected == Tool.Recycler && Energy >= 2f && plant.TryCompost())
         { StopCharging(); Energy -= 2f; Compost++; Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
     }

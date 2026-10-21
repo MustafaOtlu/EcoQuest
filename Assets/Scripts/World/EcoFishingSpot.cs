@@ -10,7 +10,7 @@ public sealed class EcoFishingSpot : MonoBehaviour
     private Collider waterBounds;
     private readonly GameObject[] fish = new GameObject[5];
     private void Awake() { source = GetComponent<WeaponWaterSource>(); waterBounds = GetComponent<Collider>(); }
-    private bool CanFish(PlayerWeaponSystem player) => isActiveAndEnabled && player != null && player.isActiveAndEnabled && player.CanOperate
+    public bool CanFish(PlayerWeaponSystem player) => isActiveAndEnabled && player != null && player.isActiveAndEnabled && player.CanOperate
         && player.Selected == PlayerWeaponSystem.Tool.Hands && !EcoMarketUI.BlocksGameplay && (player.Builder == null || !player.Builder.IsBuilding)
         && Vector3.Distance(player.transform.position, waterBounds != null ? waterBounds.bounds.ClosestPoint(player.transform.position) : transform.position) <= 3;
     public bool Interact(PlayerWeaponSystem player)

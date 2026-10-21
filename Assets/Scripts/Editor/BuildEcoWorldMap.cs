@@ -1205,8 +1205,9 @@ public static class BuildEcoWorldMap
         // Interaction volume: sits 0.7 m under the surface so the player can wade in and the vacuum / fishing rod can target it.
         var source = new GameObject("Water source"); source.transform.SetParent(root, false);
         source.transform.localPosition = new Vector3(0f, -0.75f, 0f);
-        var box = source.AddComponent<BoxCollider>(); box.size = new Vector3(radius * 1.2f, 0.1f, radius * 1.2f);
-        var water = source.AddComponent<WeaponWaterSource>(); water.useRegionalQuality = true; water.cleanWater = !polluted;
+        // Covers the open water up to near the shore so filling and fishing work from the bank (E reaches 3 m).
+        var box = source.AddComponent<BoxCollider>(); box.size = new Vector3(radius * 1.9f, 0.1f, radius * 1.9f);
+        var water = source.AddComponent<WeaponWaterSource>(); water.useRegionalQuality = true; water.cleanWater = !polluted; water.shoreRadius = radius;
         var fishing = source.AddComponent<EcoFishingSpot>(); fishing.population = polluted ? 3f : 8f;
 
         // Wooden dock reaching into the lake from the road side.

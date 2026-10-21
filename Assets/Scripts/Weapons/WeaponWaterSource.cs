@@ -5,6 +5,8 @@ public sealed class WeaponWaterSource : MonoBehaviour
 {
     public bool cleanWater = true;
     public bool useRegionalQuality;
+    [Tooltip("Radius of the bank for bodies of water (0 = small source such as a barrel); the player stops at it.")]
+    public float shoreRadius;
     [SerializeField, Range(0f, 100f)] private float localPollution;
     public float LocalPollution => localPollution;
     public UnityEngine.UI.Text statusLabel;

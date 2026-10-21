@@ -215,7 +215,9 @@ public sealed class EcoBuildController : MonoBehaviour
         if (go == null) { weapons.ReturnMaterials(entry.Metal, entry.Plastic); return false; }
         var structure = go.GetComponent<EcoStructure>(); structure.playerBuilt = true;
         if (go.TryGetComponent<EcoWaterNode>(out var water) && water.kind == EcoWaterNode.Kind.Intake) water.FindSource();
-        EcoDiscoveries.NotifySafePlacement(entry.Id, position); weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla.")); return true;
+        weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla."));
+        EcoDiscoveries.NotifySafePlacement(entry.Id, position); // a field milestone message, if any, comes last and stays visible
+        return true;
     }
     private static Vector3 Snap(Vector3 position)
     {
