@@ -62,13 +62,17 @@ public sealed class EnemySceneSetup : MonoBehaviour
         hosts.Sort((a, b) => Vector3.Distance(a.transform.position, player.position).CompareTo(Vector3.Distance(b.transform.position, player.position)));
         var host = hosts[relocated % hosts.Count];
         var rng = new System.Random(relocated * 7919 + 17);
-        for (int attempt = 0; attempt < 8; attempt++)
+        Vector3 fallback = host.transform.position;
+        for (int attempt = 0; attempt < 24; attempt++)
         {
-            var candidate = host.transform.position + new Vector3((float)(rng.NextDouble() - 0.5) * host.size.x * 0.4f, 0f, (float)(rng.NextDouble() - 0.5) * host.size.y * 0.4f);
-            candidate.y = position.y;
+            var candidate = host.transform.position + new Vector3((float)(rng.NextDouble() - 0.5) * host.size.x * 0.8f, 0f, (float)(rng.NextDouble() - 0.5) * host.size.y * 0.8f);
+            // Must stand on walkable ground: lake regions are mostly water, whose surface is not ground.
+            if (!Physics.Raycast(candidate + Vector3.up * 60f, Vector3.down, out var ground, 120f, ~0, QueryTriggerInteraction.Ignore)
+                || !EcoGround.IsGround(ground.collider) || ground.normal.y < 0.8f) continue;
+            candidate = ground.point;
             if (!Safe(candidate, regions) && Vector3.Distance(candidate, player.position) >= MinimumDistance) return candidate;
         }
-        return host.transform.position;
+        return fallback;
     }
     private static bool Safe(Vector3 point, EcoRegion[] regions)
     {

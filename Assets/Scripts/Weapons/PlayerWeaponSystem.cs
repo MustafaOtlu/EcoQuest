@@ -295,9 +295,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 6f : 5f) + Upgrades.VacuumRangeBonus;
         bool found = Aim(range, out var hit, Selected == Tool.Vacuum && Mode == VacuumMode.Collect ? Upgrades.CollectionRadius : 0);
-        // A spray is a cone, not a laser: if the ray only meets bare ground, the water/anti-vacuum stream bends to the nearest
+        // A spray is a cone, not a laser: if the ray meets nothing the spray acts on (ground, water surface, a wall), the water/anti-vacuum stream bends to the nearest
         // enemy this mode affects within range and 25° of the cursor direction.
-        if (Selected == Tool.Vacuum && Mode != VacuumMode.Collect && (!found || EcoGround.IsGround(hit.collider)))
+        if (Selected == Tool.Vacuum && Mode != VacuumMode.Collect && (!found || !SprayActsOn(hit.collider)))
         {
             var assisted = SprayTarget(range);
             if (assisted != null)
@@ -507,6 +507,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         { Notify("İsabet • " + enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
         if (enemy.Health <= 0) Changed?.Invoke();
     }
+    private static bool SprayActsOn(Collider c) => c.GetComponentInParent<EnemyBrain>() != null || c.GetComponentInParent<EcoFinaleFocus>() != null
+        || c.GetComponentInParent<EcoFire>() != null || c.GetComponentInParent<PlantedSeed>() != null;
     private EnemyBrain SprayTarget(float range)
     {
         EnemyBrain best = null; float bestAngle = 25f;
@@ -596,6 +598,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
         if (EcoGlacierStation.Current != null && EcoGlacierStation.Current.TryInteract(this)) return;
         if (EcoPollutionInlet.TryInteract(this)) return;
+        // GDD §11: the 4 s stun window is for closing in, not for pixel aiming; E fits the filter on a stunned Tin nearby.
+        foreach (var stunned in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
+            if (stunned.IsStunned && (stunned.transform.position - transform.position).sqrMagnitude <= 3.5f * 3.5f) { stunned.InstallFilter(this); return; }
         if (!Aim(3f, out var hit)) { NearbyMarket()?.Interact(this); return; }
         var tin = hit.collider.GetComponentInParent<EnemyBrain>();
         if (tin != null && tin.species == EnemyBrain.Species.Tin) { tin.InstallFilter(this); return; }

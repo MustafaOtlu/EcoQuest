@@ -169,11 +169,14 @@ public class PlayerController : MonoBehaviour
     {
         if (!EcoIsoCamera.TryCursorHit(transform, out var hit))
         { Notify("Oraya yürünemez."); return; }
-        if (hit.normal.y < 0.5f) { Notify("Oraya ulaşılamıyor."); return; }
+        // Clicking an object (enemy, building, tree) walks next to it instead of rejecting its steep side.
+        Vector3 target = hit.point; float snap = 2.5f;
+        if (!EcoGround.IsGround(hit.collider)) { var b = hit.collider.bounds; target = new Vector3(b.center.x, b.min.y, b.center.z); snap = 4f; }
+        else if (hit.normal.y < 0.5f) { Notify("Oraya ulaşılamıyor."); return; }
         var navigation = EcoNavigation.Current;
         if (navigation != null && navigation.Ready)
         {
-            if (!NavMesh.SamplePosition(hit.point, out var goal, 2.5f, NavMesh.AllAreas)
+            if (!NavMesh.SamplePosition(target, out var goal, snap, NavMesh.AllAreas)
                 || !NavMesh.SamplePosition(transform.position, out var start, 3f, NavMesh.AllAreas)
                 || !NavMesh.CalculatePath(start.position, goal.position, NavMesh.AllAreas, path)
                 || path.status != NavMeshPathStatus.PathComplete || path.corners.Length < 1)
