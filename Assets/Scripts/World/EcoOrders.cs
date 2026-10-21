@@ -38,7 +38,7 @@ public sealed class EcoOrders : MonoBehaviour
         if (PanelOpen && (nearMarket == null || !EcoUIFlow.IsPanel(this))) Close();
         var keys = Keyboard.current;
         if (keys == null) return;
-        if (PanelOpen && (keys.escapeKey.wasPressedThisFrame || EcoKeys.Pressed(EcoKeys.Action.Orders))) { Close(); return; }
+        if (PanelOpen && (keys.escapeKey.wasPressedThisFrame || EcoKeys.Pressed(EcoKeys.Action.Orders))) { if (keys.escapeKey.wasPressedThisFrame) EcoUIFlow.ConsumeEscape(); Close(); return; }
         if (EcoKeys.Pressed(EcoKeys.Action.Orders) && nearMarket != null && !PlayerController.Paused)
         { EcoMarketUI.CloseFor(player); PanelOpen = true; EcoUIFlow.SetPanel(this, true); player.GetComponentInParent<PlayerController>()?.CancelWalkOrder(); }
     }

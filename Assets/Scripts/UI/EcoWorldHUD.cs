@@ -86,6 +86,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     // Big map
     private RectTransform bigRoot, bigCard, bigFrame, bigView, infoCard, legend;
+    private float legendWidth;
     private Image bigDim;
     private RawImage bigImage;
     private RectTransform bigArrow, hintPin;
@@ -201,7 +202,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (keyboard == null) return;
         bool typing = PlayerController.Paused;
         if (!typing && EcoKeys.Pressed(EcoKeys.Action.Map)) SetMap(!MapOpen);
-        if (keyboard.escapeKey.wasPressedThisFrame) { if (MapOpen) SetMap(false); else if (helpOpen) SetHelp(false); }
+        if (keyboard.escapeKey.wasPressedThisFrame) { if (MapOpen) { EcoUIFlow.ConsumeEscape(); SetMap(false); } else if (helpOpen) { EcoUIFlow.ConsumeEscape(); SetHelp(false); } }
         if (!typing && keyboard.f1Key.wasPressedThisFrame) SetHelp(!helpOpen);
         if (!typing && keyboard.hKey.wasPressedThisFrame && !MapOpen) CycleHud();
     }
@@ -578,6 +579,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             var label = EcoUI.Label("Legend text", legend, text, 12, TextAnchor.MiddleLeft, EcoUI.Muted); EcoUI.Layout(label, new Vector2(lx + 21f, -2f), new Vector2(70f, 18f));
             lx += 26f + text.Length * 7.5f + 10f;
         }
+        legendWidth = lx;
 
         BuildInfoCard();
         bigRoot.gameObject.SetActive(false);
@@ -761,7 +763,11 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
         // Points of interest.
         if (Time.unscaledTime >= mapRefreshAt) { mapRefreshAt = Time.unscaledTime + 0.25f; CollectPois(); RefreshInfoCard(focus); }
-        while (poiImages.Count < pois.Count) poiImages.Add(EcoUI.Icon("Poi", bigView, "poi_quest", new Vector2(0, 1), new Vector2(0.5f, 0.5f), 26f));
+        if (poiImages.Count < pois.Count)
+        {
+            while (poiImages.Count < pois.Count) poiImages.Add(EcoUI.Icon("Poi", bigView, "poi_quest", new Vector2(0, 1), new Vector2(0.5f, 0.5f), 26f));
+            foreach (var o in overlays) if (o.chip != null) o.chip.SetAsLastSibling(); // region names stay readable above icons
+        }
         hoveredPoi = null; float best = 18f;
         for (int i = 0; i < poiImages.Count; i++)
         {
@@ -1056,7 +1062,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
         float cardW = Mathf.Min(1180f, width - 40f), cardH = Mathf.Min(760f, height - 40f);
         EcoUI.Place(bigCard, Vector2.zero, new Vector2(cardW, cardH));
         float infoW = Mathf.Clamp(cardW * 0.32f, 300f, 380f);
-        float side = Mathf.Min(cardH - 96f, cardW - infoW - 52f);
+        // Below the map: coordinates (16) + legend (20) + margins; keep it all inside the card.
+        float side = Mathf.Min(cardH - 112f, cardW - infoW - 52f);
         EcoUI.Layout(bigTitle, new Vector2(56f, -18f), new Vector2(300f, 24f));
         bigHint.text = "Tekerlek: yakınlaştır  ·  Sürükle: kaydır  ·  Tıkla: bölgeyi sabitle  ·  Sağ tık: bırak  ·  " + EcoKeys.Tag(EcoKeys.Action.Map) + " / [Esc] kapat";
         EcoUI.Layout(bigHint, new Vector2(cardW - 620f - 56f, -22f), new Vector2(620f, 18f));
@@ -1064,6 +1071,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.Place(bigView, Vector2.zero, new Vector2(side, side));
         EcoUI.Layout(coordText, new Vector2(18f, -(56f + side + 6f)), new Vector2(side, 16f));
         EcoUI.Place(legend, new Vector2(18f, -(56f + side + 22f)), new Vector2(side, 20f));
+        legend.localScale = Vector3.one * Mathf.Min(1f, side / Mathf.Max(1f, legendWidth));
         EcoUI.Place(infoCard, new Vector2(-16f, -56f), new Vector2(cardW - side - 52f, side + 38f));
     }
 }

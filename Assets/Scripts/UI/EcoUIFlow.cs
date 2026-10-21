@@ -12,6 +12,10 @@ public sealed class EcoUIFlow : MonoBehaviour
     private static int closedFrame = -10;
     public static bool InputBlocked => WorldBlocked || Time.frameCount <= closedFrame;
     public static bool IsPanel(object owner) => ReferenceEquals(ActivePanel, owner);
+    // One Esc press closes one thing: a panel that used Esc marks the frame so the pause menu ignores it.
+    private static int escapeFrame = -10;
+    public static void ConsumeEscape() => escapeFrame = Time.frameCount;
+    public static bool EscapeConsumed => escapeFrame == Time.frameCount;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetState() { ActivePanel = null; Paused = building = false; closedFrame = -10; Time.timeScale = 1; }

@@ -77,7 +77,7 @@ public sealed class EcoBuildController : MonoBehaviour
         if (!weapons.CanOperate) { SetBuildMode(false); return; }
         if (!Application.isFocused || PlayerController.Paused) return;
         var keys = Keyboard.current; var mouse = Mouse.current;
-        if (IsBuilding && keys != null && keys.escapeKey.wasPressedThisFrame) { SetBuildMode(false); return; }
+        if (IsBuilding && keys != null && keys.escapeKey.wasPressedThisFrame) { EcoUIFlow.ConsumeEscape(); SetBuildMode(false); return; }
         // GDD §3: in build mode right click cancels the pending placement and never sends a walk order.
         if (IsBuilding && mouse != null && mouse.rightButton.wasPressedThisFrame)
         {

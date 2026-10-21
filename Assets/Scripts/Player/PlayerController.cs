@@ -100,7 +100,7 @@ public class PlayerController : MonoBehaviour
         var mouse = Mouse.current;
         if (builder == null) builder = GetComponent<EcoBuildController>();
         bool buildBusy = builder != null && builder.IsBuilding;
-        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !EcoMarketUI.IsOpen && !EcoUIFlow.IsOpen && !buildBusy)
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !EcoUIFlow.EscapeConsumed && !EcoMarketUI.IsOpen && !EcoUIFlow.IsOpen && !buildBusy)
             SetPaused(!Paused);
 
         bool hasControl = !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && !buildBusy && Application.isFocused

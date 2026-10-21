@@ -54,7 +54,7 @@ public sealed class EcoAudio : MonoBehaviour
     {
         var keyboard = Keyboard.current;
         if (keyboard != null && EcoKeys.Pressed(EcoKeys.Action.Settings)) panelOpen = !panelOpen;
-        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && panelOpen) panelOpen = false;
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && panelOpen) { EcoUIFlow.ConsumeEscape(); panelOpen = false; }
         if (Time.unscaledTime >= nextScan)
         {
             nextScan = Time.unscaledTime + 0.4f;

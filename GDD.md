@@ -716,7 +716,7 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Renk körü paleti | Uygulandı (menü, final, proje çubuğu, HUD göstergeleri) |
 | 5 soruluk ön/son anket ve performans ölçümü | Uygulandı (EcoSurvey: yerel JSON; EcoPerf: F3, FPS/alt %1/bellek, CSV) |
 | MainScene bağlantıları | Bilerek yapılmadı: MainScene'e dokunulmaz; oyun EcoWorld'den çalışır |
-| Gerçek klavye/fare hissi | Test edilemedi; gerçek oyun denemesi gerekir |
+| Gerçek klavye/fare hissi | 21 Ekim: Unity penceresinde gerçek fare ve klavyeyle denendi (aşağıdaki satır) |
 | Doğu Gölü kirletici girişi ve Batı Gölü doğal akış (hidro) alanı sahnede | Uygulandı (builder; giriş [E] ile kapanır, proje durumu bunu okur) |
 | Final terminal rezervi kayıt/yükleme (global kanca) | Uygulandı ve doğrulandı |
 | Saha görevleri (hasat/yeniden ekim/balık) | EcoDiscoveries ödüllendirir; EcoStory yalnız 3 bakım anını ödüllendirir |
@@ -746,3 +746,7 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Hidroelektrik (§9) | Düzeltildi ve doğrulandı: doğal akış alanı kıyı eğiminde olduğu için santral hiç kurulamıyordu; derenin yanına düz bir kurulum zemini eklendi. 60M/30P ile kuruluyor, kuru havada 1,29 EB/sn (yağmurda artar), kabloyla bataryayı dolduruyor. Yeni alçak poligon model: kırmızı çatılı türbin evi, verimle dönen su çarkı, kanal, üç basamaklı balık geçidi, durum lambası; "burada kurulabilir" tabelası santral kurulunca gizlenir |
 | Sipariş ve market satışı (§8) | Play Mode'da doğrulandı: yanlış tür reddedilir; 4 domates → 15M+10P (%25 ek); teslim tek seferlik. Temiz balık 4M+2P, satış sınırsız; alımda günlük sınır (8 paket demir top) işliyor |
 | Sahne GUID'i | Düzeltildi: harita her kurulduğunda sahne silinip kopyalandığı için GUID değişiyor, Build Settings eski GUID'de kalıyordu. Artık sahne yerinde üzerine yazılıyor ve Build Settings girişi yenileniyor |
+| Gerçek fare/klavye denemesi (21 Ekim) | Unity penceresinde gerçek tıklama ve tuşlarla denendi: menüden Yeni oyun, WASD, sağ tıkla yürüme, [M] harita (üzerine gelince bölge kartı, tıklayıp sabitleme, tekerlekle yakınlaştırma, sürükleyip kaydırma, sağ tıkla bırakma, Esc), [F1], [J], HUD kartını katlama, araç yuvasına tıklama |
+| Başlangıçta düşman saldırısı (§11) | Düzeltildi: sahneye yerleştirilmiş 5 başlangıç düşmanı üste, oyuncunun 1–4 m yanında doğup ilk saniyede saldırıyordu. Artık güvenli merkezin dışına, oyuncudan ≥20 m uzağa (algılama 12 m) kendi yönlerinde taşınıyorlar |
+| Tek Esc tek pencere | Düzeltildi: Esc ile günlük/harita/market/uzmanlık/siparişler kapanırken aynı basış duraklatma menüsünü de açıyordu |
+| Büyük harita yerleşimi | Düzeltildi: lejant pencereden taşıyordu ve dar ekranda kesiliyordu; bölge adları ilgi noktası simgelerinin altında kalıyordu. Günlük alt başlığı kısaltıldı |

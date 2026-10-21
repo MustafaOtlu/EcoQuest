@@ -68,7 +68,7 @@ public sealed class EcoSpecialization : MonoBehaviour
         if (keyboard != null)
         {
             if (EcoKeys.Pressed(EcoKeys.Action.Skills) && !PlayerController.Paused) SetOpen(!open);
-            if (keyboard.escapeKey.wasPressedThisFrame && open) SetOpen(false);
+            if (keyboard.escapeKey.wasPressedThisFrame && open) { EcoUIFlow.ConsumeEscape(); SetOpen(false); }
         }
         if (open && !EcoUIFlow.IsPanel(this)) open = false;
         if (Time.unscaledTime < nextScan) return;

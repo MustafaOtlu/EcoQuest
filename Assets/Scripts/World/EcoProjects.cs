@@ -101,7 +101,7 @@ public sealed class EcoProjects : MonoBehaviour
     {
         var keyboard = Keyboard.current;
         if (keyboard != null && EcoKeys.Pressed(EcoKeys.Action.Journal) && !PlayerController.Paused) SetOpen(!PanelOpen);
-        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && PanelOpen) SetOpen(false);
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && PanelOpen) { EcoUIFlow.ConsumeEscape(); SetOpen(false); }
         if (PanelOpen && !EcoUIFlow.IsPanel(this)) PanelOpen = false;
         accumulated += Time.deltaTime;
         if (Time.unscaledTime < nextScan) return;
@@ -297,7 +297,7 @@ public sealed class EcoProjects : MonoBehaviour
         if (!PanelOpen) return;
         EcoTheme.Begin();
         var panel = EcoTheme.Window(940f, 720f, "PROJE GÜNLÜĞÜ · " + CompletedCount + "/6 · Final hazırlığı %" + Mathf.RoundToInt(Readiness * 100),
-            "Sonuçları 120 simülasyon saniyesi koru. Proje seçimi serbest; kazanılan başarı kalıcıdır. Günlük açıkken dünya %10 hızda.", "ui_journal");
+            "Koşulu 120 sn koru • proje sırası serbest • başarı kalıcı • günlük açıkken dünya %10 hızda", "ui_journal");
         if (GUI.Button(new Rect(panel.xMax - 52, panel.y + 16, 34, 34), "", EcoTheme.Button)) SetOpen(false);
         EcoTheme.Icon(new Rect(panel.xMax - 48, panel.y + 20, 26, 26), "ui_close");
         var viewport = new Rect(panel.x + 20, panel.y + 96, panel.width - 40, panel.height - 116);
