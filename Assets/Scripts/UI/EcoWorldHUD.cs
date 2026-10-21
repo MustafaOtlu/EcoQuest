@@ -24,6 +24,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     /// <summary>Bottom edge (canvas units from the top) of the map card; EcoQuestHUD stacks the resources card below.</summary>
     public static float MapBottom { get; private set; } = 330f;
+    /// <summary>Bottom edge of the region banner while it is visible (0 when hidden); other top-centre notices sit below it.</summary>
+    public static float BannerBottom { get; private set; }
+    private float bannerBottom;
     public static bool MapOpen { get; private set; }
 
     private const float MiniWindow = 56f;  // metres shown across the corner map
@@ -421,6 +424,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     {
         float left = bannerUntil - Time.unscaledTime;
         bannerGroup.alpha = EcoUI.Mode == EcoUI.HudMode.Hidden || left <= 0f ? 0f : Mathf.Clamp01(Mathf.Min(left, 5f - left) * 2.5f);
+        BannerBottom = bannerGroup.alpha > 0.01f ? bannerBottom : 0f;
     }
 
     private void BuildIntro()
@@ -1029,6 +1033,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         float bannerWidth = Mathf.Clamp(width - leftWidth - rightWidth - 4f * margin, 300f, 470f);
         float center = (leftWidth - rightWidth) * 0.5f;
         EcoUI.Place(banner, new Vector2(center, -(margin + 96f)), new Vector2(bannerWidth, 70f));
+        bannerBottom = margin + 96f + 70f;
         EcoUI.Place(bannerStrip.rectTransform, Vector2.zero, new Vector2(5f, 70f));
         EcoUI.LayoutIcon(bannerIcon, new Vector2(14f, -13f), 44f);
         EcoUI.Layout(bannerTitle, new Vector2(68f, -9f), new Vector2(bannerWidth - 190f, 26f));

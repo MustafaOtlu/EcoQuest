@@ -733,7 +733,7 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Hava uyarısı (§10) | Uygulandı: yağmur/fırtınadan ~45 sn önce harita kartında ve mesajla uyarı (deterministik tahmin) |
 | Güvenli şehir (§2, §11) | Uygulandı: şehir ve üs cepleri düşman doğurmaz |
 | Final kuraklığı (§12) | Uygulandı: açık rezervden en çok %20, kapalı depodan %10 |
-| Harita fare etkileşimi | Input System ile enjekte edilen fare konumuyla doğrulandı (bölge tespiti + bilgi kartı); gerçek oyuncu denemesi önerilir |
+| Harita fare etkileşimi | Önce enjekte edilen fare konumuyla, 21 Ekim'de Unity penceresinde gerçek fareyle doğrulandı (üzerine gelme, tıklayıp sabitleme, tekerlek, sürükleme, sağ tık, Esc) |
 | Kayıt/yükleme (§14) | Play Mode'da doğrulandı: hızlı kayıttan sonra değiştirilen metal, ekin, sanayi havası ve oyuncu konumu hızlı yüklemeyle geri geldi; final zaferi (`Won`) kayıtta kalıyor |
 | Ses (§15) | Play Mode'da doğrulandı: müzik + ortam katmanları, tek dinleyici; sanayiye girince fabrika uğultusu 0,02 → 0,15 |
 | Öğrenme kartı (§16) | Play Mode'da doğrulandı: gerçek 10 EB şarjla P1 koşulu sağlandı, 120 sn sonunda +40 YEP, 1 uzmanlık hakkı ve "Biliyor muydun?" kartı |
@@ -750,3 +750,5 @@ Finalde canlı düşman şablonu bulunamaması doğrudan zafer bayrağı verebil
 | Başlangıçta düşman saldırısı (§11) | Düzeltildi: sahneye yerleştirilmiş 5 başlangıç düşmanı üste, oyuncunun 1–4 m yanında doğup ilk saniyede saldırıyordu. Artık güvenli merkezin dışına, oyuncudan ≥20 m uzağa (algılama 12 m) kendi yönlerinde taşınıyorlar |
 | Tek Esc tek pencere | Düzeltildi: Esc ile günlük/harita/market/uzmanlık/siparişler kapanırken aynı basış duraklatma menüsünü de açıyordu |
 | Büyük harita yerleşimi | Düzeltildi: lejant pencereden taşıyordu ve dar ekranda kesiliyordu; bölge adları ilgi noktası simgelerinin altında kalıyordu. Günlük alt başlığı kısaltıldı |
+| [E] ile market ve çocuk (§6, §8) | Gerçek tuşla denendi ve düzeltildi: market yalnız fare imleci tam üstündeyken açılıyordu; artık yanında E yeterli. Çocuk ve market yakınında alt bilgi satırı "[E] Konuş" / "MARKET • [E]" gösteriyor. Destek kartlarının açıklamaları kısaltıldı |
+| Üst bildirimler | Düzeltildi: bölgeye girince çıkan bölge şeridi ile "keşfedildi" bildirimi aynı yere çiziliyordu; bildirim artık şeridin altına iniyor |

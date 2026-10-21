@@ -108,20 +108,20 @@ public sealed class EcoMarketUI : MonoBehaviour
         switch (index)
         {
             case 0:
-                description = "Araç elektriği bitince 30 sn markete yakın kal: +15 EB. Paneli kapatabilirsin.";
+                description = "Araç 0 EB iken 30 sn yakında kal: +15 EB. Panel kapanabilir.";
                 price = shop.Charging ? "Şarj %" + Mathf.RoundToInt(shop.ChargeProgress / EcoWorkshop.ChargeSeconds * 100f) : "Araç " + player.Energy.ToString("0") + " EB";
                 bool charge = shop.CanCharge(out reason); action = charge ? "Başlat" : reason; return charge;
             case 1:
-                description = "Tohum ve ürün yokken ya da su 2 SB altındayken: 1 lahana tohumu + 2 SB.";
+                description = "Tohum ve ürün yokken ya da su < 2 SB: 1 tohum + 2 SB.";
                 price = "Günde bir kez • ücretsiz";
                 bool rescue = shop.CanRescue(out reason); action = rescue ? "Al" : reason; return rescue;
             case 2:
-                description = "Elektriksiz: 1 ham atığı elle ayırıp metal/plastik/organik yap.";
+                description = "Elektriksiz: 1 ham atığı elle malzemeye ayır.";
                 price = "Ham atık " + raw;
                 action = raw > 0 ? "Ayır" : "Ham atık yok"; return raw > 0;
             default:
                 var offer = Crafts[index - 3];
-                description = "Günlük stok bitince eldeki malzemeyle paket başına 45 sn'de yapılır.";
+                description = "Günlük stok bitince kendi malzemenle, paket başına 45 sn.";
                 int queued = 0; foreach (var q in shop.Queue) if (q == offer) queued++;
                 price = EcoMarket.MetalPrice(offer) + "M / " + EcoMarket.PlasticPrice(offer) + "P • sırada " + queued
                     + (shop.Queue.Count > 0 && shop.Queue[0] == offer ? " • %" + Mathf.RoundToInt(shop.PackProgress / EcoWorkshop.PackSeconds * 100f) : "");

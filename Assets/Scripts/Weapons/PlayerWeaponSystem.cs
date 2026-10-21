@@ -568,7 +568,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
         if (EcoGlacierStation.Current != null && EcoGlacierStation.Current.TryInteract(this)) return;
         if (EcoPollutionInlet.TryInteract(this)) return;
-        if (!Aim(3f, out var hit)) return;
+        if (!Aim(3f, out var hit)) { NearbyMarket()?.Interact(this); return; }
         var tin = hit.collider.GetComponentInParent<EnemyBrain>();
         if (tin != null && tin.species == EnemyBrain.Species.Tin) { tin.InstallFilter(this); return; }
         var fishing = hit.collider.GetComponentInParent<EcoFishingSpot>();
@@ -592,13 +592,19 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             return;
         }
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
-        if (plant == null) return;
+        if (plant == null) { NearbyMarket()?.Interact(this); return; }
         if (plant.IsMature && TotalSeeds + 1 > Upgrades.SeedCapacity)
         { Notify("Tohum depon dolu. Marketten kapasite geliştir veya fazla tohumları sat."); return; }
         if (plant.TryHarvest(out int seeds, out int food))
         { AddSeeds(plant.kind, seeds); Food += food; if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); Changed?.Invoke(); }
         else if (Selected == Tool.Recycler && Energy >= 2f && plant.TryCompost())
         { StopCharging(); Energy -= 2f; Compost++; Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
+    }
+    /// <summary>[E] next to the market opens it even when the cursor points elsewhere.</summary>
+    private EcoMarket NearbyMarket()
+    {
+        foreach (var shop in FindObjectsByType<EcoMarket>(FindObjectsSortMode.None)) if (shop.CanReach(this)) return shop;
+        return null;
     }
     private bool TryFertilize()
     {
@@ -609,6 +615,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public string ContextHint()
     {
+        // Things used by standing next to them get a prompt even when the cursor points elsewhere.
+        string near = EcoStory.Current != null ? EcoStory.Current.Prompt(this) : "";
+        if (near.Length > 0) return near;
+        var shop = NearbyMarket();
+        if (shop != null) return shop.Describe();
         if (view == null || !Aim(12f, out var hit)) return "";
         var fishing = hit.collider.GetComponentInParent<EcoFishingSpot>();
         if (fishing != null) return fishing.Describe();

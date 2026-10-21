@@ -65,6 +65,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private Image modeIcon;
     private Text mode, instructions, context, feedback, recovery;
     private Image contextBg, feedbackBg, recoveryBg;
+    private float feedbackTop;
     private float refreshAt, objectiveAt;
     private int lastWidth, lastHeight;
     private float laidOutMapBottom = -1f;
@@ -294,6 +295,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             ? (chargerPower != null && chargerPower.DeliveredPower > 0f ? "Araç bataryası şarj oluyor…" : "Şarj bağlı · Elektrik bekleniyor…")
             : Time.time < weapons.FeedbackUntil ? weapons.Feedback : "";
         SetVisible(feedbackBg, feedback, !string.IsNullOrEmpty(feedback.text));
+        // Never under the region banner: both live at the top centre.
+        feedbackPanel.anchoredPosition = new Vector2(feedbackPanel.anchoredPosition.x, -Mathf.Max(feedbackTop, EcoWorldHUD.BannerBottom + 8f));
         bool recovering = vitals != null && vitals.IsRecovering;
         recovery.text = recovering ? "ENERJİ TOPLANIYOR\n" + vitals.RecoveryRemaining.ToString("0.0") + " saniye" : "";
         SetVisible(recoveryBg, recovery, recovering);
@@ -431,7 +434,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
         EcoUI.Place(contextPanel, new Vector2(0f, -height * 0.5f + DockTop + 70f), new Vector2(contextWidth, 74f));
         EcoUI.Layout(context, new Vector2(14f, -8f), new Vector2(contextWidth - 28f, 58f));
         float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
-        EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -(margin + oh + 10f)), new Vector2(feedbackWidth, 56f));
+        feedbackTop = margin + oh + 10f;
+        EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -feedbackTop), new Vector2(feedbackWidth, 56f));
         EcoUI.Layout(feedback, new Vector2(12f, -6f), new Vector2(feedbackWidth - 24f, 44f));
         EcoUI.Place(recoveryPanel, new Vector2(0f, 80f), new Vector2(Mathf.Min(460f, width - 2f * margin), 72f));
         EcoUI.Layout(recovery, new Vector2(14f, -8f), new Vector2(recoveryPanel.sizeDelta.x - 28f, 56f));

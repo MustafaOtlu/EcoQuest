@@ -75,6 +75,10 @@ public sealed class EcoStory : MonoBehaviour
         child = go.transform;
     }
 
+    /// <summary>HUD context line while the child is within reach.</summary>
+    public string Prompt(PlayerWeaponSystem w)
+        => w != null && child != null && (w.transform.position - child.position).sqrMagnitude <= Reach * Reach
+            ? "Mahalle çocuğu • " + EcoKeys.Tag(EcoKeys.Action.Interact) + " Konuş" : "";
     public bool TryInteract(PlayerWeaponSystem w)
     {
         if (w == null || child == null || (w.transform.position - child.position).sqrMagnitude > Reach * Reach) return false;
