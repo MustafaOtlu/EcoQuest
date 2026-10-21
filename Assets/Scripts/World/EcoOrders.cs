@@ -91,11 +91,12 @@ public sealed class EcoOrders : MonoBehaviour
             GUILayout.Space(10);
             GUILayout.Label(order.title, EcoTheme.Subtitle);
             GUILayout.EndHorizontal();
-            GUILayout.Label(order.food + " adet temiz ürün → " + order.metal + " metal + " + order.plastic + " plastik", EcoTheme.Body);
-            bool has = player != null && (order.fish ? player.CleanFish : player.CountProduce((EcoCropCatalog.Kind)order.cropKind)) >= order.food;
+            GUILayout.Label(order.food + " adet " + (order.fish ? "temiz balık" : "temiz ürün") + " → " + order.metal + " metal + " + order.plastic + " plastik", EcoTheme.Body);
+            int owned = player == null ? 0 : order.fish ? player.CleanFish : player.CountProduce((EcoCropCatalog.Kind)order.cropKind);
+            bool has = owned >= order.food;
             GUI.enabled = !order.delivered && has;
             var buttonRect = GUILayoutUtility.GetRect(100, 40, GUILayout.ExpandWidth(true), GUILayout.Height(40));
-            if (EcoTheme.IconButton(buttonRect, order.delivered ? "TESLİM EDİLDİ" : has ? "Teslim et" : "Ürün yetersiz", order.delivered ? "ui_check" : has ? "metal" : "poi_warning")) Deliver(order);
+            if (EcoTheme.IconButton(buttonRect, order.delivered ? "TESLİM EDİLDİ" : has ? "Teslim et" : "Ürün yetersiz (" + owned + "/" + order.food + ")", order.delivered ? "ui_check" : has ? "metal" : "poi_warning")) Deliver(order);
             GUI.enabled = true; GUILayout.EndVertical(); GUILayout.Space(12);
         }
         GUILayout.Label(message, EcoTheme.Muted);
