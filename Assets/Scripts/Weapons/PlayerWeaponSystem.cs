@@ -609,7 +609,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Selected == Tool.Hands)
             foreach (var spot in FindObjectsByType<EcoFishingSpot>(FindObjectsSortMode.None))
                 if (spot.Fisher == this || spot.CanFish(this)) { spot.Interact(this); return; }
-        if (!Aim(3f, out var hit)) { NearbyMarket()?.Interact(this); return; }
+        if (!Aim(3f, out var hit)) { NearbyFallback(); return; }
         var tin = hit.collider.GetComponentInParent<EnemyBrain>();
         if (tin != null && tin.species == EnemyBrain.Species.Tin) { tin.InstallFilter(this); return; }
         var fishing = hit.collider.GetComponentInParent<EcoFishingSpot>();
@@ -633,13 +633,37 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             return;
         }
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
-        if (plant == null) { NearbyMarket()?.Interact(this); return; }
+        if (plant == null) { NearbyFallback(); return; }
         if (plant.IsMature && TotalSeeds + 1 > Upgrades.SeedCapacity)
         { Notify("Tohum depon dolu. Marketten kapasite geliştir veya fazla tohumları sat."); return; }
         if (plant.TryHarvest(out int seeds, out int food))
         { AddSeeds(plant.kind, seeds); Food += food; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Changed?.Invoke(); }
         else if (Selected == Tool.Recycler && Energy >= 2f && plant.TryCompost())
         { StopCharging(); Energy -= 2f; Compost++; Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
+    }
+    /// <summary>E without a usable aim: harvest a ripe plant within 3.5 m, otherwise open a market within reach.</summary>
+    private void NearbyFallback()
+    {
+        PlantedSeed ripe = null; float best = 3.5f * 3.5f;
+        foreach (var plant in FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None))
+        {
+            if (plant == null || !plant.IsMature) continue;
+            float d = (plant.transform.position - transform.position).sqrMagnitude;
+            if (d < best) { best = d; ripe = plant; }
+        }
+        if (ripe != null)
+        {
+            if (TotalSeeds + 1 > Upgrades.SeedCapacity) { Notify("Tohum depon dolu. Marketten kapasite geliştir veya fazla tohumları sat."); return; }
+            if (ripe.TryHarvest(out int seeds, out int food))
+            {
+                AddSeeds(ripe.kind, seeds); Food += food;
+                Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(ripe.kind).Name + " tohumu, +" + food + " ürün");
+                if (food > 0) { cleanProduce[(int)ripe.kind] += food; EcoDiscoveries.NotifyCleanHarvest(ripe); } else CollectedOrganicWaste++;
+                Changed?.Invoke();
+            }
+            return;
+        }
+        NearbyMarket()?.Interact(this);
     }
     /// <summary>[E] next to the market opens it even when the cursor points elsewhere.</summary>
     private EcoMarket NearbyMarket()
@@ -683,7 +707,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
         if (plant != null)
             return plant.Status + " • Su %" + Mathf.RoundToInt(plant.moisture * 100) + " • Büyüme %" + Mathf.RoundToInt(plant.growth * 100)
-                + (hit.distance <= 3f && plant.IsMature ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Hasat et" : "")
+                + (plant.IsMature ? (Vector3.Distance(plant.transform.position, transform.position) <= 3.5f ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Hasat et" : "\nHasat için yaklaş") : "")
                 + (hit.distance <= 3f && plant.IsWithered && Selected == Tool.Recycler ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Gübreye dönüştür" : "")
                 + (hit.distance <= 3f && !plant.IsWithered && !plant.IsMature && Selected == Tool.Recycler && Compost > 0 ? "\n" + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele" : "");
         if (hit.collider.GetComponentInParent<WeaponWaterSource>() != null) return "Su kaynağı • Vakum / Toplama ile doldur";
