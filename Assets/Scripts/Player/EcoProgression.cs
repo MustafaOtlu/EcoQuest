@@ -27,6 +27,8 @@ public sealed class EcoProgression : MonoBehaviour
     {
         if (string.IsNullOrEmpty(rewardId)) return 0;
         for (int i = 0; i < 6; i++) if (rewardId == "project." + i) return 40;
+        // Care moments (EcoStory): water, meal, birds. "care.0..2" kept so older saves still match.
+        if (rewardId == "care.water" || rewardId == "care.meal" || rewardId == "care.birds") return 20;
         for (int i = 0; i < 3; i++) if (rewardId == "care." + i) return 20;
         return rewardId == "field.harvest" || rewardId == "field.fish" || rewardId == "field.placement" ? 20 : 0;
     }

@@ -33,9 +33,10 @@ public sealed class EcoGameMenu : MonoBehaviour
         if (!PlayerController.Paused) { if (screen != Screen_.Pause) screen = Screen_.Pause; listening = -1; return; }
         if (EcoSurvey.Current != null && EcoSurvey.Current.IsOpen) return; // the survey opened from here sits on top; the menu returns when it closes
         EcoTheme.Begin();
-        string heading = screen == Screen_.Main ? "ECOQUEST" : "DURAKLATILDI";
-        string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Kayıt slotları" : screen == Screen_.Settings ? "Ayarlar"
-            : screen == Screen_.Keys ? "Tuş atamaları (değiştirmek için tıkla, sonra yeni tuşa bas)" : "Dünya durdu. Devam etmek için Esc.";
+        string heading = screen == Screen_.Main ? "ECOQUEST" : screen == Screen_.Settings ? "AYARLAR" : screen == Screen_.Keys ? "TUŞ ATAMALARI"
+            : screen == Screen_.Slots ? "KAYIT SLOTLARI" : "DURAKLATILDI";
+        string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Hızlı, elle ve final öncesi kayıtlar." : screen == Screen_.Settings ? "Arayüz, erişilebilirlik ve ses."
+            : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc.";
         var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 520f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
@@ -76,31 +77,40 @@ public sealed class EcoGameMenu : MonoBehaviour
                         GUI.enabled = true;
                     }
                 }
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) screen = back;
+                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) { screen = back; scroll = Vector2.zero; }
                 break;
             case Screen_.Settings:
-                GUI.Label(new Rect(x, y - 12f, w, 28f), "Arayüz ölçeği", EcoTheme.Body);
+            {
+                // Laid out top to bottom inside a scroll area so a large UI scale on a small screen never overlaps "Geri".
+                const float contentHeight = 520f;
+                var view = new Rect(x, y - 14f, w + 18f, r.yMax - 84f - (y - 14f));
+                bool scrolls = view.height < contentHeight;
+                scroll = GUI.BeginScrollView(view, scroll, new Rect(0f, 0f, scrolls ? w - 6f : w, contentHeight));
+                float cw = scrolls ? w - 6f : w;
+                GUI.Label(new Rect(0f, 0f, cw, 28f), "Arayüz ölçeği", EcoTheme.Body);
                 float[] scales = { 1f, 1.25f, 1.5f }; string[] names = { "%100", "%125", "%150" };
                 for (int i = 0; i < 3; i++)
                 {
                     bool on = Mathf.Approximately(EcoSettings.UIScale, scales[i]);
                     var prev = GUI.color; if (on) GUI.color = EcoSettings.Good;
-                    if (GUI.Button(new Rect(x + i * (w / 3f), y + 18f, w / 3f - 6f, 36f), names[i], EcoTheme.Button)) EcoSettings.UIScale = scales[i];
+                    if (GUI.Button(new Rect(i * (cw / 3f), 30f, cw / 3f - 6f, 36f), names[i], EcoTheme.Button)) EcoSettings.UIScale = scales[i];
                     GUI.color = prev;
                 }
-                if (Switch(new Rect(x, y + 62f, w, 34f), "Renk körü dostu palet (mavi/turuncu)", EcoSettings.ColorBlind) != EcoSettings.ColorBlind) EcoSettings.ColorBlind = !EcoSettings.ColorBlind;
-                if (Switch(new Rect(x, y + 100f, w, 34f), "Kamera sarsıntısı", EcoSettings.CameraShake) != EcoSettings.CameraShake) EcoSettings.CameraShake = !EcoSettings.CameraShake;
-                if (Switch(new Rect(x, y + 138f, w, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
-                if (Switch(new Rect(x, y + 176f, w, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
-                EcoAudio.DrawSliders(x, y + 220f, w, EcoTheme.Body);
-                if (EcoTheme.IconButton(new Rect(x, y + 412f, w, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
-                GUI.Label(new Rect(x, y + 456f, w, 30f), "F3: performans göstergesi", EcoTheme.Muted);
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) screen = back;
+                if (Switch(new Rect(0f, 76f, cw, 34f), "Renk körü dostu palet (mavi/turuncu)", EcoSettings.ColorBlind) != EcoSettings.ColorBlind) EcoSettings.ColorBlind = !EcoSettings.ColorBlind;
+                if (Switch(new Rect(0f, 114f, cw, 34f), "Kamera sarsıntısı", EcoSettings.CameraShake) != EcoSettings.CameraShake) EcoSettings.CameraShake = !EcoSettings.CameraShake;
+                if (Switch(new Rect(0f, 152f, cw, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
+                if (Switch(new Rect(0f, 190f, cw, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
+                float audioHeight = EcoAudio.DrawSliders(0f, 236f, cw, EcoTheme.Body);
+                if (EcoTheme.IconButton(new Rect(0f, 236f + audioHeight + 10f, cw, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
+                GUI.Label(new Rect(0f, 236f + audioHeight + 56f, cw, 26f), "F3: performans göstergesi", EcoTheme.Muted);
+                GUI.EndScrollView();
+                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) { screen = back; scroll = Vector2.zero; }
                 break;
+            }
             case Screen_.Keys:
                 DrawKeys(x, y - 20f, w, r.height - 215f);
                 if (GUI.Button(new Rect(x, r.yMax - 70f, w * 0.5f - 6f, 40f), "Varsayılana dön", EcoTheme.Button)) EcoKeys.ResetAll();
-                if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; screen = back; }
+                if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; { screen = back; scroll = Vector2.zero; } }
                 break;
         }
         EcoTheme.End();
@@ -131,5 +141,5 @@ public sealed class EcoGameMenu : MonoBehaviour
         bool click = GUI.Button(rect, (value ? "✓ " : "✗ ") + label, EcoTheme.Button);
         GUI.color = previous; return click ? !value : value;
     }
-    private void Go(Screen_ target, Screen_ from) { back = from; screen = target; nextSlotScan = 0f; }
+    private void Go(Screen_ target, Screen_ from) { back = from; screen = target; nextSlotScan = 0f; scroll = Vector2.zero; }
 }

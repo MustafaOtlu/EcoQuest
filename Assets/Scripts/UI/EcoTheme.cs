@@ -4,7 +4,7 @@ using UnityEngine;
 public static class EcoTheme
 {
     private static Texture2D backdrop, card, green;
-    private static GUIStyle title, body, muted, button, subtitle, cardStyle;
+    private static GUIStyle title, body, muted, button, subtitle, cardStyle, thumb;
     private static Matrix4x4 previous;
     public static float Width { get; private set; }
     public static float Height { get; private set; }
@@ -56,6 +56,15 @@ public static class EcoTheme
         Icon(new Rect(rect.x + 12, rect.y + (rect.height - s) * .5f, s, s), icon);
         return pressed;
     }
+    /// <summary>Themed 0..1 slider: dark track, green fill and a light thumb (replaces the default grey skin).</summary>
+    public static float Slider(Rect rect, float value)
+    {
+        Init();
+        var track = new Rect(rect.x, rect.y + rect.height * .5f - 3f, rect.width, 6f);
+        GUI.DrawTexture(track, card);
+        GUI.DrawTexture(new Rect(track.x, track.y, track.width * Mathf.Clamp01(value), track.height), green);
+        return GUI.HorizontalSlider(rect, value, 0f, 1f, GUIStyle.none, thumb);
+    }
     private static Texture2D Swatch(Color color) { var t=new Texture2D(1,1);t.SetPixel(0,0,color);t.Apply();return t; }
     private static void Init()
     {
@@ -69,5 +78,6 @@ public static class EcoTheme
         button=new GUIStyle(GUI.skin.button){font=font,fontSize=18,padding=new RectOffset(14,14,8,8)};
         button.normal.background=card; button.normal.textColor=new Color(.84f,.96f,.88f);button.hover.background=green;button.hover.textColor=new Color(.02f,.09f,.05f);
         cardStyle=new GUIStyle{normal={background=card},padding=new RectOffset(18,18,12,12)};
+        var knob=Swatch(new Color(.88f,.97f,.9f)); thumb=new GUIStyle{fixedWidth=14,fixedHeight=18,normal={background=knob},hover={background=knob},active={background=green}};
     }
 }

@@ -216,8 +216,8 @@ public sealed class EcoAudio : MonoBehaviour
         float[] values = { MasterVolume, MusicVolume, AmbientVolume, EffectsVolume, InterfaceVolume };
         for (int i = 0; i < 5; i++)
         {
-            GUI.Label(new Rect(x, y + i * 30f, 130f, 26f), names[i] + " %" + Mathf.RoundToInt(values[i] * 100f), label);
-            float v = GUI.HorizontalSlider(new Rect(x + 140f, y + i * 30f + 8f, width - 140f, 16f), values[i], 0f, 1f);
+            GUI.Label(new Rect(x, y + i * 34f, 140f, 28f), names[i] + " %" + Mathf.RoundToInt(values[i] * 100f), label);
+            float v = EcoTheme.Slider(new Rect(x + 150f, y + i * 34f + 5f, width - 150f, 18f), values[i]);
             if (!Mathf.Approximately(v, values[i]))
             {
                 if (i == 0) { MasterVolume = v; SaveBus(VolumeKey, v); AudioListener.volume = MuteFlag ? 0f : v; }
@@ -227,9 +227,9 @@ public sealed class EcoAudio : MonoBehaviour
                 else { InterfaceVolume = v; SaveBus(InterfaceKey, v); }
             }
         }
-        bool mute = GUI.Button(new Rect(x, y + 154f, width, 26f), (MuteFlag ? "✓ " : "✗ ") + "Sesi kapat") ? !MuteFlag : MuteFlag;
+        bool mute = GUI.Button(new Rect(x, y + 176f, width, 34f), (MuteFlag ? "✓ " : "✗ ") + "Sesi kapat", EcoTheme.Button) ? !MuteFlag : MuteFlag;
         if (mute != MuteFlag) { MuteFlag = mute; PlayerPrefs.SetInt(MuteKey, mute ? 1 : 0); AudioListener.volume = mute ? 0f : MasterVolume; }
-        return 182f;
+        return 214f;
     }
     public static bool MuteFlag { get; private set; }
 
@@ -249,7 +249,7 @@ public sealed class EcoAudio : MonoBehaviour
             body = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
         }
         EcoTheme.Begin();
-        var panel = EcoTheme.Window(520f, 390f, "SES AYARLARI", "Ana ses, müzik, ortam, efekt ve arayüz ayrı ayarlanır.", "ui_gear");
+        var panel = EcoTheme.Window(520f, 410f, "SES AYARLARI", "Ana ses, müzik, ortam, efekt ve arayüz ayrı ayarlanır.", "ui_gear");
         DrawSliders(panel.x + 28f, panel.y + 100f, panel.width - 56f, EcoTheme.Body);
         if (EcoTheme.IconButton(new Rect(panel.x + 28f, panel.yMax - 58f, panel.width - 56f, 40f), "Kapat  " + EcoKeys.Tag(EcoKeys.Action.Settings) + " / [Esc]", "ui_close")) panelOpen = false;
         EcoTheme.End();

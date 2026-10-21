@@ -28,6 +28,13 @@ public sealed class EcoStory : MonoBehaviour
         nextScan = Time.unscaledTime + 1f;
         if (weapons == null) weapons = FindFirstObjectByType<PlayerWeaponSystem>();
         if (child == null) CreateChild();
+        // Idempotent: a loaded save with finished care moments still holds their YEP (older builds granted none).
+        if (weapons != null && weapons.Progression != null)
+        {
+            if ((completed & 1) != 0) weapons.Progression.AwardOnce("care.water", 20);
+            if ((completed & 2) != 0) weapons.Progression.AwardOnce("care.meal", 20);
+            if ((completed & 4) != 0) weapons.Progression.AwardOnce("care.birds", 20);
+        }
         if (weapons == null || weapons.Progression == null) return;
         // Field milestones (harvest/replant/fish) are rewarded by EcoDiscoveries with their stricter conditions.
         if (!requestedHint && EcoProjects.Current != null) foreach (int level in EcoProjects.Current.HintLevels) if (level > 0) requestedHint = true;
@@ -101,7 +108,7 @@ public sealed class EcoStory : MonoBehaviour
 
     private void Finish(PlayerWeaponSystem w, int bit, string id, string title)
     {
-        completed |= bit; w.Progression?.AwardOnce("care." + id, 20);
-        w.ShowFeedback("Bakım anı tamamlandı • " + title + " • +20 YEP");
+        completed |= bit; int granted = w.Progression != null ? w.Progression.AwardOnce("care." + id, 20) : 0;
+        w.ShowFeedback("Bakım anı tamamlandı • " + title + (granted > 0 ? " • +" + granted + " YEP" : ""));
     }
 }
