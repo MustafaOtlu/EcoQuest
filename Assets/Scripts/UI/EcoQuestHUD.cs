@@ -595,15 +595,16 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.Layout(slotCounts[i], new Vector2(5f, countY), new Vector2(slotWidth - 10f, 16f));
         }
         modePanel.gameObject.SetActive(!hidden);
-        float modeHeight = sade ? 24f : 44f;
+        float modeHeight = sade ? 30f : 46f;
         float modeWidth = Mathf.Min(buildingLayout ? 600f : 440f, width - 2f * margin);
         EcoUI.Place(modePanel, new Vector2(0f, margin + slotHeight + 12f), new Vector2(modeWidth, modeHeight));
-        EcoUI.LayoutIcon(modeIcon, new Vector2(8f, -1f), 22f);
+        // Text keeps a few pixels of paper above and below; it used to touch the frame, worst in the 24 px Sade bar.
+        EcoUI.LayoutIcon(modeIcon, new Vector2(8f, -4f), 22f);
         mode.alignment = TextAnchor.MiddleCenter;
-        EcoUI.Layout(mode, new Vector2(32f, -1f), new Vector2(modeWidth - 40f, 22f));
+        EcoUI.Layout(mode, new Vector2(32f, -4f), new Vector2(modeWidth - 64f, 22f));
         instructions.gameObject.SetActive(!sade);
         instructions.alignment = TextAnchor.MiddleCenter;
-        EcoUI.Layout(instructions, new Vector2(0f, -24f), new Vector2(modeWidth, 20f));
+        EcoUI.Layout(instructions, new Vector2(12f, -25f), new Vector2(modeWidth - 24f, 17f));
         DockTop = hidden ? margin : margin + slotHeight + 12f + modeHeight;
 
         float contextWidth = Mathf.Min(460f, width - 2f * margin);

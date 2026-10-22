@@ -101,7 +101,14 @@ public sealed class EcoEveningLighting : MonoBehaviour
         {
             nextLightSelection = Time.unscaledTime + 0.25f;
             nearby.Clear();
+            // Measure from the ground point at the centre of the view: the isometric camera itself floats ~70 m away,
+            // so camera distance left every fixture beyond nearbyDistance and no lamp ever lit.
             Vector3 anchor = camera != null ? camera.transform.position : transform.position;
+            if (camera != null)
+            {
+                var ray = camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+                if (Mathf.Abs(ray.direction.y) > 0.01f) anchor = ray.GetPoint(Mathf.Max(0f, (FocusHeight() - ray.origin.y) / ray.direction.y));
+            }
             float maxDistance = nearbyDistance * nearbyDistance;
             foreach (var fixture in fixtures)
             {
@@ -125,6 +132,13 @@ public sealed class EcoEveningLighting : MonoBehaviour
             fixture.light.intensity = fixture.intensity * level;
             fixture.light.enabled = on && i < maximumNearbyLights;
         }
+    }
+
+    private PlayerController focus;
+    private float FocusHeight()
+    {
+        if (focus == null) focus = FindFirstObjectByType<PlayerController>();
+        return focus != null ? focus.transform.position.y : 0f;
     }
 
     private void Discover(Transform scope)
