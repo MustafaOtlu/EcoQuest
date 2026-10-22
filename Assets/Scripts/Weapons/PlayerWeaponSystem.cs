@@ -128,6 +128,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         Energy += received; Changed?.Invoke(); return received;
     }
     public void ShowFeedback(string message) => Notify(message);
+    /// <summary>Keeps the current message up at least until the given time (dialogue held while next to the speaker).</summary>
+    public void HoldFeedback(float until) { if (until > FeedbackUntil) FeedbackUntil = until; }
     public void SpendFraction(float fraction) { Energy = Mathf.Max(0f, Energy - Energy * Mathf.Clamp01(fraction)); Changed?.Invoke(); }
     private Transform[] models = new Transform[ToolCount];
     private PlayerFlashlight flashlight;

@@ -19,6 +19,10 @@ public sealed class EcoStory : MonoBehaviour
 
     private void Update()
     {
+        // GDD §13: a line the child is saying stays up while the player stands next to them; it fades on its own timer once they leave.
+        if (weapons != null && child != null && Time.time < weapons.FeedbackUntil && weapons.Feedback != null && weapons.Feedback.StartsWith("Çocuk")
+            && (weapons.transform.position - child.position).sqrMagnitude <= Reach * Reach)
+            weapons.HoldFeedback(Time.time + 1.5f);
         if (Time.unscaledTime < nextScan) return;
         nextScan = Time.unscaledTime + 1f;
         if (weapons == null) weapons = FindFirstObjectByType<PlayerWeaponSystem>();
