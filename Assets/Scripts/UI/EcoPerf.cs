@@ -52,6 +52,8 @@ public sealed class EcoPerf : MonoBehaviour
     private void OnGUI()
     {
         if (!show) return;
-        GUI.Box(new Rect(10f, Screen.height - 54f, 620f, 30f), line);
+        // Under the objective card, centred: at the bottom-left it covered the quick-action buttons and the tool belt.
+        float width = Mathf.Min(Screen.width - 20f, GUI.skin.box.CalcSize(new GUIContent(line)).x + 24f);
+        GUI.Box(new Rect((Screen.width - width) * 0.5f, EcoQuestHUD.ObjectiveBottomPixels + 8f, width, 26f), line);
     }
 }
