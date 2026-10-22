@@ -745,7 +745,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         return enemy == null ? "" : enemy.IsStunned ? "Teneke • Sersemleme " + enemy.StunRemaining.ToString("0.0") + " sn\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Küçük hava filtresi tak"
             : enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health);
     }
-    private void Notify(string text) { Feedback = text; FeedbackUntil = Time.time + 3f; }
+    // GDD §13: text stays long enough to read (about 14 characters per second, at least 3 s); a character's spoken
+    // line ("Çocuk: …") gets half again as long, so dialogue no longer vanishes mid-sentence.
+    private void Notify(string text)
+    {
+        float seconds = Mathf.Clamp(text.Length / 14f, 3f, 9f);
+        if (text.StartsWith("Çocuk")) seconds = Mathf.Min(12f, seconds * 1.5f);
+        Feedback = text; FeedbackUntil = Time.time + seconds;
+    }
     private void Scan()
     {
         EcoDiscoveries.DiscoverRegion(EcoRegion.At(owner.position));
