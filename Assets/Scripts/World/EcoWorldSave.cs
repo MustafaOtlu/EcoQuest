@@ -129,7 +129,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         if (keyboard != null)
         {
             if (EcoKeys.Pressed(EcoKeys.Action.QuickSave)) QuickSave();
-            if (EcoKeys.Pressed(EcoKeys.Action.QuickLoad)) QuickLoad();
+            if (EcoKeys.Pressed(EcoKeys.Action.QuickLoad)) ConfirmQuickLoad();
         }
         if (!PlayerController.Paused && Time.timeScale > 0f) activeSeconds += Time.unscaledDeltaTime;
         if (activeSeconds >= AutosaveSeconds) autosaveRequested = true;
@@ -157,6 +157,15 @@ public sealed class EcoWorldSave : MonoBehaviour
     public bool QuickSave() => QueueSave("quick");
     public bool SaveManual(int slot) => slot >= 1 && slot <= 3 && QueueSave("manual-" + slot);
     public bool LoadManual(int slot) => slot >= 1 && slot <= 3 && LoadSlot("manual-" + slot);
+    // GDD §3: F9 is a confirmed quick load. The first press only warns; a second press within 3 s loads,
+    // so a stray key no longer throws away unsaved progress. Menu "Devam et" still loads directly.
+    private float quickLoadArmedUntil;
+    private void ConfirmQuickLoad()
+    {
+        if (Time.unscaledTime <= quickLoadArmedUntil) { quickLoadArmedUntil = 0f; QuickLoad(); return; }
+        quickLoadArmedUntil = Time.unscaledTime + 3f;
+        Say("Hızlı yükleme: kaydedilmemiş ilerleme kaybolur. Onaylamak için 3 sn içinde tekrar " + EcoKeys.Tag(EcoKeys.Action.QuickLoad) + ".");
+    }
     public bool QuickLoad()
     {
         var latest = GetSlots().Where(s => s.CanLoad).OrderByDescending(s => s.SavedAt, StringComparer.Ordinal).FirstOrDefault();
