@@ -176,9 +176,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         objectiveCard = new EcoUI.Card("objective", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), "poi_quest", "SIRADAKİ HEDEF",
             "Önerilen sonraki adım. Kartı daralt / genişlet.");
         // Keep the objective first among the card's labels for existing scene consumers which query the first Text.
-        objective = EcoUI.Label("Current objective", objectiveCard.body, "", 17, TextAnchor.UpperLeft, EcoUI.Ink, true);
+        objective = EcoUI.Label("Current objective", objectiveCard.body, "", 17, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         objective.transform.SetAsFirstSibling();
-        FloatingText(objective); FloatingText(objectiveCard.summary);
+        objectiveCard.summary.color = EcoUI.Ink; // the goal sits on its paper card like the other panels
     }
 
     private void BuildDock()
@@ -453,7 +453,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
                 : weapons.Food > 0 ? "Ekosistemi koru" : "Bitkini vakumun su moduyla sula";
         }
         objective.text = text;
-        objectiveCard.summary.text = text.Length > 34 ? text.Substring(0, 33) + "…" : text;
+        objectiveCard.summary.text = text; // best fit shrinks long goals instead of cutting them at 34 characters
     }
 
     // ------------------------------------------------------------------ layout
@@ -558,11 +558,12 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool objectiveCompact = sade || objectiveCard.IsCollapsed || narrow;
         float oh = objectiveCompact ? 28f : 52f;
         objectiveCard.root.sizeDelta = new Vector2(objectiveWidth, oh);
-        HudFrame(objectiveCard, false); objectiveCard.title.gameObject.SetActive(false);
+        HudFrame(objectiveCard, true); objectiveCard.rule.gameObject.SetActive(false); objectiveCard.title.gameObject.SetActive(false);
         EcoUI.LayoutIcon(objectiveCard.icon, new Vector2(0f, -3f), 26f);
         PlaceToggle(objectiveCard, new Vector2(-1f, -5f));
         objectiveCard.summary.gameObject.SetActive(objectiveCompact);
-        EcoUI.Layout(objectiveCard.summary, new Vector2(34f, -5f), new Vector2(objectiveWidth - 60f, 22f));
+        objectiveCard.summary.alignment = TextAnchor.MiddleLeft; // next to the quest symbol, not pushed to the far edge
+        EcoUI.Layout(objectiveCard.summary, new Vector2(34f, -3f), new Vector2(objectiveWidth - 60f, 22f));
         objectiveCard.body.gameObject.SetActive(!objectiveCompact);
         EcoUI.Place(objectiveCard.body, new Vector2(34f, -2f), new Vector2(objectiveWidth - 60f, 48f));
         EcoUI.Layout(objective, Vector2.zero, new Vector2(objectiveWidth - 60f, 48f));
