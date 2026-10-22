@@ -347,7 +347,10 @@ public static class EcoUI
     {
         var source = target.GetComponent<TooltipSource>();
         if (source == null) source = target.AddComponent<TooltipSource>();
+        if (source.text == text) return;
         source.text = text;
+        // A slot reused for another purpose (tool belt → build menu) must not keep showing its old tip under the pointer.
+        if (ReferenceEquals(tooltipOwner, source)) ShowTooltip(source, text);
     }
 
     // ------------------------------------------------------------------ collapsible card
@@ -444,6 +447,7 @@ public static class EcoUI
         private void LateUpdate()
         {
             if (tooltip == null || !tooltip.gameObject.activeSelf || Mouse.current == null) return;
+            if (!Cursor.visible) { HideTooltip(null); return; } // an idle, hidden pointer leaves no floating tip behind
             float scale = Scale(canvas); canvas.scaleFactor = scale;
             Vector2 mouse = Mouse.current.position.ReadValue() / scale;
             float w = canvas.pixelRect.width / scale, h = canvas.pixelRect.height / scale;

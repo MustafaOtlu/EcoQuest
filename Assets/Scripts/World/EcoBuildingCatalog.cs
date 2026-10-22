@@ -25,6 +25,21 @@ public static class EcoBuildingCatalog
         new Entry("farm", "Tarla", "Farm", 2, 4, 1),
         new Entry("hydro", "Küçük hidroelektrik", "Hydro", 60, 30, 1)
     };
+    /// <summary>One-line purpose shown on the build slot tooltip.</summary>
+    public static string Purpose(string id) => id switch
+    {
+        "solar" => "Gündüz elektrik üretir; bulutta ve gece düşer.",
+        "wind" => "Rüzgâr güçlüyken çok elektrik üretir; geniş alan ister.",
+        "battery" => "Fazla elektriği saklar, kesintide ağı besler.",
+        "charger" => "Ağdan aldığı elektrikle araç bataryanı doldurur.",
+        "intake" => "Göl ya da sudan su çeker; elektrik ister.",
+        "purifier" => "Kirli suyu temizler; boru ile pompa ve depoya bağlanır.",
+        "tank" => "Arıtılmış suyu saklar; yanında E ile vakuma temiz su doldurursun.",
+        "recycling" => "Atığı metal, plastik ve gübreye çevirir.",
+        "farm" => "Tohum ekilen tarla; sulanınca ürün verir.",
+        "hydro" => "Doğal akan suda sürekli elektrik üretir; balık geçidi var.",
+        _ => "",
+    };
     public static int Limit(int index, int level) => int.MaxValue;
     public static GameObject CreateInstance(int index, Vector3 position, Quaternion rotation)
     {

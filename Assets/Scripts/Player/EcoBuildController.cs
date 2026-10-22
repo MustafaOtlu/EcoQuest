@@ -32,6 +32,16 @@ public sealed class EcoBuildController : MonoBehaviour
         return i < CableIndex ? EcoBuildingCatalog.Entries[i].Metal + "M " + EcoBuildingCatalog.Entries[i].Plastic + "P" + (EcoDiscoveries.CanBuild(EcoBuildingCatalog.Entries[i].Id) ? "" : " • kilitli")
             : i == CableIndex ? "1M + 1P / m" : i == PipeIndex ? "2P / m" : "";
     }
+    public string SlotTip(int slot)
+    {
+        int i = Page * 5 + slot;
+        if (i == CableIndex) return "Kablo: üretici, batarya ve tüketiciyi aynı elektrik ağına bağlar. 1M + 1P / m.";
+        if (i == PipeIndex) return "Su borusu: pompa, arıtma ve depoyu bağlar; " + EcoKeys.Tag(EcoKeys.Action.Mode) + " temiz/kirli su. 2P / m.";
+        if (i >= CableIndex) return "";
+        var entry = EcoBuildingCatalog.Entries[i];
+        return entry.Name + ": " + EcoBuildingCatalog.Purpose(entry.Id) + " " + entry.Metal + "M " + entry.Plastic + "P."
+            + (EcoDiscoveries.CanBuild(entry.Id) ? "" : " Kilitli: " + EcoDiscoveries.UnlockReason(entry.Id));
+    }
     public void NextPage() => Select(((Page + 1) % PageCount) * 5);
     public void TogglePipeFluid() { PipeFluid = PipeFluid == EcoWaterNode.Fluid.Dirty ? EcoWaterNode.Fluid.Clean : EcoWaterNode.Fluid.Dirty; pipeStart = null; }
 

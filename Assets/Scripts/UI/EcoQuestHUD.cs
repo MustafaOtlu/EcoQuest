@@ -205,19 +205,17 @@ public sealed class EcoQuestHUD : MonoBehaviour
             slotTitles[i] = EcoUI.Label("Title", slotRects[i], ToolNames[i], 12, TextAnchor.MiddleCenter, EcoUI.Ink, true);
             slotCounts[i] = EcoUI.Label("Count", slotRects[i], "", 12, TextAnchor.MiddleCenter, EcoUI.PaperInk);
         }
-        var modeBackground = EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), Color.clear, false);
-        modeBackground.enabled = false; modePanel = modeBackground.rectTransform;
+        // Mode line and interaction hint sit on paper like the world captions; outlined text over grass and roads was hard to read.
+        var modeBackground = EcoUI.Dress(EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), EcoUI.Surface, false), false);
+        modePanel = modeBackground.rectTransform;
         modeIcon = EcoUI.Icon("Mode icon", modePanel, "tool_vacuum", new Vector2(0, 1), new Vector2(0, 1), 24f);
         mode = EcoUI.Label("Active tool", modePanel, "", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
-        FloatingText(mode);
         FitOneLine(mode, 16);
         instructions = EcoUI.Label("Controls", modePanel, "", 13, TextAnchor.MiddleRight, EcoUI.Muted);
-        FloatingText(instructions);
         FitOneLine(instructions, 13);
         contextBg = EcoUI.Dress(EcoUI.Panel("Context", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false));
         contextPanel = contextBg.rectTransform;
-        context = EcoUI.Label("Interaction", contextPanel, "", 17, TextAnchor.MiddleCenter, EcoUI.Ink);
-        contextBg.enabled = false; FloatingText(context);
+        context = EcoUI.Label("Interaction", contextPanel, "", 16, TextAnchor.MiddleCenter, EcoUI.Ink);
         feedbackBg = EcoUI.Dress(EcoUI.Panel("Feedback", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false));
         feedbackPanel = feedbackBg.rectTransform;
         feedback = EcoUI.Label("Notice", feedbackPanel, "", 16, TextAnchor.MiddleCenter, EcoUI.Accent, true);
@@ -337,6 +335,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         {
             if (building && i >= BuilderSlotCount) continue;
             slotTitles[i].text = building ? weapons.Builder.SlotName(i) : ToolNames[i];
+            EcoUI.AddTooltip(slotBg[i].gameObject, building ? weapons.Builder.SlotTip(i) : ToolTips[i]);
             if (building) { slotCounts[i].text = weapons.Builder.SlotCost(i); EcoUI.SetIcon(slotIcon[i], BuildIcon(weapons.Builder.Page * BuilderSlotCount + i)); }
             else if (toolIcons == null || i >= toolIcons.Length || toolIcons[i] == null) EcoUI.SetIcon(slotIcon[i], ToolIcons[i]);
         }
@@ -348,6 +347,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             context.text = weapons.Builder.Status;
         }
         SetVisible(contextBg, context, !string.IsNullOrEmpty(context.text) && EcoUI.Mode != EcoUI.HudMode.Hidden);
+        FitContext();
         var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
         feedback.text = weapons.ChargingStation != null
             ? (chargerPower != null && chargerPower.DeliveredPower > 0f ? "Araç bataryası şarj oluyor…" : "Şarj bağlı · Elektrik bekleniyor…")
@@ -367,6 +367,22 @@ public sealed class EcoQuestHUD : MonoBehaviour
     {
         text.horizontalOverflow = HorizontalWrapMode.Wrap; text.resizeTextForBestFit = true;
         text.resizeTextMaxSize = size * EcoUI.RasterScale; text.resizeTextMinSize = 10 * EcoUI.RasterScale;
+    }
+
+    private float contextMaxWidth = 460f, contextBottom;
+    private string contextFitFor;
+
+    // The hint card hugs its text: a one-line "[E] Hasat et" no longer sits in a 460×68 box.
+    private void FitContext()
+    {
+        if (context == null || context.text == contextFitFor) return;
+        contextFitFor = context.text;
+        float width = Mathf.Min(contextMaxWidth, context.preferredWidth / EcoUI.RasterScale + 36f);
+        EcoUI.Layout(context, new Vector2(14f, -6f), new Vector2(width - 28f, 60f));
+        float textHeight = Mathf.Clamp(context.preferredHeight / EcoUI.RasterScale, 20f, 60f);
+        EcoUI.Layout(context, new Vector2(14f, -6f), new Vector2(width - 28f, textHeight));
+        float panelHeight = textHeight + 12f;
+        EcoUI.Place(contextPanel, new Vector2(0f, contextBottom + panelHeight * 0.5f), new Vector2(width, panelHeight));
     }
 
     private static void FloatingText(Text text)
@@ -591,8 +607,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
         DockTop = hidden ? margin : margin + slotHeight + 12f + modeHeight;
 
         float contextWidth = Mathf.Min(460f, width - 2f * margin);
-        EcoUI.Place(contextPanel, new Vector2(0f, -height * 0.5f + DockTop + 44f), new Vector2(contextWidth, 68f));
-        EcoUI.Layout(context, new Vector2(8f, -4f), new Vector2(contextWidth - 16f, 60f));
+        contextMaxWidth = contextWidth; contextBottom = -height * 0.5f + DockTop + 10f; contextFitFor = null;
+        FitContext();
         float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
         feedbackTop = objectiveTop + oh + 10f;
         ObjectiveBottomPixels = hidden ? 0f : (objectiveTop + oh) * uiScale;

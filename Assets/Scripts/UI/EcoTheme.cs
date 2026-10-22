@@ -98,12 +98,28 @@ public static class EcoTheme
         if (sprite != null) GUI.DrawTexture(rect, sprite.texture, ScaleMode.ScaleToFit, true);
     }
     /// <summary>A themed button with an icon on its left.</summary>
+    private static GUIStyle iconButtonLabel, iconButtonSource;
     public static bool IconButton(Rect rect, string text, string icon, GUIStyle style = null)
     {
         Init();
-        bool pressed = GUI.Button(rect, "        " + text, style ?? button);
+        style = style ?? button;
+        // Padding the label with spaces let centred text slide under the icon on narrow buttons; keep them in separate lanes.
+        bool pressed = GUI.Button(rect, GUIContent.none, style);
         float s = Mathf.Min(26f, rect.height - 10f);
         Icon(new Rect(rect.x + 12, rect.y + (rect.height - s) * .5f, s, s), icon);
+        if (iconButtonLabel == null || iconButtonSource != style)
+        {
+            iconButtonSource = style;
+            // Built from a plain label: copying the button style and clearing its backgrounds also stripped the button skin.
+            iconButtonLabel = new GUIStyle(GUI.skin.label)
+            {
+                font = style.font, fontSize = style.fontSize, fontStyle = style.fontStyle, alignment = TextAnchor.MiddleCenter,
+                padding = new RectOffset(0, 0, 0, 0), wordWrap = false, clipping = TextClipping.Clip,
+            };
+            iconButtonLabel.normal.textColor = style.normal.textColor;
+        }
+        float textX = rect.x + 12 + s + 6;
+        GUI.Label(new Rect(textX, rect.y, rect.xMax - textX - 8, rect.height), text, iconButtonLabel);
         return pressed;
     }
     /// <summary>Themed 0..1 slider: pale sage track, forest fill and a clear handle.</summary>
