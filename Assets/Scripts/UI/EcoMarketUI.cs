@@ -24,6 +24,7 @@ public sealed class EcoMarketUI : MonoBehaviour
     private Font font;
     private enum Page { Shop, Upgrades, Support }
     private Page page;
+    private readonly Button[] tabs = new Button[3];
     private float refreshAt;
     private CursorLockMode previousLock;
 
@@ -67,6 +68,14 @@ public sealed class EcoMarketUI : MonoBehaviour
     private void ShowPage(Page target)
     {
         page = target;
+        // The open tab reads as pressed-in and bold; the others stay lighter so the current page is obvious.
+        for (int t = 0; t < tabs.Length; t++)
+        {
+            if (tabs[t] == null) continue;
+            bool selected = t == (int)target;
+            tabs[t].targetGraphic.color = selected ? new Color(0.78f, 0.86f, 0.62f) : new Color(1f, 1f, 1f, 0.72f);
+            var label = tabs[t].GetComponentInChildren<Text>(); label.fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
+        }
         if (content != null) { content.SetActive(false); Destroy(content); }
         content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(20, -158), new Vector2(920, 460), Color.clear).gameObject;
         int count = Mathf.Min(CardCount, MaxCards);
@@ -151,9 +160,9 @@ public sealed class EcoMarketUI : MonoBehaviour
         TextAt(window, "EKO MARKET", new Vector2(76, -27), new Vector2(600, 34), 28);
         wallet = TextAt(window, "", new Vector2(26, -67), new Vector2(908, 28), 17);
         wallet.resizeTextForBestFit = true; wallet.resizeTextMaxSize = 17 * 4; wallet.resizeTextMinSize = 14 * 4;
-        ButtonAt(window, "Alışveriş", new Vector2(26, -108), new Vector2(180, 34), () => ShowPage(false));
-        ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(218, -108), new Vector2(240, 34), () => ShowPage(true));
-        ButtonAt(window, "Destek ve atölye", new Vector2(470, -108), new Vector2(200, 34), () => ShowPage(Page.Support));
+        tabs[(int)Page.Shop] = ButtonAt(window, "Alışveriş", new Vector2(26, -108), new Vector2(180, 34), () => ShowPage(false));
+        tabs[(int)Page.Upgrades] = ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(218, -108), new Vector2(240, 34), () => ShowPage(true));
+        tabs[(int)Page.Support] = ButtonAt(window, "Destek ve atölye", new Vector2(470, -108), new Vector2(200, 34), () => ShowPage(Page.Support));
         ButtonAt(window, "Kapat [Esc]", new Vector2(790, -27), new Vector2(144, 34), Close);
         notice = TextAt(window, "", new Vector2(26, -621), new Vector2(908, 27), 16);
         notice.resizeTextForBestFit = true; notice.resizeTextMaxSize = 16 * 4; notice.resizeTextMinSize = 12 * 4;
