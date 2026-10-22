@@ -49,7 +49,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private int lastWidth, lastHeight;
     private float laidOutVitalsBottom = -1f;
     private float laidOutDockWidth = -1f, laidOutDockTop = -1f;
-    private bool dirty = true, compactEnvironmentLayout, bannerFits = true;
+    private bool dirty = true, bannerFits = true;
     private EcoUI.HudMode lastMode;
     private float refreshAt, regionScanAt, bannerUntil, startTime, mapRefreshAt;
     private readonly List<EcoRegion> regions = new List<EcoRegion>();
@@ -300,8 +300,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             EcoUI.SetIcon(envCard.icon, info != null ? EcoIcons.Region(info.kind, current.waterPollution > 35f) : "region_city");
             float health = shown[5];
             envCard.summary.text = StateName(health) + " · " + Mathf.RoundToInt(health) + "%";
-            envCard.summary.color = compactEnvironmentLayout
-                ? EcoUI.PaperInk : EcoUI.OnPaper(EcoUI.GoodColor(health / 100f));
+            envCard.summary.color = EcoUI.OnPaper(EcoUI.GoodColor(health / 100f));
         }
         else { envCard.title.text = "BÖLGE DIŞI"; envCard.summary.text = ""; }
     }
@@ -1030,22 +1029,22 @@ public sealed class EcoWorldHUD : MonoBehaviour
         laidOutDockWidth = EcoQuestHUD.DockWidth; laidOutDockTop = EcoQuestHUD.DockTop;
         envCard.SetVisible(!hidden);
         bool compactEnvironment = envCard.IsCollapsed || sade || narrow;
-        compactEnvironmentLayout = compactEnvironment;
         float envBody = sade ? 0f : 7 * 29f + 8f;
         envCard.Layout(new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 10f)), leftWidth, envBody, sade);
-        envCard.background.enabled = !compactEnvironment;
+        // The two-line region badge keeps its paper too; floating light text was lost over snow and bright grass.
+        envCard.background.enabled = true;
         envCard.body.gameObject.SetActive(!compactEnvironment);
-        envCard.title.color = compactEnvironment ? EcoUI.PaperInk : EcoUI.Accent;
-        envCard.summary.color = compactEnvironment ? EcoUI.PaperInk : EcoUI.Ink;
-        SetFloatingText(envCard.title, compactEnvironment);
-        SetFloatingText(envCard.summary, compactEnvironment);
+        envCard.title.color = EcoUI.Accent;
+        envCard.summary.color = EcoUI.Ink;
+        SetFloatingText(envCard.title, false);
+        SetFloatingText(envCard.summary, false);
         if (compactEnvironment)
         {
             float badgeWidth = leftWidth;
-            EcoUI.Place(envCard.root, new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 8f)), new Vector2(badgeWidth, 44f));
-            EcoUI.LayoutIcon(envCard.icon, new Vector2(2f, -5f), 30f);
-            EcoUI.Layout(envCard.title, new Vector2(42f, -2f), new Vector2(badgeWidth - 72f, 20f));
-            EcoUI.Layout(envCard.summary, new Vector2(42f, -22f), new Vector2(badgeWidth - 72f, 18f));
+            EcoUI.Place(envCard.root, new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 8f)), new Vector2(badgeWidth, 50f));
+            EcoUI.LayoutIcon(envCard.icon, new Vector2(10f, -10f), 28f);
+            EcoUI.Layout(envCard.title, new Vector2(46f, -6f), new Vector2(badgeWidth - 80f, 20f));
+            EcoUI.Layout(envCard.summary, new Vector2(46f, -25f), new Vector2(badgeWidth - 80f, 18f));
             envCard.summary.resizeTextForBestFit = false;
             envCard.summary.alignment = TextAnchor.MiddleLeft;
             envCard.title.resizeTextForBestFit = true;
@@ -1053,7 +1052,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             envCard.title.resizeTextMaxSize = 13 * EcoUI.RasterScale;
             envCard.summary.gameObject.SetActive(true);
             envCard.rule.gameObject.SetActive(false);
-            ((RectTransform)envCard.toggle.transform).anchoredPosition = new Vector2(-2f, -7f);
+            ((RectTransform)envCard.toggle.transform).anchoredPosition = new Vector2(-6f, -10f);
         }
         for (int i = 0; i < 7; i++)
         {

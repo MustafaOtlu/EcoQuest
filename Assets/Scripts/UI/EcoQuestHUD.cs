@@ -149,8 +149,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         for (int i = 0; i < 3; i++)
         {
             resourceQuickIcons[i] = EcoUI.Icon("Resource icon " + i, resourceQuick, Chips[i].icon, new Vector2(0, 1), new Vector2(0, 1), 22f);
-            resourceQuickCounts[i] = EcoUI.Label("Resource count " + i, resourceQuick, "0", 14, TextAnchor.MiddleLeft, EcoUI.PaperInk, true);
-            FloatingText(resourceQuickCounts[i]);
+            resourceQuickCounts[i] = EcoUI.Label("Resource count " + i, resourceQuick, "0", 14, TextAnchor.MiddleLeft, EcoUI.Ink, true);
             EcoUI.AddTooltip(resourceQuickIcons[i].gameObject, Chips[i].tip);
             resourceQuickIcons[i].raycastTarget = true;
         }
@@ -533,15 +532,16 @@ public sealed class EcoQuestHUD : MonoBehaviour
         resourcesCard.icon.gameObject.SetActive(!resourceCompact);
         resourcesCard.summary.gameObject.SetActive(false);
         resourceQuick.gameObject.SetActive(resourceCompact);
-        HudFrame(resourcesCard, !resourceCompact);
+        HudFrame(resourcesCard, true); // compact too: the metal · plastic · food strip floated over the world
+        if (resourceCompact) resourcesCard.rule.gameObject.SetActive(false);
         PlaceToggle(resourcesCard, new Vector2(-3f, -6f));
         if (resourceCompact)
         {
             resourcesCard.body.gameObject.SetActive(false);
-            resourcesCard.root.sizeDelta = new Vector2(rightWidth, 30f);
+            resourcesCard.root.sizeDelta = new Vector2(rightWidth, 34f);
         }
         resourceQuick.anchorMin = resourceQuick.anchorMax = Vector2.one; resourceQuick.pivot = Vector2.one;
-        EcoUI.Place(resourceQuick, new Vector2(-28f, -2f), new Vector2(204f, 28f));
+        EcoUI.Place(resourceQuick, new Vector2(-34f, -4f), new Vector2(204f, 28f));
         for (int i = 0; i < 3; i++)
         {
             EcoUI.LayoutIcon(resourceQuickIcons[i], new Vector2(i * 68f, -3f), 22f);
