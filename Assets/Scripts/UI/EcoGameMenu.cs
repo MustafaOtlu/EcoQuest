@@ -4,11 +4,12 @@ using UnityEngine.InputSystem;
 // GDD §13/§14: title screen at start (new game / continue / slots / settings) and the pause menu with the same
 // screens. The shared clock (EcoUIFlow) freezes the world while a menu is open. Settings cover UI scale, colour-blind
 // palette, shake/blur, hold-or-toggle tool button, audio buses and key rebinding.
+[DefaultExecutionOrder(-60)] // reads Esc before PlayerController toggles pause
 public sealed class EcoGameMenu : MonoBehaviour
 {
     private enum Screen_ { Pause, Main, Slots, Settings, Keys }
     private Screen_ screen = Screen_.Pause;
-    private Screen_ back = Screen_.Pause;
+    private Screen_ back = Screen_.Pause, root = Screen_.Pause;
     private bool opened;
     private EcoWorldSave.SlotInfo[] slots = new EcoWorldSave.SlotInfo[0];
     private float nextSlotScan;
@@ -26,6 +27,18 @@ public sealed class EcoGameMenu : MonoBehaviour
     {
         if (opened) return; opened = true;
         screen = Screen_.Main; PlayerController.SetPaused(true);
+    }
+
+    // Esc steps back one screen (Settings/Slots/Keys → where they were opened from). On the title screen it does nothing:
+    // previously it unpaused straight into an unchosen world, skipping "Yeni oyun" / "Devam et".
+    private void Update()
+    {
+        var keyboard = Keyboard.current;
+        if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame || !PlayerController.Paused || EcoUIFlow.EscapeConsumed) return;
+        if (EcoSurvey.Current != null && EcoSurvey.Current.IsOpen) return;
+        if (screen == Screen_.Keys && listening >= 0) { listening = -1; EcoUIFlow.ConsumeEscape(); return; }
+        if (screen == Screen_.Slots || screen == Screen_.Settings || screen == Screen_.Keys) { Back(); EcoUIFlow.ConsumeEscape(); }
+        else if (screen == Screen_.Main) EcoUIFlow.ConsumeEscape();
     }
 
     private void OnGUI()
@@ -77,7 +90,7 @@ public sealed class EcoGameMenu : MonoBehaviour
                         GUI.enabled = true;
                     }
                 }
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) { screen = back; scroll = Vector2.zero; }
+                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) Back();
                 break;
             case Screen_.Settings:
             {
@@ -104,13 +117,13 @@ public sealed class EcoGameMenu : MonoBehaviour
                 if (EcoTheme.IconButton(new Rect(0f, 236f + audioHeight + 10f, cw, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
                 GUI.Label(new Rect(0f, 236f + audioHeight + 56f, cw, 26f), "F3: performans göstergesi", EcoTheme.Muted);
                 GUI.EndScrollView();
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) { screen = back; scroll = Vector2.zero; }
+                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) Back();
                 break;
             }
             case Screen_.Keys:
                 DrawKeys(x, y - 20f, w, r.height - 215f);
                 if (GUI.Button(new Rect(x, r.yMax - 70f, w * 0.5f - 6f, 40f), "Varsayılana dön", EcoTheme.Button)) EcoKeys.ResetAll();
-                if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; { screen = back; scroll = Vector2.zero; } }
+                if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; Back(); }
                 break;
         }
         EcoTheme.End();
@@ -141,5 +154,16 @@ public sealed class EcoGameMenu : MonoBehaviour
         bool click = GUI.Button(rect, (value ? "✓ " : "✗ ") + label, EcoTheme.Button);
         GUI.color = previous; return click ? !value : value;
     }
-    private void Go(Screen_ target, Screen_ from) { back = from; screen = target; nextSlotScan = 0f; scroll = Vector2.zero; }
+    private void Go(Screen_ target, Screen_ from)
+    {
+        if (from == Screen_.Main || from == Screen_.Pause) root = from;
+        back = from; screen = target; nextSlotScan = 0f; scroll = Vector2.zero;
+    }
+    // Keys sits under Settings; leaving it must restore Settings' own way back, or Settings' "Geri" returned to itself.
+    private void Back()
+    {
+        listening = -1; scroll = Vector2.zero;
+        if (screen == Screen_.Keys) { screen = Screen_.Settings; back = root; }
+        else screen = back;
+    }
 }
