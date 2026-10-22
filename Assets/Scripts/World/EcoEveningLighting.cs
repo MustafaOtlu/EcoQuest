@@ -177,6 +177,23 @@ public sealed class EcoEveningLighting : MonoBehaviour
             else if (modernHouse && meshFilter != null && meshFilter.sharedMesh != null) AddHouseWindows(renderer, meshFilter);
             else if (lamp) AddStreetLamp(renderer, meshFilter);
         }
+        if (scope == null) AddWorkLights();
+    }
+
+    // The start field has no street lamps; the market and charging stations carry a work light so the first
+    // stops of the game stay readable after dark (also player-built chargers, found on later discovery passes).
+    private void AddWorkLights()
+    {
+        foreach (var market in FindObjectsByType<EcoMarket>(FindObjectsSortMode.None)) AddWorkLight(market.transform);
+        foreach (var charger in FindObjectsByType<EcoChargingStation>(FindObjectsSortMode.None)) AddWorkLight(charger.transform);
+    }
+
+    private void AddWorkLight(Transform target)
+    {
+        if (target.gameObject.scene != gameObject.scene || !seen.Add(target.GetInstanceID())) return;
+        float top = target.position.y + 2f;
+        foreach (var r in target.GetComponentsInChildren<Renderer>()) top = Mathf.Max(top, r.bounds.max.y);
+        AddLight(target, target.position + Vector3.up * (top - target.position.y + 1.2f), true, 9f, 9f);
     }
 
     private Material GlowMaterial()
