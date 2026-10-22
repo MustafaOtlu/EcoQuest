@@ -27,7 +27,7 @@ public sealed class EcoPerf : MonoBehaviour
         if (Time.unscaledTime < nextLog) return;
         nextLog = Time.unscaledTime + 1f; Compute();
         line = "FPS " + AverageFps.ToString("0") + " • alt %1 " + Low1PercentFps.ToString("0") + " • bellek " + (GC.GetTotalMemory(false) / 1048576f).ToString("0") + " MB • yapı "
-            + FindObjectsByType<EcoStructure>(FindObjectsSortMode.None).Length + " • düşman " + FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None).Length;
+            + FindObjectsByType<EcoStructure>(FindObjectsSortMode.None).Length + " • tehdit " + FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None).Length;
         if (show && Time.unscaledTime >= nextAppend) { nextAppend = Time.unscaledTime + 10f; Append(); }
     }
 

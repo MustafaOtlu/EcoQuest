@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 64 64">
+<title>EcoQuest — el feneri</title>
+<g stroke="#25382F" stroke-width="2.5" stroke-linejoin="round">
+<rect x="7" y="25" width="27" height="16" rx="4" fill="#598666"/>
+<path d="M31 25L42 19L48 20L48 44L42 45L31 41Z" fill="#719080"/>
+<ellipse cx="48" cy="32" rx="7" ry="13" fill="#F3D98E"/>
+<ellipse cx="49" cy="32" rx="3" ry="8" fill="#FFF7D2" stroke="none"/>
+<path d="M13 26V40M19 26V40" stroke="#3D6049" stroke-width="2"/>
+<path d="M25 26V40" stroke="#91B294" stroke-width="1.5"/>
+<path d="M57 14L60 10M59 32H63M57 50L60 54" stroke="#C7A652" stroke-linecap="round"/>
+</g></svg>

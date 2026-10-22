@@ -137,7 +137,7 @@ public sealed class EcoEnemySpawnZone : MonoBehaviour
         }
         return false;
     }
-    public string Describe() => "Düşmanlar " + AliveCount + "/" + zoneLimit + " • Bugün " + SpawnedToday + "/" + dailyBudget
+    public string Describe() => "Çevresel tehditler " + AliveCount + "/" + zoneLimit + " • Bugün " + SpawnedToday + "/" + dailyBudget
         + "\n" + (Mathf.Max(region.airPollution, region.waterPollution, region.soilPollution, region.carbon) <= pollutionThreshold
-            ? "Temiz bölge: yeni düşman oluşmuyor." : "Kirli hava: Duman/Asit • kirli toprak: Teneke/Asit • karbon: Alev • kirli göl: Salya");
+            ? "Temiz bölge: yeni çevresel tehdit oluşmuyor." : "Kirli hava: Duman/Asit • kirli toprak: Teneke/Asit • karbon: Alev • kirli göl: Salya");
 }

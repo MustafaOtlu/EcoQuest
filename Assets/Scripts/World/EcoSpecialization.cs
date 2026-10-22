@@ -43,6 +43,7 @@ public sealed class EcoSpecialization : MonoBehaviour
 
     private PlayerWeaponSystem weapons;
     private bool open;
+    private Vector2 panelScroll;
     private float nextScan;
     private int appliedWater, appliedRecycle, appliedGrowth;
     private readonly HashSet<int> seenWater = new HashSet<int>(), seenRecycle = new HashSet<int>(), seenGrowth = new HashSet<int>();
@@ -126,25 +127,36 @@ public sealed class EcoSpecialization : MonoBehaviour
         // While closed, the HUD's skills button carries a badge when rights are available.
         if (!open) return;
         EcoTheme.Begin();
-        var r = EcoTheme.Window(680f, 430f, "UZMANLIK", "Her 40 kalıcı YEP bir hak verir. Kalan hak: " + Points + " · Dokuz kademenin hepsi açılabilir.", "ui_skills");
+        var r = EcoTheme.Window(680f, 650f, "UZMANLIK", "Her 40 kalıcı YEP bir hak verir. Kalan hak: " + Points + " · Dokuz kademenin hepsi açılabilir.", "ui_skills", 48);
+        if (EcoTheme.CloseButton(r)) SetOpen(false);
+        var viewport = new Rect(r.x + 32, r.y + 114, r.width - 64, r.height - 204);
+        float width = viewport.width - 22, total = 0;
+        for (int i = 0; i < 3; i++)
+            total += 106 + Mathf.Max(38, EcoTheme.Muted.CalcHeight(new GUIContent(Info[i]), width - 100)) + 12;
+        panelScroll.x = 0;
+        panelScroll = GUI.BeginScrollView(viewport, panelScroll, new Rect(0, 0, width, total - 12), false, true);
+        float y = 0;
         for (int i = 0; i < 3; i++)
         {
-            float y = r.y + 104f + i * 92f;
-            GUI.Box(new Rect(r.x + 24f, y, r.width - 48f, 82f), "", EcoTheme.Card);
-            EcoTheme.Icon(new Rect(r.x + 38f, y + 14f, 54f, 54f), Icons[i]);
-            GUI.Label(new Rect(r.x + 106f, y + 8f, 180f, 28f), Names[i], EcoTheme.Subtitle);
+            float descriptionHeight = Mathf.Max(38, EcoTheme.Muted.CalcHeight(new GUIContent(Info[i]), width - 100));
+            float height = 106 + descriptionHeight;
+            GUI.Box(new Rect(0, y, width, height), GUIContent.none, EcoTheme.Card);
+            EcoTheme.Icon(new Rect(24, y + 24, 36, 36), Icons[i]);
+            GUI.Label(new Rect(76, y + 22, width - 268, 28), Names[i], EcoTheme.Subtitle);
             for (int k = 0; k < MaxRank; k++)
             {
-                var prev = GUI.color; GUI.color = k < ranks[i] ? EcoSettings.Good : new Color(1f, 1f, 1f, 0.18f);
-                GUI.DrawTexture(new Rect(r.x + 230f + k * 26f, y + 15f, 18f, 18f), Texture2D.whiteTexture);
+                var prev = GUI.color; GUI.color = k < ranks[i] ? EcoSettings.Good : EcoUI.Track;
+                GUI.DrawTexture(new Rect(76 + k * 26f, y + 56, 18, 18), Texture2D.whiteTexture);
                 GUI.color = prev;
             }
-            GUI.Label(new Rect(r.x + 106f, y + 38f, r.width - 330f, 40f), Info[i], EcoTheme.Muted);
+            GUI.Label(new Rect(76, y + 84, width - 100, descriptionHeight), Info[i], EcoTheme.Muted);
             GUI.enabled = Points > 0 && ranks[i] < MaxRank;
-            if (EcoTheme.IconButton(new Rect(r.xMax - 196f, y + 20f, 156f, 42f), ranks[i] >= MaxRank ? "En yüksek" : "Geliştir", ranks[i] >= MaxRank ? "ui_check" : "yep")) TryBuy((Branch)i);
+            if (EcoTheme.IconButton(new Rect(width - 180, y + 22, 156, 40), ranks[i] >= MaxRank ? "En yüksek" : "Geliştir", ranks[i] >= MaxRank ? "ui_check" : "yep")) TryBuy((Branch)i);
             GUI.enabled = true;
+            y += height + 12;
         }
-        if (EcoTheme.IconButton(new Rect(r.x + 24f, r.yMax - 58f, r.width - 48f, 40f), "Kapat  " + EcoKeys.Tag(EcoKeys.Action.Skills) + " / [Esc]", "ui_close")) SetOpen(false);
+        GUI.EndScrollView();
+        if (EcoTheme.IconButton(new Rect(r.x + 32f, r.yMax - 70f, r.width - 64f, 40f), "Kapat  " + EcoKeys.Tag(EcoKeys.Action.Skills) + " / [Esc]", "ui_close")) SetOpen(false);
         EcoTheme.End();
     }
 }

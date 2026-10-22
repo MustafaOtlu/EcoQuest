@@ -14,6 +14,8 @@ public class PlayerController : MonoBehaviour
     public float runSpeed = 7f;
     public float gravity = -9.81f;
     public float turnSpeed = 720f;
+    [Tooltip("Whole-character scale (model, capsule and tool together) so the hero reads clearly from the isometric camera.")]
+    [Range(1f, 2f)] public float characterScale = 1.4f;
     [Header("Legacy camera objects (weapon mount)")]
     public GameObject thirdPersonCamera;
     public GameObject firstPersonCamera;
@@ -46,6 +48,9 @@ public class PlayerController : MonoBehaviour
         path = new NavMeshPath();
         walkSpeed = Mathf.Max(walkSpeed, 4.5f);
         runSpeed = Mathf.Max(runSpeed, 7f);
+        // A bigger body takes longer strides; keep the pace in proportion so the world does not feel slower.
+        transform.localScale = Vector3.one * characterScale;
+        walkSpeed *= Mathf.Sqrt(characterScale); runSpeed *= Mathf.Sqrt(characterScale);
         BuildIsometricCamera();
     }
 
@@ -84,7 +89,7 @@ public class PlayerController : MonoBehaviour
         foreach (var other in FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) if (other.gameObject != go) other.enabled = false; // exactly one listener
         var cam = go.GetComponent<Camera>();
         if (legacy != null) cam.CopyFrom(legacy);
-        cam.orthographic = true; cam.orthographicSize = 10f; cam.nearClipPlane = 0.3f; cam.farClipPlane = 450f;
+        cam.orthographic = true; cam.orthographicSize = EcoIsoCamera.DefaultZoom; cam.nearClipPlane = 0.3f; cam.farClipPlane = 450f;
         cam.enabled = true;
         var data = cam.GetUniversalAdditionalCameraData();
         if (legacy != null)
@@ -268,6 +273,7 @@ public class PlayerController : MonoBehaviour
     private void UpdateWeaponMount()
     {
         if (firstPersonCamera == null) return;
+        if (weapons != null && weapons.holder != null && weapons.holder.IsHandMounted) return;
         Vector3 direction = transform.forward;
         if (!Paused && EcoIsoCamera.TryCursorPoint(transform, out var point))
         {

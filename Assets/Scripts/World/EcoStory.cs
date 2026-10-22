@@ -19,11 +19,6 @@ public sealed class EcoStory : MonoBehaviour
 
     private void Update()
     {
-        if (child != null && Camera.main != null)
-        {
-            var label = child.Find("Label");
-            if (label != null) label.rotation = Camera.main.transform.rotation;
-        }
         if (Time.unscaledTime < nextScan) return;
         nextScan = Time.unscaledTime + 1f;
         if (weapons == null) weapons = FindFirstObjectByType<PlayerWeaponSystem>();
@@ -75,10 +70,14 @@ public sealed class EcoStory : MonoBehaviour
             Part(PrimitiveType.Sphere, new Vector3(0f, 1.18f, 0.03f), new Vector3(0.34f, 0.22f, 0.34f), hair);
         }
         EcoMapMarker.Add(go, "poi_home", "Mahalle çocuğu", "Bakım anları ve günlük sohbetler. Yanına gidip " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile konuş.", EcoMapMarker.Category.Quest, true);
-        var label = new GameObject("Label"); label.transform.SetParent(go.transform, false); label.transform.localPosition = new Vector3(0f, 1.8f, 0f);
-        var mesh = label.AddComponent<TextMesh>(); var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        mesh.font = font; label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-        mesh.text = "MAHALLE ÇOCUĞU\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Konuş"; mesh.anchor = TextAnchor.MiddleCenter; mesh.alignment = TextAlignment.Center; mesh.characterSize = 0.1f; mesh.fontSize = 48; mesh.color = Color.white;
+        var label = new GameObject("Label", typeof(RectTransform), typeof(Canvas), typeof(WorldSpaceLabel));
+        label.transform.SetParent(go.transform, false); label.transform.localPosition = new Vector3(0f, 1.8f, 0f);
+        label.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+        var caption = new GameObject("Caption", typeof(RectTransform), typeof(UnityEngine.UI.Text));
+        caption.transform.SetParent(label.transform, false);
+        var text = caption.GetComponent<UnityEngine.UI.Text>();
+        text.font = EcoUI.Font; text.color = Color.white; text.raycastTarget = false;
+        text.text = "MAHALLE ÇOCUĞU\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Konuş";
         child = go.transform;
     }
 

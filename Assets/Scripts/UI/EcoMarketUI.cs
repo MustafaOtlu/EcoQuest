@@ -68,17 +68,21 @@ public sealed class EcoMarketUI : MonoBehaviour
     {
         page = target;
         if (content != null) { content.SetActive(false); Destroy(content); }
-        content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(20, -148), new Vector2(920, 470), Color.clear).gameObject;
+        content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(20, -158), new Vector2(920, 460), Color.clear).gameObject;
         int count = Mathf.Min(CardCount, MaxCards);
         for (int i = 0; i < count; i++)
         {
             int index = i;
-            var card = Panel("Offer " + i, content.transform, new Vector2(i % Columns * 230, -(i / Columns) * 155), new Vector2(220, 147), new Color(0.12f, 0.2f, 0.17f));
-            IconAt(card, page == Page.Upgrades ? UpgradeIcons[i] : page == Page.Support ? SupportIcons[i] : OfferIcons[i], new Vector2(172, -6), 40f);
-            TextAt(card, page == Page.Upgrades ? EcoEquipmentUpgrades.Names[i] : page == Page.Support ? SupportTitles[i] : EcoMarket.Titles[i], new Vector2(10, -7), new Vector2(160, 27), 17);
-            descriptions[i] = TextAt(card, "", new Vector2(10, -34), new Vector2(202, 46), 13);
-            prices[i] = TextAt(card, "", new Vector2(10, -81), new Vector2(202, 20), 13);
-            buttons[i] = ButtonAt(card, "İşlem", new Vector2(10, -107), new Vector2(200, 30), () =>
+            var card = EcoUI.Dress(Panel("Offer " + i, content.transform, new Vector2(i % Columns * 230, -(i / Columns) * 155), new Vector2(220, 147), EcoUI.SurfaceRaised).GetComponent<Image>()).rectTransform;
+            card.GetComponent<Image>().sprite = EcoUI.CardSprite;
+            IconAt(card, page == Page.Upgrades ? UpgradeIcons[i] : page == Page.Support ? SupportIcons[i] : OfferIcons[i], new Vector2(174, -12), 32f);
+            var heading = TextAt(card, page == Page.Upgrades ? EcoEquipmentUpgrades.Names[i] : page == Page.Support ? SupportTitles[i] : EcoMarket.Titles[i], new Vector2(14, -14), new Vector2(148, 24), 15);
+            heading.resizeTextForBestFit = true; heading.resizeTextMaxSize = 15 * 4; heading.resizeTextMinSize = 12 * 4;
+            descriptions[i] = TextAt(card, "", new Vector2(14, -40), new Vector2(192, 40), 12);
+            prices[i] = TextAt(card, "", new Vector2(14, -81), new Vector2(192, 18), 12);
+            descriptions[i].resizeTextForBestFit = true; descriptions[i].resizeTextMaxSize = 12 * 4; descriptions[i].resizeTextMinSize = 10 * 4;
+            prices[i].resizeTextForBestFit = true; prices[i].resizeTextMaxSize = 12 * 4; prices[i].resizeTextMinSize = 10 * 4;
+            buttons[i] = ButtonAt(card, "İşlem", new Vector2(14, -105), new Vector2(192, 28), () =>
             {
                 if (vendor == null || player == null) return;
                 if (page == Page.Upgrades) vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
@@ -141,17 +145,19 @@ public sealed class EcoMarketUI : MonoBehaviour
         var scaler = canvasRoot.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = 0.5f;
         var shade = Panel("Shade", canvasRoot.transform, Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.65f));
         shade.anchorMin = Vector2.zero; shade.anchorMax = Vector2.one; shade.offsetMin = shade.offsetMax = Vector2.zero;
-        var window = Panel("Market window", canvasRoot.transform, Vector2.zero, new Vector2(960, 720), new Color(0.045f, 0.085f, 0.07f, 1));
+        var window = EcoUI.Dress(Panel("Market window", canvasRoot.transform, Vector2.zero, new Vector2(960, 720), EcoUI.Surface).GetComponent<Image>()).rectTransform;
         window.anchorMin = window.anchorMax = window.pivot = new Vector2(0.5f, 0.5f);
-        IconAt(window, "poi_market", new Vector2(22, -10), 44f);
-        TextAt(window, "EKO MARKET", new Vector2(76, -14), new Vector2(600, 36), 28);
-        wallet = TextAt(window, "", new Vector2(24, -55), new Vector2(906, 31), 17);
-        ButtonAt(window, "Alışveriş", new Vector2(24, -99), new Vector2(180, 35), () => ShowPage(false));
-        ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(216, -99), new Vector2(240, 35), () => ShowPage(true));
-        ButtonAt(window, "Destek ve atölye", new Vector2(468, -99), new Vector2(200, 35), () => ShowPage(Page.Support));
-        ButtonAt(window, "Kapat [Esc]", new Vector2(790, -15), new Vector2(145, 35), Close);
-        notice = TextAt(window, "", new Vector2(24, -618), new Vector2(908, 38), 17);
-        TextAt(window, "Geliştirmeler YEP harcamaz; her kademe ilgili kapasite/erişim/hızı tabana göre %15 artırır.\n2. kademe 2 tamamlanmış proje, 3. kademe 4 proje ister. Güçlü araç daha çok elektrik kullanır.", new Vector2(24, -667), new Vector2(908, 43), 14);
+        IconAt(window, "poi_market", new Vector2(26, -25), 38f);
+        TextAt(window, "EKO MARKET", new Vector2(76, -27), new Vector2(600, 34), 28);
+        wallet = TextAt(window, "", new Vector2(26, -67), new Vector2(908, 28), 17);
+        wallet.resizeTextForBestFit = true; wallet.resizeTextMaxSize = 17 * 4; wallet.resizeTextMinSize = 14 * 4;
+        ButtonAt(window, "Alışveriş", new Vector2(26, -108), new Vector2(180, 34), () => ShowPage(false));
+        ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(218, -108), new Vector2(240, 34), () => ShowPage(true));
+        ButtonAt(window, "Destek ve atölye", new Vector2(470, -108), new Vector2(200, 34), () => ShowPage(Page.Support));
+        ButtonAt(window, "Kapat [Esc]", new Vector2(790, -27), new Vector2(144, 34), Close);
+        notice = TextAt(window, "", new Vector2(26, -621), new Vector2(908, 27), 16);
+        notice.resizeTextForBestFit = true; notice.resizeTextMaxSize = 16 * 4; notice.resizeTextMinSize = 12 * 4;
+        TextAt(window, "Geliştirmeler YEP harcamaz; her kademe ilgili kapasite/erişim/hızı tabana göre %15 artırır.\n2. kademe 2 tamamlanmış proje, 3. kademe 4 proje ister. Güçlü araç daha çok elektrik kullanır.", new Vector2(26, -656), new Vector2(908, 40), 14);
     }
     private void Refresh()
     {
@@ -211,14 +217,20 @@ public sealed class EcoMarketUI : MonoBehaviour
     {
         var go = new GameObject("Text", typeof(RectTransform), typeof(Text)); var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false);
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = position; rect.sizeDelta = size * 4; rect.localScale = Vector3.one * 0.25f;
-        var label = go.GetComponent<Text>(); label.font = font; label.fontSize = fontSize * 4; label.color = new Color(0.94f, 0.95f, 0.86f); label.text = value; label.raycastTarget = false;
+        var label = go.GetComponent<Text>(); label.font = font; label.fontSize = fontSize * 4; label.color = EcoUI.Ink; label.text = value; label.raycastTarget = false;
         label.alignment = TextAnchor.MiddleLeft; return label;
     }
     private Button ButtonAt(Transform parent, string value, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
     {
-        var rect = Panel(value, parent, position, size, new Color(0.2f, 0.43f, 0.29f));
+        var rect = Panel(value, parent, position, size, Color.white);
+        var background = rect.GetComponent<Image>(); background.sprite = EcoUI.SelectedSprite; background.type = Image.Type.Sliced;
         var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = rect.GetComponent<Image>(); button.onClick.AddListener(action);
-        var label = TextAt(rect, value, Vector2.zero, size, 15); label.alignment = TextAnchor.MiddleCenter; return button;
+        var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.14f, 1.14f, 1.14f);
+        colors.pressedColor = new Color(0.85f, 0.85f, 0.85f); colors.disabledColor = new Color(0.68f, 0.68f, 0.68f); button.colors = colors;
+        var label = TextAt(rect, value, new Vector2(8f, -3f), new Vector2(size.x - 16f, size.y - 6f), 15);
+        label.alignment = TextAnchor.MiddleCenter; label.color = EcoUI.Ink;
+        label.resizeTextForBestFit = true; label.resizeTextMaxSize = 15 * 4; label.resizeTextMinSize = 10 * 4;
+        return button;
     }
     private void OnDisable() { Close(); if (current == this) { current = null; waitForRelease = false; } }
 }

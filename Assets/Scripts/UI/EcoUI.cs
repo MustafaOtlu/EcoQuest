@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -11,24 +12,27 @@ using UnityEngine.UI;
 public static class EcoUI
 {
     public const int RasterScale = 2;
-    public static readonly Color Surface = new Color(0.035f, 0.075f, 0.09f, 0.92f);
-    public static readonly Color SurfaceHeader = new Color(0.06f, 0.13f, 0.15f, 0.96f);
-    public static readonly Color SurfaceRaised = new Color(0.09f, 0.17f, 0.19f, 0.96f);
-    public static readonly Color Ink = new Color(0.94f, 0.97f, 0.95f);
-    public static readonly Color Muted = new Color(0.67f, 0.77f, 0.77f);
-    public static readonly Color Accent = new Color(0.43f, 0.91f, 0.66f);
-    public static readonly Color Amber = new Color(1f, 0.79f, 0.31f);
-    public static readonly Color Sky = new Color(0.36f, 0.77f, 1f);
-    public static readonly Color Coral = new Color(0.94f, 0.42f, 0.36f);
-    public static readonly Color Track = new Color(0.15f, 0.22f, 0.24f, 1f);
-    public static readonly Color Selected = new Color(0.10f, 0.42f, 0.30f, 0.98f);
+    public static readonly Color Surface = new Color(0.957f, 0.937f, 0.875f);
+    public static readonly Color SurfaceHeader = new Color(0.91f, 0.92f, 0.84f);
+    public static readonly Color SurfaceRaised = new Color(0.91f, 0.91f, 0.843f);
+    public static readonly Color Ink = new Color(0.149f, 0.231f, 0.184f);
+    public static readonly Color PaperInk = new Color(0.98f, 0.97f, 0.91f);
+    public static readonly Color Muted = new Color(0.36f, 0.42f, 0.35f);
+    public static readonly Color Accent = new Color(0.18f, 0.396f, 0.267f);
+    public static readonly Color Amber = new Color(0.64f, 0.43f, 0.10f);
+    public static readonly Color Sky = new Color(0.20f, 0.44f, 0.53f);
+    public static readonly Color Coral = new Color(0.66f, 0.28f, 0.20f);
+    public static readonly Color Track = new Color(0.76f, 0.80f, 0.69f);
+    public static readonly Color Selected = new Color(0.184f, 0.345f, 0.259f);
 
     private static Font font;
     private static Sprite rounded, circle;
+    private static readonly List<RectTransform> worldLabelObstacles = new List<RectTransform>();
+    private static readonly Vector3[] obstacleCorners = new Vector3[4];
     public static Font Font => font != null ? font : font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { tooltip = null; tooltipText = null; tooltipOwner = null; hudMode = -1; }
+    private static void ResetStatics() { tooltip = null; tooltipText = null; tooltipOwner = null; hudMode = -1; worldLabelObstacles.Clear(); }
 
     // ------------------------------------------------------------------ layout state
 
@@ -42,14 +46,67 @@ public static class EcoUI
     }
     public static string ModeName => Mode == HudMode.Full ? "Tam" : Mode == HudMode.Compact ? "Sade" : "Gizli";
     public static void CycleMode() => Mode = (HudMode)(((int)Mode + 1) % 3);
-    public static bool Collapsed(string card) => PlayerPrefs.GetInt("EcoQuest.card." + card, 0) == 1;
+    public static bool Collapsed(string card) => PlayerPrefs.GetInt("EcoQuest.card." + card,
+        card == "environment" || card == "resources" ? 1 : 0) == 1;
     public static void SetCollapsed(string card, bool value) { PlayerPrefs.SetInt("EcoQuest.card." + card, value ? 1 : 0); PlayerPrefs.Save(); LayoutChanged?.Invoke(); }
 
     /// <summary>Canvas scale shared by every HUD layer (resolution fit × the player's UI scale setting).</summary>
     public static float Scale(Canvas canvas)
     {
         float w = Mathf.Max(1f, canvas.pixelRect.width), h = Mathf.Max(1f, canvas.pixelRect.height);
-        return Mathf.Clamp(Mathf.Min(w / 1600f, h / 900f), 0.75f, 1.5f) * EcoSettings.UIScale;
+        float requested = Mathf.Clamp(Mathf.Min(w / 1600f, h / 900f), 0.75f, 1.5f) * EcoSettings.UIScale;
+        float maximumFit = Mathf.Min(w / 1000f, h / 620f);
+        return Mathf.Max(0.5f, Mathf.Min(requested, maximumFit));
+    }
+
+    /// <summary>Reserve an individual HUD panel so map captions can avoid its visible screen area.</summary>
+    public static void RegisterWorldLabelObstacle(RectTransform rect)
+    {
+        if (rect != null && !worldLabelObstacles.Contains(rect)) worldLabelObstacles.Add(rect);
+    }
+
+    /// <summary>Append visible panel bounds in screen pixels, without reserving their entire canvas.</summary>
+    public static void AppendWorldLabelObstacles(List<Rect> output)
+    {
+        if (output == null) return;
+        for (int i = worldLabelObstacles.Count - 1; i >= 0; i--)
+        {
+            var panel = worldLabelObstacles[i];
+            if (panel == null) { worldLabelObstacles.RemoveAt(i); continue; }
+            if (!panel.gameObject.activeInHierarchy) continue;
+            var canvas = panel.GetComponentInParent<Canvas>();
+            if (canvas == null || !canvas.isActiveAndEnabled) continue;
+            var root = canvas.rootCanvas;
+            if (root == null || !root.isActiveAndEnabled || root.transform == panel) continue;
+            bool visible = true;
+            float alpha = 1f;
+            for (Transform ancestor = panel; ancestor != null; ancestor = ancestor.parent)
+            {
+                var group = ancestor.GetComponent<CanvasGroup>();
+                if (group != null && group.isActiveAndEnabled) alpha *= group.alpha;
+                if (alpha < 0.01f) { visible = false; break; }
+            }
+            if (!visible) continue;
+            var camera = root.renderMode == RenderMode.ScreenSpaceOverlay ? null : root.worldCamera;
+            if (camera == null && root.renderMode != RenderMode.ScreenSpaceOverlay) camera = Camera.main;
+            panel.GetWorldCorners(obstacleCorners);
+            float left = float.PositiveInfinity, bottom = float.PositiveInfinity;
+            float right = float.NegativeInfinity, top = float.NegativeInfinity;
+            bool inFront = camera == null;
+            for (int corner = 0; corner < obstacleCorners.Length; corner++)
+            {
+                Vector3 screen = camera != null ? camera.WorldToScreenPoint(obstacleCorners[corner])
+                    : (Vector3)RectTransformUtility.WorldToScreenPoint(null, obstacleCorners[corner]);
+                if (camera != null && screen.z > camera.nearClipPlane) inFront = true;
+                left = Mathf.Min(left, screen.x); right = Mathf.Max(right, screen.x);
+                bottom = Mathf.Min(bottom, screen.y); top = Mathf.Max(top, screen.y);
+            }
+            if (!inFront) continue;
+            Rect viewport = root.pixelRect;
+            left = Mathf.Max(left, viewport.xMin); right = Mathf.Min(right, viewport.xMax);
+            bottom = Mathf.Max(bottom, viewport.yMin); top = Mathf.Min(top, viewport.yMax);
+            if (right > left && top > bottom) output.Add(UnityEngine.Rect.MinMaxRect(left, bottom, right, top));
+        }
     }
 
     /// <summary>Owner token for HUD-made panels (controls sheet) so they do not count as foreign modal windows.</summary>
@@ -103,6 +160,68 @@ public static class EcoUI
         tex.SetPixels32(pixels); tex.Apply();
         float border = Mathf.Min(r, s / 2 - 1);
         return Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(border, border, border, border));
+    }
+
+    // ------------------------------------------------------------------ field notes skin
+    // Kenney UI Pack Adventure (CC0), with editable SVG sources in Assets/Art/UI/Adventure.
+    // Both uGUI and IMGUI share the illustrated wood, metal and paper frames.
+    private static Texture2D paperTexture, cardTexture, buttonTexture, buttonHoverTexture, selectedTexture, borderTexture;
+    private static Sprite paperSprite, cardSprite, selectedSprite, borderSprite;
+    private static Texture2D portraitTexture, portraitFrameTexture, mapFrameTexture;
+    private static Sprite portraitSprite, portraitFrameSprite, mapFrameSprite;
+    public static Texture2D PanelTexture => SkinTexture(ref paperTexture, "panel_brown_corners_a");
+    public static Texture2D CardTexture => SkinTexture(ref cardTexture, "panel_brown");
+    public static Texture2D ButtonTexture => SkinTexture(ref buttonTexture, "button_brown");
+    public static Texture2D ButtonHoverTexture => SkinTexture(ref buttonHoverTexture, "button_grey");
+    public static Texture2D SelectedTexture => SkinTexture(ref selectedTexture, "panel_brown_dark");
+    public static Sprite PaperSprite => SkinSprite(ref paperSprite, PanelTexture);
+    public static Sprite CardSprite => SkinSprite(ref cardSprite, CardTexture);
+    public static Sprite SelectedSprite => SkinSprite(ref selectedSprite, SelectedTexture);
+    public static Sprite ToolSlotSprite => CardSprite;
+    public static Sprite ActiveToolSlotSprite => SelectedSprite;
+    public static Sprite PortraitSprite => NaturalSprite(ref portraitSprite, ref portraitTexture, "hero_portrait");
+    public static Sprite PortraitFrameSprite => NaturalSprite(ref portraitFrameSprite, ref portraitFrameTexture, "minimap_ring_brown");
+    public static Sprite MapFrameSprite => SkinSprite(ref mapFrameSprite, SkinTexture(ref mapFrameTexture, "panel_border_brown_detail"));
+    // Keep the old accessors for existing scene consumers; they now return paper and a fine keyline.
+    public static Sprite Grain => PaperSprite;
+    public static Sprite Trim => SkinSprite(ref borderSprite, SkinTexture(ref borderTexture, "panel_border_brown_detail"));
+    public static readonly Color StitchColor = new Color(0.40f, 0.49f, 0.35f, 0.32f);
+
+    private static Texture2D SkinTexture(ref Texture2D cached, string name)
+    {
+        if (cached == null) cached = Resources.Load<Texture2D>("EcoUI/Adventure/" + name);
+        return cached != null ? cached : Texture2D.whiteTexture;
+    }
+
+    private static Sprite SkinSprite(ref Sprite cached, Texture2D texture)
+    {
+        if (texture.width < 32 || texture.height < 32) return Rounded;
+        if (cached == null) cached = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f), 200f, 0, SpriteMeshType.FullRect, new Vector4(24, 24, 24, 24));
+        return cached;
+    }
+
+    private static Sprite NaturalSprite(ref Sprite sprite, ref Texture2D texture, string name)
+    {
+        if (sprite != null) return sprite;
+        if (texture == null) texture = Resources.Load<Texture2D>("EcoUI/Adventure/" + name);
+        if (texture == null) return null;
+        return sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    /// <summary>Applies the paper export and a quiet shadow without adding decorative UI over the content.</summary>
+    public static Image Dress(Image image, bool stitch = true)
+    {
+        if (image == null) return image;
+        Color tint = image.color;
+        bool inset = Mathf.Abs(tint.r - SurfaceRaised.r) + Mathf.Abs(tint.g - SurfaceRaised.g) + Mathf.Abs(tint.b - SurfaceRaised.b) < 0.03f;
+        image.sprite = inset ? CardSprite : PaperSprite; image.type = Image.Type.Sliced;
+        image.color = Color.white;
+        if (!image.TryGetComponent<Shadow>(out var shadow)) shadow = image.gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0.08f, 0.13f, 0.08f, 0.18f); shadow.effectDistance = new Vector2(0f, -2f);
+        var oldTrim = image.transform.Find("Trim");
+        if (oldTrim != null) oldTrim.gameObject.SetActive(false);
+        return image;
     }
 
     // ------------------------------------------------------------------ elements
@@ -202,7 +321,7 @@ public static class EcoUI
         bg.rectTransform.sizeDelta = new Vector2(size, size);
         var button = bg.gameObject.AddComponent<Button>();
         var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.25f, 1.25f, 1.25f); colors.pressedColor = new Color(0.8f, 0.8f, 0.8f);
-        colors.colorMultiplier = 1.2f; button.colors = colors; button.targetGraphic = bg;
+        colors.colorMultiplier = 1f; button.colors = colors; button.targetGraphic = bg;
         button.onClick.AddListener(() => onClick?.Invoke());
         var image = Icon("Icon", bg.transform, icon, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), size * 0.68f);
         image.rectTransform.anchoredPosition = Vector2.zero;
@@ -240,7 +359,7 @@ public static class EcoUI
         public const float HeaderHeight = 34f;
         public readonly string key;
         public readonly RectTransform root, body;
-        public readonly Image background, icon, chevron;
+        public readonly Image background, icon, chevron, rule;
         public readonly Text title, summary;
         public readonly Button toggle;
         public bool IsCollapsed => Collapsed(key);
@@ -249,8 +368,10 @@ public static class EcoUI
         public Card(string key, Transform parent, Vector2 anchor, Vector2 pivot, string iconName, string heading, string tip)
         {
             this.key = key;
-            background = Panel("Card " + key, parent, anchor, pivot, Surface);
+            background = Dress(Panel("Card " + key, parent, anchor, pivot, Surface));
             root = background.rectTransform;
+            rule = Panel("Header rule", root, new Vector2(0, 1), new Vector2(0, 1), new Color(StitchColor.r, StitchColor.g, StitchColor.b, 0.22f), false);
+            rule.sprite = null; rule.type = Image.Type.Simple;
             icon = Icon("Icon", root, iconName, new Vector2(0, 1), new Vector2(0, 1), 22f);
             title = Label("Title", root, heading, 13, TextAnchor.MiddleLeft, Accent, true);
             summary = Label("Summary", root, "", 13, TextAnchor.MiddleRight, Ink, true);
@@ -267,13 +388,20 @@ public static class EcoUI
             float height = HeaderHeight + (collapsed ? 0f : bodyHeight);
             Place(root, position, new Vector2(width, height));
             LayoutIcon(icon, new Vector2(10f, -6f), 22f);
-            EcoUI.Layout(title, new Vector2(38f, -8f), new Vector2(width * 0.55f, 18f));
-            EcoUI.Layout(summary, new Vector2(width * 0.4f - 32f, -8f), new Vector2(width * 0.6f - 8f, 18f));
-            summary.gameObject.SetActive(collapsed || showSummaryWhenOpen);
+            bool showSummary = collapsed || showSummaryWhenOpen;
+            // With a summary the title takes only its own width and the summary starts right after it (no overlap).
+            float titleWidth = showSummary ? Mathf.Min(width * 0.55f, title.preferredWidth / RasterScale + 6f) : width - 70f;
+            EcoUI.Layout(title, new Vector2(38f, -8f), new Vector2(titleWidth, 18f));
+            float summaryX = 38f + titleWidth + 8f;
+            EcoUI.Layout(summary, new Vector2(summaryX, -8f), new Vector2(Mathf.Max(20f, width - summaryX - 36f), 18f));
+            summary.resizeTextForBestFit = true; summary.resizeTextMaxSize = 13 * RasterScale; summary.resizeTextMinSize = 9 * RasterScale;
+            summary.gameObject.SetActive(showSummary);
             var tr = (RectTransform)toggle.transform; tr.anchorMin = tr.anchorMax = new Vector2(1, 1); tr.pivot = new Vector2(1, 1);
             tr.anchoredPosition = new Vector2(-6f, -6f);
             SetIcon(chevron, collapsed ? "ui_expand" : "ui_collapse");
             Place(body, new Vector2(0f, -HeaderHeight), new Vector2(width, bodyHeight));
+            Place(rule.rectTransform, new Vector2(12f, -HeaderHeight + 1f), new Vector2(width - 24f, 1f));
+            rule.gameObject.SetActive(!collapsed);
             body.gameObject.SetActive(!collapsed);
             return height;
         }
@@ -288,10 +416,10 @@ public static class EcoUI
         {
             var canvas = CreateCanvas("EcoUI Tooltip", 60, out var scaler);
             canvas.gameObject.AddComponent<TooltipFollower>();
-            var panel = Panel("Tooltip", canvas.transform, Vector2.zero, new Vector2(0, 1), new Color(0.02f, 0.05f, 0.06f, 0.97f), false);
+            var panel = Dress(Panel("Tooltip", canvas.transform, Vector2.zero, new Vector2(0, 1), Surface, false), false);
             tooltip = panel.rectTransform;
             tooltipText = Label("Text", tooltip, "", 14, TextAnchor.UpperLeft, Ink);
-            var outline = panel.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(0.43f, 0.91f, 0.66f, 0.35f); outline.effectDistance = new Vector2(1, -1);
+            var outline = panel.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(0.24f, 0.37f, 0.22f, 0.12f); outline.effectDistance = new Vector2(1, -1);
         }
         tooltipOwner = owner;
         tooltipText.text = text;
@@ -339,4 +467,5 @@ public static class EcoUI
     }
 
     public static string Hex(Color c) => ColorUtility.ToHtmlStringRGB(c);
+    public static Color OnPaper(Color semantic) => Color.Lerp(semantic, Ink, 0.6f);
 }

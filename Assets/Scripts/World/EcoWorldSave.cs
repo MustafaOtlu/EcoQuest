@@ -361,7 +361,9 @@ public sealed class EcoWorldSave : MonoBehaviour
                 EcoSaveIdentity.Ensure(go).Assign(entity.id, entity.initial);
                 var motor = go.GetComponent<CharacterController>(); bool motorEnabled = motor != null && motor.enabled;
                 if (motorEnabled) motor.enabled = false;
-                go.transform.SetPositionAndRotation(entity.position, entity.rotation); go.transform.localScale = entity.scale;
+                go.transform.SetPositionAndRotation(entity.position, entity.rotation);
+                // The player's size is a setting (PlayerController.characterScale), not save data; older saves stored 1.
+                go.transform.localScale = go.TryGetComponent<PlayerController>(out var hero) ? Vector3.one * hero.characterScale : entity.scale;
                 go.SetActive(entity.active);
                 foreach (var state in entity.components ?? Array.Empty<EcoSaveIdentity.State>())
                 {
@@ -567,10 +569,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         var style = EcoTheme.Muted;
         float width = Mathf.Min(420f, EcoTheme.Width - 40f), height = style.CalcHeight(new GUIContent(Status), width - 58f) + 18f;
         var card = new Rect(EcoTheme.Width - width - 16f, EcoTheme.Height - height - 16f, width, height);
-        var prev = GUI.color;
-        GUI.color = new Color(0.035f, 0.08f, 0.075f, 0.92f); GUI.DrawTexture(card, Texture2D.whiteTexture);
-        GUI.color = new Color(0.4f, 0.81f, 0.58f); GUI.DrawTexture(new Rect(card.x, card.y, 4f, card.height), Texture2D.whiteTexture);
-        GUI.color = prev;
+        EcoTheme.Panel(card, false);
         EcoTheme.Icon(new Rect(card.x + 14f, card.y + (card.height - 26f) * 0.5f, 26f, 26f), "calendar");
         GUI.Label(new Rect(card.x + 48f, card.y + 9f, width - 58f, height - 18f), Status, style);
         EcoTheme.End();

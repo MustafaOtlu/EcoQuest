@@ -411,10 +411,8 @@ public sealed class PlantedSeed : MonoBehaviour
 
             if (showUnwatered && unwateredSignText != null)
             {
-                string plantedTitle = kind == EcoCropCatalog.Kind.Tree
-                    ? "AĞAÇ FİDANI EKİLDİ (SULANMADI)"
-                    : EcoCropCatalog.Get(kind).Name.ToUpperInvariant() + " TOHUMU EKİLDİ (SULANMADI)";
-                unwateredSignText.text = plantedTitle + "\nSulamak için: [1] Vakum • Su Modu";
+                string plantedTitle = kind == EcoCropCatalog.Kind.Tree ? "Ağaç fidanı" : EcoCropCatalog.Get(kind).Name;
+                unwateredSignText.text = plantedTitle + " · Su gerekiyor\n[1] Vakum → [Q] Su modu";
             }
         }
 

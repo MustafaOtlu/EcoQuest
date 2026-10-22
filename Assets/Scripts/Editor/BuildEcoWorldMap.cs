@@ -122,7 +122,7 @@ public static class BuildEcoWorldMap
         Defs.Add(new RegionDef { name = "Şehir Merkezi", kind = EcoRegionInfo.Kind.City, center = P(75, 80), size = P(62, 60), project = 4,
             tagline = "Ev, pazar ve meydan. Güvenli hazırlık alanı; çocuklar burada büyüyor.", air = 32, water = 26, soil = 24, carbon = 32,
             temperature = 18f, vegetation = 0.25f, habitat = 0.3f, wind = 0.6f, sun = 0.85f, color = new Color(0.95f, 0.84f, 0.55f),
-            features = new[] { "Ev ve mahalle çocuğu", "Göbekli kavşak ve meydan", "Düşman doğmaz" } });
+            features = new[] { "Ev ve mahalle çocuğu", "Göbekli kavşak ve meydan", "Çevresel tehdit oluşmaz" } });
         Defs.Add(new RegionDef { name = "Sanayi Bölgesi", kind = EcoRegionInfo.Kind.Industry, center = P(128, 80), size = P(44, 60), project = 3,
             tagline = "Filtresiz fabrikalar. Hava ve karbon kirliliğinin ana kaynağı.", air = 66, water = 55, soil = 58, carbon = 58,
             temperature = 19f, vegetation = 0.10f, habitat = 0f, wind = 0.9f, sun = 0.7f, color = new Color(0.90f, 0.48f, 0.38f),
@@ -2376,8 +2376,9 @@ public static class BuildEcoWorldMap
         var sign = Group("Signpost", parent); sign.position = new Vector3(xz.x, GroundY(xz.x, xz.y), xz.y);
         var wood = Mat("SignWood", new Color(0.4f, 0.28f, 0.16f), 0.1f);
         Prim(PrimitiveType.Cylinder, "Post", sign, new Vector3(0f, 1.8f, 0f), new Vector3(0.22f, 1.8f, 0.22f), wood, true);
-        Prim(PrimitiveType.Cube, "Board", sign, new Vector3(0f, 3.2f, 0f), new Vector3(3.6f, 1.5f + lines.Length * 0.15f, 0.12f), Mat("SignBoard", new Color(0.12f, 0.2f, 0.18f), 0.1f));
-        WorldLabel(sign, title + "\n" + string.Join("\n", lines), new Vector3(0f, 3.25f, -0.2f), 0.0042f, 34);
+        var board = Prim(PrimitiveType.Cube, "Board", sign, new Vector3(0f, 3.2f, 0f), new Vector3(3.6f, 1.5f + lines.Length * 0.15f, 0.12f), Mat("SignBoard", new Color(0.12f, 0.2f, 0.18f), 0.1f));
+        var caption = WorldLabel(sign, title + "\n" + string.Join("\n", lines), new Vector3(0f, 3.25f, -0.2f), 0.0042f, 34);
+        caption.GetComponentInParent<WorldSpaceLabel>().BindSignboard(board.transform);
     }
 
     // ---------------------------------------------------------------- base & HUD

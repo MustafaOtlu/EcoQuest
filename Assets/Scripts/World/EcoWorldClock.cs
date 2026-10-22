@@ -45,6 +45,7 @@ public sealed class EcoWorldClock : MonoBehaviour
     public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
     private float originalIntensity, originalAmbient;
     private Quaternion originalRotation;
+    private EcoEveningLighting evening;
     private void OnEnable() => current = null;
     private void OnDisable() { if (current == this) current = null; }
 
@@ -58,15 +59,24 @@ public sealed class EcoWorldClock : MonoBehaviour
         // Enable the atmosphere in gameplay scenes; isolated simulation fixtures stay independent.
         if (Current == this && EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
         { var atmosphere = new GameObject("EcoQuest atmosphere").AddComponent<EcoAtmosphere>(); atmosphere.clock = this; }
+        if (Current == this) EnsureEveningLighting();
     }
     private void Update()
     {
         if (Current != this) return;
+        EnsureEveningLighting();
         if (advanceTime) Simulate(Time.deltaTime);
         if (!driveLighting || sun == null) return;
         sun.intensity = originalIntensity * SolarFactor;
         sun.transform.rotation = Quaternion.LookRotation(-SunDirection);
         RenderSettings.ambientIntensity = Mathf.Lerp(0.2f, originalAmbient, SolarFactor);
+    }
+    private void EnsureEveningLighting()
+    {
+        if (evening != null || FindFirstObjectByType<PlayerController>() == null) return;
+        evening = GetComponent<EcoEveningLighting>();
+        if (evening == null) evening = gameObject.AddComponent<EcoEveningLighting>();
+        evening.clock = this;
     }
     public void Simulate(float seconds)
     {

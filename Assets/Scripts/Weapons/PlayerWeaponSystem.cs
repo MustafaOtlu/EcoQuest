@@ -5,11 +5,13 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(20)]
 public sealed class PlayerWeaponSystem : MonoBehaviour
 {
-    public enum Tool { Vacuum, SeedGun, Recycler, Scanner, Hands }
+    public enum Tool { Vacuum, SeedGun, Recycler, Scanner, Hands, Flashlight }
+    public const int ToolCount = 6;
     public enum VacuumMode { Collect, Disperse, Water }
     public FirstPersonWeaponHolder holder;
     public GameObject[] modelPrefabs = new GameObject[4];
     public Material effectMaterial;
+    public bool FlashlightOn => flashlight != null && flashlight.IsOn;
     public float maximumEnergy = 100f, maximumWater = 100f;
     [field: SerializeField] public Tool Selected { get; private set; }
     [field: SerializeField] public VacuumMode Mode { get; private set; }
@@ -127,14 +129,16 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public void ShowFeedback(string message) => Notify(message);
     public void SpendFraction(float fraction) { Energy = Mathf.Max(0f, Energy - Energy * Mathf.Clamp01(fraction)); Changed?.Invoke(); }
-    private Transform[] models = new Transform[4];
+    private Transform[] models = new Transform[ToolCount];
+    private PlayerFlashlight flashlight;
     private Transform owner;
     private PlayerVitals vitals;
     private Camera view;
     private int aimFrame = -1;
     private Vector3 aimDirection = Vector3.forward;
-    // Isometric aiming: shots start at the character's chest and travel toward the point under the cursor.
-    private Vector3 AimOrigin => owner != null ? owner.position + Vector3.up * 1.15f : transform.position;
+    // Visual effects and swept projectile collision share the actual held tool's muzzle.
+    private Vector3 AimOrigin => holder != null && holder.IsHandMounted && holder.EquippedWeapon != null
+        ? holder.MuzzlePosition : owner != null ? owner.position + Vector3.up * 1.15f : transform.position;
     private Vector3 AimDir { get { RefreshAim(); return aimDirection; } }
     private Vector3 AimRight
     {
@@ -193,13 +197,22 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         models[0] = holder.EquippedWeapon;
         for (int i = 1; i < models.Length; i++)
         {
-            if (modelPrefabs[i] == null) continue;
+            if (i == (int)Tool.Hands || i == (int)Tool.Flashlight || modelPrefabs == null || i >= modelPrefabs.Length || modelPrefabs[i] == null) continue;
             var model = Instantiate(modelPrefabs[i], holder.transform).transform;
             model.localRotation = Quaternion.Euler(-90f, -90f, 0f);
             model.localPosition = Vector3.zero;
             model.localScale = Vector3.one;
             FitModel(model, i == 3 ? 0.25f : i == 2 ? 0.4f : 0.46f);
             models[i] = model; model.gameObject.SetActive(false);
+        }
+        flashlight = PlayerFlashlight.Create(this, holder.transform);
+        models[(int)Tool.Flashlight] = flashlight.transform;
+        if (holder.BindToCharacter(owner.GetComponent<PlayerController>(), this)) holder.Equip(models[0], 0);
+        else
+        {
+            foreach (var model in models) if (model != null) model.gameObject.SetActive(false);
+            Selected = Tool.Hands; holder.Unequip();
+            Debug.LogWarning("Araç tutuşu için karakterin sağ el kemiği bulunamadı.", this);
         }
         var fx = new GameObject("Weapon particles"); fx.transform.SetParent(transform, false);
         streamEffects = fx.AddComponent<WeaponVisualEffects>();
@@ -226,12 +239,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public void SelectTool(int index)
     {
-        if (index == 4)
+        if (index == (int)Tool.Hands)
         {
             Selected = Tool.Hands; holder.Unequip(); ResetProcessing(); Changed?.Invoke(); return;
         }
         if (index < 0 || index >= models.Length || models[index] == null) return;
-        Selected = (Tool)index; holder.Equip(models[index]); ResetProcessing(); Changed?.Invoke();
+        Selected = (Tool)index; holder.Equip(models[index], index); ResetProcessing();
+        if (flashlight != null) flashlight.Refresh(0f);
+        Changed?.Invoke();
     }
     public void CycleMode()
     {
@@ -253,6 +268,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (keyboard.digit3Key.wasPressedThisFrame) SelectTool(2);
             if (keyboard.digit4Key.wasPressedThisFrame) SelectTool(3);
             if (keyboard.digit5Key.wasPressedThisFrame) SelectTool(4);
+            if (keyboard.digit6Key.wasPressedThisFrame) SelectTool((int)Tool.Flashlight);
             if (EcoKeys.Pressed(EcoKeys.Action.Interact)) Interact();
             if (EcoMarketUI.IsOpen) return;
             if (EcoKeys.Pressed(EcoKeys.Action.Mode)) CycleMode();
@@ -267,7 +283,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         // Mouse wheel zooms the isometric camera (GDD §3); it no longer cycles tools.
         // A press/release within one input update is still a shot. Never retain clicks from menus or focus loss.
         bool firing = mouse != null && (EcoKeys.FireHeld(mouse) || mouse.leftButton.wasPressedThisFrame) && !EcoIsoCamera.PointerOverUI();
-        if (firing) Use(Time.deltaTime);
+        if (firing && (Selected != Tool.Flashlight || mouse.leftButton.wasPressedThisFrame)) Use(Time.deltaTime);
         else { processing = null; progress = 0f; if (streamEffects != null) streamEffects.Stop(false); }
         Changed?.Invoke();
     }
@@ -277,6 +293,16 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Builder != null && Builder.IsBuilding) return;
         if (Selected == Tool.Hands) return;
         StopCharging();
+        if (Selected == Tool.Flashlight)
+        {
+            if (flashlight != null)
+            {
+                flashlight.Toggle();
+                if (flashlight.SwitchedOn && Energy <= 0f) Notify("Fener için elektrik yetersiz. Şarj istasyonuna bağlan.");
+                Changed?.Invoke();
+            }
+            return;
+        }
         if (Selected == Tool.Scanner)
         {
             if (Time.time >= nextScan)
@@ -570,7 +596,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             Destroy(ball.GetComponent<Collider>()); ball.GetComponent<Renderer>().sharedMaterial = effectMaterial;
             ball.AddComponent<PlayerMetalProjectile>().Launch(owner, this, AimDir); MetalAmmo--;
         }
-        if (streamEffects != null) streamEffects.Shot(holder.transform.position + AimDir * 0.25f, AimDir, MetalMode);
+        if (streamEffects != null) streamEffects.Shot(AimOrigin, AimDir, MetalMode);
         Energy -= unitCost * count; nextShot = Time.time + 0.5f; // GDD §11: at most two shots per second Changed?.Invoke();
     }
     public bool TryPlant(RaycastHit hit) => TryPlant(hit, SelectedSeed);
@@ -751,16 +777,16 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var flow = Selected == Tool.Recycler ? WeaponVisualEffects.Flow.Recycle
             : Mode == VacuumMode.Water ? WeaponVisualEffects.Flow.Water
             : Mode == VacuumMode.Disperse ? WeaponVisualEffects.Flow.Disperse : WeaponVisualEffects.Flow.Collect;
-        streamEffects.Show(flow, holder.transform.position + AimDir * 0.25f, target, contact, normal, seconds);
+        streamEffects.Show(flow, AimOrigin, target, contact, normal, seconds);
     }
     private void ResetProcessing() { processing = null; progress = 0; if (streamEffects != null) streamEffects.Stop(); }
-    private void OnDisable() { ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
+    private void OnDisable() { if (flashlight != null) flashlight.Suspend(); ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
 
     [Serializable]
     private sealed class SessionData
     {
-        public int version = 2;
-        public int selected, mode; public bool metalMode;
+        public int version = 3;
+        public int selected, mode; public bool metalMode, flashlightOn;
         public int[] produce;
         public float energy, water;
         public bool dirtyWater;
@@ -777,6 +803,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var data = new SessionData
         {
             produce = (int[])cleanProduce.Clone(), selected = (int)Selected, mode = (int)Mode, metalMode = MetalMode,
+            flashlightOn = flashlight == null || flashlight.SwitchedOn,
             energy = Energy, water = Water, metalAmmo = MetalAmmo, seeds = Seeds,
             metal = Metal, plastic = Plastic, rawMetal = CollectedMetalScrap,
             rawPlastic = CollectedPlasticScrap, food = Food, compost = Compost, dirtyWater = dirtyWater,
@@ -823,6 +850,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         dirtyWater = data.dirtyWater;
         ResetProcessing();
         Mode = (VacuumMode)Mathf.Clamp(data.mode, 0, 2); MetalMode = data.metalMode;
-        SelectTool(Mathf.Clamp(data.selected, 0, 4)); Changed?.Invoke(); return true;
+        if (flashlight != null) flashlight.SetSwitch(data.version < 3 || data.flashlightOn);
+        SelectTool(Mathf.Clamp(data.selected, 0, ToolCount - 1)); Changed?.Invoke(); return true;
     }
 }

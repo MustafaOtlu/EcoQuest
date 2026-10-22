@@ -13,9 +13,13 @@ public sealed class EcoIsoCamera : MonoBehaviour
     public static Camera Cam => Current != null ? Current.cam : Camera.main;
 
     public Transform target;
-    public float yaw = 45f, pitch = 55f;
-    // Orthographic half-height in metres: 10 shows the character and a ~20 m working area; the wheel zooms 6–16.
-    public float distance = 10f, minDistance = 6f, maxDistance = 16f;
+    public const float DefaultZoom = 5.5f;
+    public const float MinimumZoom = 4f;
+    public const float MaximumZoom = 10f;
+    public float yaw = 45f, pitch = 50f;
+    // Orthographic half-height: keep the hero readable while retaining room to work around them.
+    public float distance = DefaultZoom, minDistance = MinimumZoom, maxDistance = MaximumZoom;
+    [Min(0.1f)] public float zoomStep = 0.65f;
     public float followSharpness = 9f;
     public float focusHeight = 1.1f;
 
@@ -39,7 +43,17 @@ public sealed class EcoIsoCamera : MonoBehaviour
     {
         Current = this;
         cam = GetComponent<Camera>();
-        wantedDistance = distance;
+        minDistance = Mathf.Max(1f, minDistance);
+        maxDistance = Mathf.Max(minDistance, maxDistance);
+        SetZoom(distance, true);
+    }
+
+    public void SetZoom(float zoom, bool immediate = false)
+    {
+        wantedDistance = Mathf.Clamp(zoom, minDistance, maxDistance);
+        if (!immediate) return;
+        distance = wantedDistance;
+        if (cam != null && cam.orthographic) cam.orthographicSize = distance;
     }
 
     private void OnDestroy()
@@ -57,7 +71,7 @@ public sealed class EcoIsoCamera : MonoBehaviour
         {
             float scroll = mouse.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) > 0.01f)
-                wantedDistance = Mathf.Clamp(wantedDistance - Mathf.Sign(scroll) * 1.5f, minDistance, maxDistance);
+                SetZoom(wantedDistance - Mathf.Sign(scroll) * zoomStep);
         }
         distance = Mathf.Lerp(distance, wantedDistance, 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
 

@@ -17,6 +17,7 @@ public sealed class EcoOrders : MonoBehaviour
     private EcoMarket nearMarket;
     private float nextScan;
     private string message = "";
+    private Vector2 panelScroll;
     private static readonly string[] Clients = { "Mahalle fırını", "Okul mutfağı", "Yaşlılar evi", "Mahalle pazarı" };
     public void Restore(int refreshDay, List<Order> saved)
     { lastRefreshDay = refreshDay; orders.Clear(); if (saved != null) orders.AddRange(saved); }
@@ -75,8 +76,10 @@ public sealed class EcoOrders : MonoBehaviour
     {
         if (!PanelOpen) return;
         EcoTheme.Begin();
-        var rect = EcoTheme.Window(760, 540, "SİPARİŞ PANOSU", "Temiz üretimin mahallede karşılık buluyor.", "ui_orders");
-        GUILayout.BeginArea(new Rect(rect.x + 28, rect.y + 94, rect.width - 56, rect.height - 120));
+        var rect = EcoTheme.Window(760, 540, "SİPARİŞ PANOSU", "Temiz üretimin mahallede karşılık buluyor.", "ui_orders", 48);
+        if (EcoTheme.CloseButton(rect)) Close();
+        GUILayout.BeginArea(new Rect(rect.x + 32, rect.y + 114, rect.width - 64, rect.height - 234));
+        panelScroll = GUILayout.BeginScrollView(panelScroll, false, true);
         GUILayout.Label("Her üç günde iki isteğe bağlı talep • %25 ek karşılık • Süre cezası yok", EcoTheme.Body);
         int day = EcoWorldClock.Current != null ? EcoWorldClock.Current.day : 1;
         GUILayout.Label("Gün " + day + "   |   Sonraki yenileme: " + (lastRefreshDay > 0 ? lastRefreshDay + 3 : 3) + ". gün", EcoTheme.Muted);
@@ -99,8 +102,9 @@ public sealed class EcoOrders : MonoBehaviour
             if (EcoTheme.IconButton(buttonRect, order.delivered ? "TESLİM EDİLDİ" : has ? "Teslim et" : "Ürün yetersiz (" + owned + "/" + order.food + ")", order.delivered ? "ui_check" : has ? "metal" : "poi_warning")) Deliver(order);
             GUI.enabled = true; GUILayout.EndVertical(); GUILayout.Space(12);
         }
-        GUILayout.Label(message, EcoTheme.Muted);
-        if (GUILayout.Button("Kapat [O / Esc]", EcoTheme.Button, GUILayout.Height(40))) Close();
-        GUILayout.EndArea(); EcoTheme.End();
+        GUILayout.EndScrollView(); GUILayout.EndArea();
+        GUI.Label(new Rect(rect.x + 36, rect.yMax - 116, rect.width - 72, 40), message, EcoTheme.Muted);
+        if (GUI.Button(new Rect(rect.x + 32, rect.yMax - 70, rect.width - 64, 40), "Kapat [O / Esc]", EcoTheme.Button)) Close();
+        EcoTheme.End();
     }
 }

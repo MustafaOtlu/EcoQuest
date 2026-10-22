@@ -149,7 +149,7 @@ public sealed class EcoFinale : MonoBehaviour
     {
         EnemyBrain template = null;
         foreach (var e in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None)) if (e != null && e.State != EnemyBrain.Behaviour.Dead) { template = e; break; }
-        if (template == null) { Say("Final varlığı için şablon düşman bulunamadı; zafer verilmedi. Haritayı yeniden kur.", 8f); return; }
+        if (template == null) { Say("Final varlığı için çevresel tehdit şablonu bulunamadı; zafer verilmedi. Haritayı yeniden kur.", 8f); return; }
         EcoWorldSave.Current?.SaveBeforeFinale(); // pre-final snapshot; saving is deferred while the fight runs
         readiness = level; Phase = 0; airTransferred = false;
         encounter = new GameObject("Finale encounter (temporary)").transform;
@@ -297,12 +297,12 @@ public sealed class EcoFinale : MonoBehaviour
 
     private void OnGUI()
     {
-        if (EcoUI.ForeignWindowOpen && !Fighting) { CardBottomPixels = 0f; return; }
+        if (EcoUI.ForeignWindowOpen || EcoWorldHUD.MapOpen) { CardBottomPixels = 0f; return; }
         EcoTheme.Begin();
         if (big == null)
         {
             big = new GUIStyle(EcoTheme.Subtitle) { alignment = TextAnchor.MiddleCenter };
-            small = new GUIStyle(EcoTheme.Muted) { alignment = TextAnchor.MiddleLeft, wordWrap = false, clipping = TextClipping.Clip };
+            small = new GUIStyle(EcoTheme.Muted) { alignment = TextAnchor.MiddleLeft, wordWrap = true, clipping = TextClipping.Clip };
         }
         float pixels = Screen.width / Mathf.Max(1f, EcoTheme.Width); // theme units -> screen pixels
         float w = EcoTheme.Width, y = EcoQuestHUD.ObjectiveBottomPixels / pixels + 10f, cardBottom = 0f;
@@ -314,11 +314,11 @@ public sealed class EcoFinale : MonoBehaviour
         if (Event.current.type == EventType.Repaint) CardBottomPixels = cardBottom * pixels;
         if (Time.unscaledTime <= messageUntil && message.Length > 0 && !(EcoSurvey.Current != null && EcoSurvey.Current.IsOpen))
         {
-            float mw = Mathf.Min(720f, w - 40f), mh = big.CalcHeight(new GUIContent(message), mw - 40f) + 22f;
+            float mw = Mathf.Min(720f, w - 40f), mh = big.CalcHeight(new GUIContent(message), mw - 48f) + 44f;
             var rect = new Rect((w - mw) * 0.5f, Mathf.Max(y, EcoTheme.Height * 0.16f), mw, mh);
-            Fill(rect, new Color(0.035f, 0.08f, 0.075f, 0.92f));
-            Fill(new Rect(rect.x, rect.y, 4f, rect.height), Fighting ? EcoSettings.Bad : new Color(0.4f, 0.81f, 0.58f));
-            GUI.Label(new Rect(rect.x + 20f, rect.y + 11f, rect.width - 40f, rect.height - 22f), message, big);
+            EcoTheme.Panel(rect);
+            if (Fighting) Fill(new Rect(rect.x + 24f, rect.yMax - 18f, rect.width - 48f, 2f), EcoSettings.Bad);
+            GUI.Label(new Rect(rect.x + 24f, rect.y + 22f, rect.width - 48f, rect.height - 44f), message, big);
         }
         EcoTheme.End();
     }
@@ -327,18 +327,21 @@ public sealed class EcoFinale : MonoBehaviour
     private float DrawFightCard(float w, float y)
     {
         float cw = Mathf.Min(560f, w - 40f);
-        var card = new Rect((w - cw) * 0.5f, y, cw, 132f);
-        Fill(card, new Color(0.035f, 0.08f, 0.075f, 0.92f));
-        EcoTheme.Icon(new Rect(card.x + 14f, card.y + 10f, 30f, 30f), "poi_enemy");
-        GUI.Label(new Rect(card.x + 52f, card.y + 10f, 220f, 30f), "İklim Canavarı", EcoTheme.Subtitle);
+        var focus = Phase <= 2 ? foci[Phase] : null;
+        string focusText = focus != null ? "FAZ " + (Phase + 1) + "/3 · " + focus.Goal : "";
+        float goalHeight = focus != null ? Mathf.Max(24f, small.CalcHeight(new GUIContent(focusText), cw - 48f)) : 0f;
+        var card = new Rect((w - cw) * 0.5f, y, cw, focus != null ? 164f + goalHeight : 136f);
+        EcoTheme.Panel(card);
+        EcoTheme.Icon(new Rect(card.x + 22f, card.y + 24f, 30f, 30f), "poi_enemy");
+        GUI.Label(new Rect(card.x + 62f, card.y + 22f, 174f, 30f), "İklim Canavarı", EcoTheme.Subtitle);
         float health = boss != null && boss.State != EnemyBrain.Behaviour.Dead ? Mathf.Clamp01(boss.Health / boss.maximumHealth) : 0f;
-        var bar = new Rect(card.x + 240f, card.y + 20f, card.width - 254f, 10f);
-        Fill(bar, new Color(1f, 1f, 1f, 0.08f)); Fill(new Rect(bar.x, bar.y, bar.width * health, bar.height), EcoSettings.Bad);
-        GUI.Label(new Rect(bar.x, bar.y + 10f, bar.width, 20f), health > 0f ? "baskı · yenmek zorunlu değil" : "geri dönüyor…", small);
-        float pip = (card.width - 28f) / 3f;
+        var bar = new Rect(card.x + 248f, card.y + 30f, card.width - 272f, 10f);
+        Fill(bar, EcoUI.Track); Fill(new Rect(bar.x, bar.y, bar.width * health, bar.height), EcoSettings.Bad);
+        GUI.Label(new Rect(bar.x, bar.y + 16f, bar.width, 30f), health > 0f ? "baskı · yenmek zorunlu değil" : "geri dönüyor…", small);
+        float pip = (card.width - 64f) / 3f;
         for (int i = 0; i < 3; i++)
         {
-            var r = new Rect(card.x + 14f + i * pip, card.y + 52f, pip - 8f, 30f);
+            var r = new Rect(card.x + 24f + i * (pip + 8f), card.y + 82f, pip, 32f);
             bool done = i < Phase, now = i == Phase;
             Color c = done ? new Color(0.25f, 0.9f, 0.45f) : now ? EcoFinaleFocus.ColorOf(i) : new Color(0.3f, 0.34f, 0.4f);
             Fill(r, new Color(c.r, c.g, c.b, now ? 0.28f : 0.14f));
@@ -346,12 +349,11 @@ public sealed class EcoFinale : MonoBehaviour
             EcoTheme.Icon(new Rect(r.x + 6f, r.y + 4f, 22f, 22f), done ? "ui_check" : EcoFinaleFocus.Icons[i]);
             GUI.Label(new Rect(r.x + 34f, r.y + 3f, r.width - 38f, 24f), EcoFinaleFocus.NameOf(i), small);
         }
-        if (Phase <= 2 && foci[Phase] != null)
+        if (focus != null)
         {
-            var focus = foci[Phase];
-            var p = new Rect(card.x + 14f, card.y + 92f, card.width - 28f, 8f);
-            Fill(p, new Color(1f, 1f, 1f, 0.08f)); Fill(new Rect(p.x, p.y, p.width * Mathf.Clamp01(focus.Progress), p.height), EcoFinaleFocus.ColorOf(Phase));
-            GUI.Label(new Rect(p.x, p.y + 10f, p.width, 22f), "FAZ " + (Phase + 1) + "/3 · " + focus.Goal, small);
+            var p = new Rect(card.x + 24f, card.y + 126f, card.width - 48f, 8f);
+            Fill(p, EcoUI.Track); Fill(new Rect(p.x, p.y, p.width * Mathf.Clamp01(focus.Progress), p.height), EcoFinaleFocus.ColorOf(Phase));
+            GUI.Label(new Rect(p.x, p.y + 16f, p.width, goalHeight), focusText, small);
         }
         return card.yMax;
     }
@@ -360,23 +362,33 @@ public sealed class EcoFinale : MonoBehaviour
     private float DrawReadyCard(float w, float y, EcoProjects projects)
     {
         float cw = Mathf.Min(520f, w - 40f);
-        var card = new Rect((w - cw) * 0.5f, y, cw, 150f);
-        Fill(card, new Color(0.035f, 0.08f, 0.075f, 0.92f));
-        Fill(new Rect(card.x, card.y, 4f, card.height), new Color(0.4f, 0.81f, 0.58f));
-        EcoTheme.Icon(new Rect(card.x + 16f, card.y + 10f, 30f, 30f), "poi_finale");
-        GUI.Label(new Rect(card.x + 54f, card.y + 10f, card.width - 70f, 30f), "Final terminali · " + EcoKeys.Tag(EcoKeys.Action.Finale) + " başlat", EcoTheme.Subtitle);
-        Row(card, 0, "level", "Hazırlık %" + Mathf.RoundToInt(projects.Readiness * 100f) + " / %50", projects.Readiness >= MinimumReadiness);
-        Row(card, 1, "electricity", "Terminal " + TerminalEnergy.ToString("0") + "/40 EB · " + TerminalWater.ToString("0") + "/30 SB  (" + EcoKeys.Tag(EcoKeys.Action.Interact) + " yükle)", TerminalEnergy >= 40f && TerminalWater >= 30f);
-        Row(card, 2, "ammo", "Araç " + weapons.Energy.ToString("0") + "/40 EB · " + weapons.Water.ToString("0") + "/15 SB · " + weapons.MetalAmmo + "/5 top", weapons.Energy >= 40f && weapons.Water >= 15f && weapons.MetalAmmo >= 5);
+        string heading = "Final terminali · " + EcoKeys.Tag(EcoKeys.Action.Finale) + " başlat";
+        string readiness = "Hazırlık %" + Mathf.RoundToInt(projects.Readiness * 100f) + " / %50";
+        string reserves = "Terminal " + TerminalEnergy.ToString("0") + "/40 EB · " + TerminalWater.ToString("0") + "/30 SB  (" + EcoKeys.Tag(EcoKeys.Action.Interact) + " yükle)";
+        string vehicle = "Araç " + weapons.Energy.ToString("0") + "/40 EB · " + weapons.Water.ToString("0") + "/15 SB · " + weapons.MetalAmmo + "/5 top";
+        float headingHeight = Mathf.Max(30f, EcoTheme.Subtitle.CalcHeight(new GUIContent(heading), cw - 84f));
+        float start = 22f + headingHeight + 12f;
+        float height = start + ReadyRowHeight(cw, readiness) + ReadyRowHeight(cw, reserves) + ReadyRowHeight(cw, vehicle) + 16f + 22f;
+        var card = new Rect((w - cw) * 0.5f, y, cw, height);
+        EcoTheme.Panel(card);
+        EcoTheme.Icon(new Rect(card.x + 22f, card.y + 24f, 30f, 30f), "poi_finale");
+        GUI.Label(new Rect(card.x + 62f, card.y + 22f, card.width - 84f, headingHeight), heading, EcoTheme.Subtitle);
+        start = Row(card, start, "level", readiness, projects.Readiness >= MinimumReadiness);
+        start = Row(card, start, "electricity", reserves, TerminalEnergy >= 40f && TerminalWater >= 30f);
+        Row(card, start, "ammo", vehicle, weapons.Energy >= 40f && weapons.Water >= 15f && weapons.MetalAmmo >= 5);
         return card.yMax;
     }
 
-    private void Row(Rect card, int index, string icon, string text, bool ok)
+    private float ReadyRowHeight(float width, string text)
+        => Mathf.Max(26f, small.CalcHeight(new GUIContent(text), width - 112f));
+
+    private float Row(Rect card, float offset, string icon, string text, bool ok)
     {
-        float y = card.y + 50f + index * 32f;
-        EcoTheme.Icon(new Rect(card.x + 18f, y + 3f, 22f, 22f), icon);
-        GUI.Label(new Rect(card.x + 50f, y + 2f, card.width - 96f, 26f), text, small);
-        EcoTheme.Icon(new Rect(card.xMax - 38f, y + 3f, 22f, 22f), ok ? "ui_check" : "ui_cross");
+        float y = card.y + offset, height = ReadyRowHeight(card.width, text);
+        EcoTheme.Icon(new Rect(card.x + 24f, y + 2f, 22f, 22f), icon);
+        GUI.Label(new Rect(card.x + 60f, y, card.width - 112f, height), text, small);
+        EcoTheme.Icon(new Rect(card.xMax - 46f, y + 2f, 22f, 22f), ok ? "ui_check" : "ui_cross");
+        return offset + height + 8f;
     }
 
     private static void Fill(Rect rect, Color color)

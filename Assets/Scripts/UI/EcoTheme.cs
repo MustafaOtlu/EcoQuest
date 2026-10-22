@@ -3,8 +3,9 @@ using UnityEngine;
 // Shared, resolution-independent UI. Text renders at the screen scale, never into a small texture.
 public static class EcoTheme
 {
-    private static Texture2D backdrop, card, green;
-    private static GUIStyle title, body, muted, button, subtitle, cardStyle, thumb;
+    private static Texture2D backdrop, card, green, cardSkin, buttonSkin, buttonHover;
+    private static GUIStyle title, body, muted, button, subtitle, cardStyle, thumb, windowSkin, panelSkin, fittedHeading;
+    private static readonly GUIContent measuredText = new GUIContent();
     private static Matrix4x4 previous;
     public static float Width { get; private set; }
     public static float Height { get; private set; }
@@ -23,24 +24,73 @@ public static class EcoTheme
     public static void End() { GUI.matrix=previous; GUI.color=Color.white; GUI.enabled=true; }
     public static Rect Window(float width, float height, string heading, string description)
     {
-        GUI.color=new Color(0,0,0,.62f); GUI.DrawTexture(new Rect(0,0,Width,Height),Texture2D.whiteTexture); GUI.color=Color.white;
+        Init();
+        GUI.color=new Color(.075f,.12f,.09f,.48f); GUI.DrawTexture(new Rect(0,0,Width,Height),Texture2D.whiteTexture); GUI.color=Color.white;
         width=Mathf.Min(width,Width-30); height=Mathf.Min(height,Height-30);
         var rect=new Rect((Width-width)*.5f,(Height-height)*.5f,width,height);
-        GUI.DrawTexture(rect,backdrop);
-        GUI.DrawTexture(new Rect(rect.x,rect.y,5,rect.height),green);
-        GUI.Label(new Rect(rect.x+28,rect.y+18,rect.width-56,34),heading,title);
-        GUI.Label(new Rect(rect.x+28,rect.y+54,rect.width-56,30),description,muted);
+        // Paper, a small chapter mark and a fine rule keep the notebook layout quiet around the content.
+        GUI.color=new Color(0,0,0,.18f); GUI.Box(new Rect(rect.x+2,rect.y+5,rect.width,rect.height),GUIContent.none,windowSkin); GUI.color=Color.white;
+        GUI.Box(rect,GUIContent.none,windowSkin);
+        var rule = EcoUI.Muted; rule.a = .22f;
+        Line(new Rect(rect.x+40,rect.y+97,rect.width-80,1f),rule);
+        Heading(new Rect(rect.x+40,rect.y+29,rect.width-80,34),heading);
+        Description(new Rect(rect.x+40,rect.y+64,rect.width-80,30),description);
         return rect;
     }
     /// <summary>Window with an icon beside the heading (icon names from Resources/EcoIcons).</summary>
-    public static Rect Window(float width, float height, string heading, string description, string icon)
+    public static Rect Window(float width, float height, string heading, string description, string icon, float trailingHeaderSpace = 0f)
     {
         var rect = Window(width, height, "", "");
-        Icon(new Rect(rect.x + 24, rect.y + 18, 40, 40), icon);
-        GUI.Label(new Rect(rect.x + 74, rect.y + 18, rect.width - 102, 34), heading, title);
-        GUI.Label(new Rect(rect.x + 74, rect.y + 54, rect.width - 102, 30), description, muted);
+        Icon(new Rect(rect.x + 36, rect.y + 30, 34, 34), icon);
+        Heading(new Rect(rect.x + 82, rect.y + 29, Mathf.Max(40f, rect.width - 122 - trailingHeaderSpace), 34), heading);
+        Description(new Rect(rect.x + 82, rect.y + 64, rect.width - 122, 30), description);
         return rect;
     }
+
+    public static bool CloseButton(Rect window)
+    {
+        var rect = new Rect(window.xMax - 66f, window.y + 30f, 30f, 30f);
+        bool close = GUI.Button(rect, GUIContent.none, Button);
+        Icon(new Rect(rect.x + 4f, rect.y + 4f, 22f, 22f), "ui_close");
+        return close;
+    }
+
+    private static void Heading(Rect rect, string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        if (fittedHeading == null) fittedHeading = new GUIStyle(title);
+        measuredText.text = text;
+        fittedHeading.fontSize = title.fontSize;
+        while (fittedHeading.fontSize > 17 && fittedHeading.CalcSize(measuredText).x > rect.width)
+            fittedHeading.fontSize--;
+        GUI.Label(rect, measuredText, fittedHeading);
+    }
+
+    private static void Description(Rect rect, string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        measuredText.text = text;
+        int originalSize = muted.fontSize;
+        while (muted.fontSize > 12 && muted.CalcHeight(measuredText, rect.width) > rect.height) muted.fontSize--;
+        GUI.Label(rect, measuredText, muted);
+        muted.fontSize = originalSize;
+    }
+    /// <summary>A paper card for finale panels and notices, with an optional continuous margin rule.</summary>
+    public static void Panel(Rect rect, bool stitch = true)
+    {
+        Init();
+        GUI.color=new Color(0,0,0,.16f); GUI.Box(new Rect(rect.x+1,rect.y+3,rect.width,rect.height),GUIContent.none,panelSkin); GUI.color=Color.white;
+        GUI.Box(rect,GUIContent.none,panelSkin);
+        if (stitch) StitchedEdge(new Rect(rect.x+5,rect.y+5,rect.width-10,rect.height-10));
+    }
+    /// <summary>Legacy entry point: draws a quiet, continuous margin line instead of a stitched border.</summary>
+    public static void StitchedEdge(Rect r)
+    {
+        if (r.width <= 16f || r.height <= 0f) return;
+        var rule = EcoUI.Muted; rule.a = .16f;
+        Line(new Rect(r.x+8f,r.yMax-1f,r.width-16f,1f),rule);
+    }
+    private static void Line(Rect r, Color c) { var prev=GUI.color; GUI.color=c; GUI.DrawTexture(r,Texture2D.whiteTexture); GUI.color=prev; }
     /// <summary>Draws a hand-drawn icon; does nothing when the icon is missing.</summary>
     public static void Icon(Rect rect, string icon)
     {
@@ -56,7 +106,7 @@ public static class EcoTheme
         Icon(new Rect(rect.x + 12, rect.y + (rect.height - s) * .5f, s, s), icon);
         return pressed;
     }
-    /// <summary>Themed 0..1 slider: dark track, green fill and a light thumb (replaces the default grey skin).</summary>
+    /// <summary>Themed 0..1 slider: pale sage track, forest fill and a clear handle.</summary>
     public static float Slider(Rect rect, float value)
     {
         Init();
@@ -66,18 +116,40 @@ public static class EcoTheme
         return GUI.HorizontalSlider(rect, value, 0f, 1f, GUIStyle.none, thumb);
     }
     private static Texture2D Swatch(Color color) { var t=new Texture2D(1,1);t.SetPixel(0,0,color);t.Apply();return t; }
+    private static void TextColors(GUIStyle style, Color color)
+    {
+        style.normal.textColor = style.hover.textColor = style.focused.textColor = style.active.textColor = color;
+        style.onNormal.textColor = style.onHover.textColor = style.onFocused.textColor = style.onActive.textColor = color;
+    }
     private static void Init()
     {
         if(backdrop!=null)return;
-        backdrop=Swatch(new Color(.035f,.08f,.075f,.99f));card=Swatch(new Color(.08f,.15f,.14f));green=Swatch(new Color(.4f,.81f,.58f));
+        backdrop=EcoUI.PanelTexture;
+        card=Swatch(EcoUI.Track); green=Swatch(EcoUI.Accent);
+        cardSkin=EcoUI.CardTexture;
+        buttonSkin=EcoUI.ButtonTexture;
+        buttonHover=EcoUI.ButtonHoverTexture;
+        windowSkin=new GUIStyle{normal={background=backdrop},border=new RectOffset(24,24,24,24)};
+        // The cream centre begins16px inside the128px source. Cutting the slice at8px stretches
+        // the remaining brown trim across wide cards and puts it underneath otherwise inset text.
+        panelSkin=new GUIStyle{normal={background=cardSkin,textColor=EcoUI.Ink},border=new RectOffset(16,16,16,16)};
         var font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        title=new GUIStyle(GUI.skin.label){font=font,fontSize=28,fontStyle=FontStyle.Bold}; title.normal.textColor=new Color(.88f,.97f,.9f);
-        body=new GUIStyle(GUI.skin.label){font=font,fontSize=19,wordWrap=true};body.normal.textColor=new Color(.91f,.95f,.92f);
-        muted=new GUIStyle(body){fontSize=16};muted.normal.textColor=new Color(.57f,.73f,.67f);
+        title=new GUIStyle(GUI.skin.label){font=font,fontSize=28,fontStyle=FontStyle.Bold,wordWrap=false,clipping=TextClipping.Clip,padding=new RectOffset(),margin=new RectOffset()}; title.normal.textColor=EcoUI.Ink;
+        body=new GUIStyle(GUI.skin.label){font=font,fontSize=19,wordWrap=true,clipping=TextClipping.Clip};body.normal.textColor=EcoUI.Ink;
+        muted=new GUIStyle(body){fontSize=16};muted.normal.textColor=EcoUI.Muted;
         subtitle=new GUIStyle(body){fontSize=21,fontStyle=FontStyle.Bold};
+        TextColors(title, EcoUI.Ink); TextColors(body, EcoUI.Ink);
+        TextColors(muted, EcoUI.Muted); TextColors(subtitle, EcoUI.Ink);
         button=new GUIStyle(GUI.skin.button){font=font,fontSize=18,padding=new RectOffset(14,14,8,8)};
-        button.normal.background=card; button.normal.textColor=new Color(.84f,.96f,.88f);button.hover.background=green;button.hover.textColor=new Color(.02f,.09f,.05f);
-        cardStyle=new GUIStyle{normal={background=card},padding=new RectOffset(18,18,12,12)};
-        var knob=Swatch(new Color(.88f,.97f,.9f)); thumb=new GUIStyle{fixedWidth=14,fixedHeight=18,normal={background=knob},hover={background=knob},active={background=green}};
+        button.normal.background=buttonSkin; button.normal.textColor=EcoUI.Ink; button.border=new RectOffset(16,16,12,12);
+        button.hover.background=buttonHover; button.hover.textColor=EcoUI.Ink;
+        button.focused.background=buttonHover; button.focused.textColor=EcoUI.Ink;
+        button.active.background=buttonHover; button.active.textColor=EcoUI.Ink;
+        button.onNormal.background=buttonSkin; button.onNormal.textColor=EcoUI.Ink;
+        button.onHover.background=buttonHover; button.onHover.textColor=EcoUI.Ink;
+        button.onActive.background=buttonHover; button.onActive.textColor=EcoUI.Ink;
+        button.onFocused.background=buttonHover; button.onFocused.textColor=EcoUI.Ink;
+        cardStyle=new GUIStyle{normal={background=cardSkin,textColor=EcoUI.Ink},border=new RectOffset(16,16,16,16),padding=new RectOffset(22,22,20,20)};
+        thumb=new GUIStyle{fixedWidth=14,fixedHeight=18,normal={background=green},hover={background=green},active={background=green}};
     }
 }

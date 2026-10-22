@@ -41,6 +41,13 @@ public sealed class EcoProjects : MonoBehaviour
     private string cardTitle = "", cardText = "";
     private float cardUntil;
     private bool showLearningCard;
+    private GUIStyle journalHeading, journalFootnote;
+    private readonly List<JournalRow> journalRows = new List<JournalRow>(6);
+    private struct JournalRow
+    {
+        public float heading, goal, status, hint, height;
+        public bool stackedActions;
+    }
 
     private void Awake()
     {
@@ -268,58 +275,126 @@ public sealed class EcoProjects : MonoBehaviour
 
     private void OnGUI()
     {
-        if (Time.unscaledTime < HintUntil && Camera.main != null)
+        if (!EcoUI.ForeignWindowOpen && !EcoWorldHUD.MapOpen && Time.unscaledTime < HintUntil && Camera.main != null)
         {
             Vector3 point = Camera.main.WorldToScreenPoint(HintPosition + Vector3.up * 3f);
             if (point.z > 0)
             {
                 EcoTheme.Begin();
                 float s = Screen.width / EcoTheme.Width;
-                var box = new Rect(Mathf.Clamp(point.x / s - 110, 12, EcoTheme.Width - 232), Mathf.Clamp((Screen.height - point.y) / s, 12, EcoTheme.Height - 60), 220, 46);
+                var box = new Rect(Mathf.Clamp(point.x / s - 140, 12, EcoTheme.Width - 292), Mathf.Clamp((Screen.height - point.y) / s, 12, EcoTheme.Height - 76), 280, 64);
                 GUI.Box(box, "", EcoTheme.Card);
-                EcoTheme.Icon(new Rect(box.x + 8, box.y + 7, 32, 32), "poi_quest");
-                GUI.Label(new Rect(box.x + 46, box.y + 9, box.width - 52, 30), "İpucu: çalışma alanı", EcoTheme.Body);
+                EcoTheme.Icon(new Rect(box.x + 20, box.y + 18, 28, 28), "poi_quest");
+                GUI.Label(new Rect(box.x + 60, box.y + 20, box.width - 82, 26), "İpucu: çalışma alanı", EcoTheme.Muted);
                 EcoTheme.End();
             }
         }
-        if (showLearningCard && Time.unscaledTime < cardUntil && !PanelOpen)
+        if (showLearningCard && Time.unscaledTime < cardUntil && !EcoUI.ForeignWindowOpen && !EcoWorldHUD.MapOpen)
         {
             EcoTheme.Begin();
-            var card = new Rect(18, EcoTheme.Height - 300, Mathf.Min(520, EcoTheme.Width - 36), 150);
+            PrepareJournalStyles();
+            float width = Mathf.Min(520, EcoTheme.Width - 36);
+            string heading = cardTitle + " · Biliyor muydun?";
+            float titleHeight = TextHeight(journalHeading, heading, width - 150, 28);
+            float bodyHeight = TextHeight(EcoTheme.Muted, cardText, width - 100, 36);
+            float height = 22 + titleHeight + 8 + bodyHeight + 22;
+            var card = new Rect(18, Mathf.Max(112, EcoTheme.Height - 156 - height), width, height);
             GUI.Box(card, "", EcoTheme.Card);
-            EcoTheme.Icon(new Rect(card.x + 14, card.y + 14, 52, 52), "yep");
-            GUI.Label(new Rect(card.x + 78, card.y + 12, card.width - 120, 30), cardTitle + " · Biliyor muydun?", EcoTheme.Subtitle);
-            if (GUI.Button(new Rect(card.xMax - 40, card.y + 10, 28, 28), "", EcoTheme.Button)) showLearningCard = false;
-            EcoTheme.Icon(new Rect(card.xMax - 38, card.y + 12, 24, 24), "ui_close");
-            GUI.Label(new Rect(card.x + 78, card.y + 46, card.width - 96, 96), cardText, EcoTheme.Muted);
+            EcoTheme.Icon(new Rect(card.x + 22, card.y + 24, 36, 36), "yep");
+            GUI.Label(new Rect(card.x + 76, card.y + 22, card.width - 150, titleHeight), heading, journalHeading);
+            var close = new Rect(card.xMax - 54, card.y + 22, 28, 28);
+            if (GUI.Button(close, GUIContent.none, EcoTheme.Button)) showLearningCard = false;
+            EcoTheme.Icon(new Rect(close.x + 3, close.y + 3, 22, 22), "ui_close");
+            GUI.Label(new Rect(card.x + 76, card.y + 22 + titleHeight + 8, card.width - 100, bodyHeight), cardText, EcoTheme.Muted);
             EcoTheme.End();
         }
         if (!PanelOpen) return;
         EcoTheme.Begin();
-        var panel = EcoTheme.Window(940f, 720f, "PROJE GÜNLÜĞÜ · " + CompletedCount + "/6 · Final hazırlığı %" + Mathf.RoundToInt(Readiness * 100),
-            "Koşulu 120 sn koru • proje sırası serbest • başarı kalıcı • günlük açıkken dünya %10 hızda", "ui_journal");
-        if (GUI.Button(new Rect(panel.xMax - 52, panel.y + 16, 34, 34), "", EcoTheme.Button)) SetOpen(false);
-        EcoTheme.Icon(new Rect(panel.xMax - 48, panel.y + 20, 26, 26), "ui_close");
-        var viewport = new Rect(panel.x + 20, panel.y + 96, panel.width - 40, panel.height - 116);
-        const float rowH = 206f;
-        scroll = GUI.BeginScrollView(viewport, scroll, new Rect(0, 0, viewport.width - 22, projects.Count * rowH));
+        var panel = EcoTheme.Window(940f, 720f, "PROJE GÜNLÜĞÜ",
+            CompletedCount + "/6 proje tamamlandı  •  Final hazırlığı %" + Mathf.RoundToInt(Readiness * 100), "ui_journal", 48f);
+        if (EcoTheme.CloseButton(panel)) SetOpen(false);
+        DrawJournalContents(panel);
+        EcoTheme.End();
+    }
+
+    private void PrepareJournalStyles()
+    {
+        if (journalHeading != null) return;
+        journalHeading = new GUIStyle(EcoTheme.Subtitle)
+        {
+            fontSize = 20, wordWrap = true, clipping = TextClipping.Clip,
+            padding = new RectOffset(), margin = new RectOffset(), alignment = TextAnchor.UpperLeft
+        };
+        journalFootnote = new GUIStyle(EcoTheme.Muted) { fontSize = 14 };
+    }
+
+    private static float TextHeight(GUIStyle style, string text, float width, float minimum)
+        => Mathf.Max(minimum, style.CalcHeight(new GUIContent(text ?? ""), Mathf.Max(40, width)));
+
+    private JournalRow MeasureRow(Project project, int index, float width)
+    {
+        float textWidth = Mathf.Max(80, width - 100);
+        var row = new JournalRow
+        {
+            heading = TextHeight(journalHeading, project.name + " · " + project.concept, textWidth, 26),
+            goal = TextHeight(EcoTheme.Body, project.goal, textWidth, 26),
+            status = TextHeight(EcoTheme.Muted, ProjectStatus(project), textWidth, 22),
+            hint = HintLevels[index] > 0 ? TextHeight(EcoTheme.Muted, ProjectHint(project, index), textWidth, 22) : 0,
+            stackedActions = textWidth < 340
+        };
+        row.height = 22 + row.heading + 8 + row.goal + 10 + row.status + 14 + 42
+            + (row.stackedActions ? 44 : 0) + (row.hint > 0 ? row.hint + 12 : 0) + 22;
+        return row;
+    }
+
+    private static string ProjectStatus(Project project)
+        => (project.done ? "Başarı korundu · Güncel: " : "") + project.status;
+
+    private string ProjectHint(Project project, int index)
+        => HintLevels[index] == 1 ? project.symptom : HintLevels[index] == 2 ? project.cause : project.action;
+
+    private void DrawJournalContents(Rect panel)
+    {
+        PrepareJournalStyles();
+        const string footnote = "Koşulu 120 sn koru • Proje sırası serbest • Başarı kalıcı • Günlük açıkken dünya %10 hızda";
+        float footerHeight = TextHeight(journalFootnote, footnote, panel.width - 72, 24);
+        var viewport = new Rect(panel.x + 32, panel.y + 114, panel.width - 64, panel.height - 158 - footerHeight);
+        float width = viewport.width - 22, total = 0;
+        journalRows.Clear();
         for (int i = 0; i < projects.Count; i++)
         {
-            var project = projects[i]; float y = i * rowH, w = viewport.width - 30;
-            GUI.Box(new Rect(0, y, w, rowH - 10), "", EcoTheme.Card);
-            if (SelectedIndex == i) { var prev = GUI.color; GUI.color = EcoSettings.Good; GUI.DrawTexture(new Rect(0, y, 4, rowH - 10), Texture2D.whiteTexture); GUI.color = prev; }
-            EcoTheme.Icon(new Rect(14, y + 14, 56, 56), ProjectIcons[Mathf.Clamp(i, 0, ProjectIcons.Length - 1)]);
-            if (project.done) EcoTheme.Icon(new Rect(50, y + 50, 26, 26), "ui_check");
-            if (GUI.Button(new Rect(84, y + 10, w - 100, 34), project.name + "  ·  " + project.concept, EcoTheme.Subtitle)) SelectedIndex = i;
-            GUI.Label(new Rect(84, y + 44, w - 100, 44), project.goal, EcoTheme.Body);
-            GUI.Label(new Rect(84, y + 92, w - 100, 40), (project.done ? "Başarı korundu · Güncel: " : "") + project.status, EcoTheme.Muted);
-            DrawBar(new Rect(84, y + 136, w - 260, 8), project.done ? 1 : project.held / VerifySeconds);
-            GUI.Label(new Rect(84, y + 148, 220, 24), project.done ? "40 YEP kazanıldı" : project.held.ToString("0") + " / 120 sn", EcoTheme.Muted);
-            if (EcoTheme.IconButton(new Rect(w - 166, y + 128, 150, 36), "İpucu " + HintLevels[i] + "/3", "ui_help")) RequestHint(i);
-            if (HintLevels[i] > 0) GUI.Label(new Rect(84, y + 170, w - 100, 30), HintLevels[i] == 1 ? project.symptom : HintLevels[i] == 2 ? project.cause : project.action, EcoTheme.Muted);
+            var row = MeasureRow(projects[i], i, width); journalRows.Add(row); total += row.height + 12;
+        }
+        scroll.x = 0;
+        scroll = GUI.BeginScrollView(viewport, scroll, new Rect(0, 0, width, Mathf.Max(1, total - 12)), false, true);
+        float top = 0;
+        for (int i = 0; i < projects.Count; i++)
+        {
+            var project = projects[i]; var row = journalRows[i];
+            GUI.Box(new Rect(0, top, width, row.height), GUIContent.none, EcoTheme.Card);
+            if (SelectedIndex == i)
+            {
+                var previous = GUI.color; GUI.color = EcoSettings.Good;
+                GUI.DrawTexture(new Rect(18, top + 20, 3, row.height - 40), Texture2D.whiteTexture); GUI.color = previous;
+            }
+            EcoTheme.Icon(new Rect(26, top + 24, 36, 36), ProjectIcons[Mathf.Clamp(i, 0, ProjectIcons.Length - 1)]);
+            if (project.done) EcoTheme.Icon(new Rect(48, top + 48, 20, 20), "ui_check");
+            float x = 76, textWidth = width - 100, y = top + 22;
+            if (GUI.Button(new Rect(x, y, textWidth, row.heading), project.name + " · " + project.concept, journalHeading)) SelectedIndex = i;
+            y += row.heading + 8;
+            GUI.Label(new Rect(x, y, textWidth, row.goal), project.goal, EcoTheme.Body); y += row.goal + 10;
+            GUI.Label(new Rect(x, y, textWidth, row.status), ProjectStatus(project), EcoTheme.Muted); y += row.status + 14;
+            float barWidth = row.stackedActions ? textWidth : textWidth - 166;
+            DrawBar(new Rect(x, y + 3, barWidth, 8), project.done ? 1 : project.held / VerifySeconds);
+            GUI.Label(new Rect(x, y + 16, barWidth, 24), project.done ? "40 YEP kazanıldı" : project.held.ToString("0") + " / 120 sn", EcoTheme.Muted);
+            float buttonY = row.stackedActions ? y + 44 : y - 4;
+            if (EcoTheme.IconButton(new Rect(width - 174, buttonY, 150, 36), "İpucu " + HintLevels[i] + "/3", "ui_help")) RequestHint(i);
+            y += 42 + (row.stackedActions ? 44 : 0);
+            if (row.hint > 0) GUI.Label(new Rect(x, y + 12, textWidth, row.hint), ProjectHint(project, i), EcoTheme.Muted);
+            top += row.height + 12;
         }
         GUI.EndScrollView();
-        EcoTheme.End();
+        GUI.Label(new Rect(panel.x + 36, panel.yMax - 30 - footerHeight, panel.width - 72, footerHeight), footnote, journalFootnote);
     }
     private static void DrawBar(Rect rect, float fill)
     {

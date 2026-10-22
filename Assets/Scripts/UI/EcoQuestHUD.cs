@@ -1,10 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Player layer of the HUD: vitals (top-left), resources (right column, under the map), the next objective (top centre),
-// the tool belt with its mode line (bottom centre) and the interaction / feedback / recovery messages.
-// Every card can be collapsed with its chevron; [H] cycles Tam → Sade → Gizli (EcoUI.Mode). EcoWorldHUD stacks its
-// cards around these using the heights published below.
+// Player HUD: portrait and meters, a small objective tracker and an icon toolbelt.
+// Detailed resource counts remain in a collapsible foldout; [H] cycles Tam → Sade → Gizli.
 [DefaultExecutionOrder(40)]
 public sealed class EcoQuestHUD : MonoBehaviour
 {
@@ -12,18 +10,21 @@ public sealed class EcoQuestHUD : MonoBehaviour
     [Header("Optional imported UI artwork")]
     public Sprite panelSprite;
     public Sprite slotSprite;
-    public Sprite[] toolIcons = new Sprite[5];
+    public Sprite[] toolIcons = new Sprite[PlayerWeaponSystem.ToolCount];
 
     /// <summary>Bottom edge (canvas units from the top) of the vitals card; EcoWorldHUD places the environment card below.</summary>
-    public static float VitalsBottom { get; private set; } = 220f;
+    public static float VitalsBottom { get; private set; } = 110f;
     /// <summary>Height of the tool belt + mode line block at the bottom of the screen.</summary>
-    public static float DockTop { get; private set; } = 170f;
+    public static float DockTop { get; private set; } = 146f;
+    public static float DockWidth { get; private set; } = 414f;
     /// <summary>Bottom of the objective card in screen pixels from the top (IMGUI overlays stack below it).</summary>
     public static float ObjectiveBottomPixels { get; private set; } = 90f;
+    public const float LeftColumnWidth = 284f;
     private float uiScale = 1f;
 
-    private static readonly string[] ToolNames = { "VAKUM", "TOHUM", "GERİ DÖNÜŞÜM", "TARAYICI", "ELLER" };
-    private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand" };
+    private const int BuilderSlotCount = 5;
+    private static readonly string[] ToolNames = { "VAKUM", "TOHUM", "GERİ DÖNÜŞÜM", "TARAYICI", "ELLER", "FENER" };
+    private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand", "tool_flashlight" };
     private static readonly string[] ToolTips =
     {
         "Vakum [1]: atık toplar, anti-vakumla duman/asit dağıtır, su moduyla söndürür ve sular. [Q] mod.",
@@ -31,6 +32,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         "Geri dönüşüm [3]: atığı yerinde işler, [R] ile gübre uygular.",
         "Tarayıcı [4]: neden, kalite ve bağlantı bilgisini gösterir; hasar vermez.",
         "Eller [5]: etkileşim, hasat ve balıkçılık.",
+        "Fener [6]: seçiliyken sol tıkla ışığı aç veya kapat.",
     };
     private static readonly Color EnergyColor = new Color(0.34f, 0.86f, 0.59f), ElectricColor = new Color(1f, 0.79f, 0.31f), WaterColor = new Color(0.36f, 0.77f, 1f);
 
@@ -42,7 +44,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
     // Vitals
     private readonly Image[] meterIcons = new Image[3], meterFills = new Image[3];
     private readonly RectTransform[] meterTracks = new RectTransform[3];
+    private readonly RectTransform[] meterHits = new RectTransform[3];
     private readonly Text[] meterNames = new Text[3], meterValues = new Text[3];
+    private RectTransform portraitRoot;
+    private Image portrait, portraitFrame;
     private Image weatherIcon, windIcon, clockIcon;
     private Text weatherText, windText;
     // Resources
@@ -57,14 +62,17 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private readonly Image[] chipIcons = new Image[10];
     private readonly Text[] chipValues = new Text[10], chipNames = new Text[10];
     private readonly GameObject[] chipHits = new GameObject[10];
+    private RectTransform resourceQuick;
+    private readonly Image[] resourceQuickIcons = new Image[3];
+    private readonly Text[] resourceQuickCounts = new Text[3];
     private Image yepIcon, yepFill; private RectTransform yepTrack; private Text yepText;
     // Objective
     private Text objective;
     // Dock
-    private RectTransform dock, modePanel, contextPanel, feedbackPanel, recoveryPanel, aim;
-    private readonly Image[] slotBg = new Image[5], slotIcon = new Image[5], slotMarker = new Image[5];
-    private readonly RectTransform[] slotRects = new RectTransform[5];
-    private readonly Text[] slotTitles = new Text[5], slotCounts = new Text[5], slotKeys = new Text[5];
+    private RectTransform dock, modePanel, contextPanel, feedbackPanel, recoveryPanel;
+    private readonly Image[] slotBg = new Image[PlayerWeaponSystem.ToolCount], slotIcon = new Image[PlayerWeaponSystem.ToolCount], slotMarker = new Image[PlayerWeaponSystem.ToolCount], slotKeyBg = new Image[PlayerWeaponSystem.ToolCount], slotCountBg = new Image[PlayerWeaponSystem.ToolCount];
+    private readonly RectTransform[] slotRects = new RectTransform[PlayerWeaponSystem.ToolCount];
+    private readonly Text[] slotTitles = new Text[PlayerWeaponSystem.ToolCount], slotCounts = new Text[PlayerWeaponSystem.ToolCount], slotKeys = new Text[PlayerWeaponSystem.ToolCount];
     private Image modeIcon;
     private Text mode, instructions, context, feedback, recovery;
     private Image contextBg, feedbackBg, recoveryBg;
@@ -84,6 +92,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
         canvas = EcoUI.CreateCanvas("EcoQuest HUD", 20, out scaler);
         BuildCards();
         BuildDock();
+        foreach (var root in new[] { vitalsCard.root, resourcesCard.root, objectiveCard.root, dock, modePanel, contextPanel, feedbackPanel, recoveryPanel })
+            EcoUI.RegisterWorldLabelObstacle(root);
         EcoUI.LayoutChanged += MarkDirty;
         lastMode = EcoUI.Mode;
         ApplyLayout();
@@ -98,6 +108,16 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // Vitals: character energy, tool electricity, water tank and the day/weather strip.
         vitalsCard = new EcoUI.Card("vitals", canvas.transform, new Vector2(0, 1), new Vector2(0, 1), "energy", "DURUM",
             "Karakter enerjisi, araç elektriği ve su. Kartı daralt / genişlet.");
+        var portraitMask = EcoUI.Panel("Portrait mask", vitalsCard.root, new Vector2(0, 1), new Vector2(0, 1), Color.white, false, EcoUI.Circle);
+        portraitRoot = portraitMask.rectTransform;
+        portraitMask.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+        portrait = EcoUI.Panel("Character portrait", portraitRoot, Vector2.zero, Vector2.zero, Color.white, false, EcoUI.PortraitSprite);
+        EcoUI.Stretch(portrait.rectTransform); portrait.type = Image.Type.Simple; portrait.preserveAspect = true;
+        portrait.enabled = EcoUI.PortraitSprite != null;
+        portraitFrame = EcoUI.Panel("Portrait frame", vitalsCard.root, new Vector2(0, 1), new Vector2(0, 1), Color.white, false, EcoUI.PortraitFrameSprite);
+        portraitFrame.type = Image.Type.Simple; portraitFrame.preserveAspect = true;
+        portraitFrame.enabled = EcoUI.PortraitFrameSprite != null;
+        FloatingText(vitalsCard.summary);
         string[] icons = { "energy", "electricity", "water" };
         string[] names = { "Karakter enerjisi", "Araç elektriği", "Temiz su" };
         string[] tips =
@@ -111,9 +131,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
             meterIcons[i] = EcoUI.Icon("Meter icon " + i, vitalsCard.body, icons[i], new Vector2(0, 1), new Vector2(0, 1), 22f);
             meterNames[i] = EcoUI.Label("Meter name " + i, vitalsCard.body, names[i], 15, TextAnchor.MiddleLeft, EcoUI.Muted);
             meterValues[i] = EcoUI.Label("Meter value " + i, vitalsCard.body, "", 15, TextAnchor.MiddleRight, EcoUI.Ink, true);
+            FloatingText(meterValues[i]);
             meterFills[i] = EcoUI.Meter("Meter " + i, vitalsCard.body, out meterTracks[i]);
+            meterTracks[i].GetComponent<Image>().color = new Color(0.045f, 0.065f, 0.035f, 0.84f);
             var hit = EcoUI.Panel("Hit " + i, vitalsCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
-            hit.rectTransform.anchoredPosition = new Vector2(0, -6 - i * 36); hit.rectTransform.sizeDelta = new Vector2(300, 34);
+            meterHits[i] = hit.rectTransform;
             EcoUI.AddTooltip(hit.gameObject, tips[i]);
         }
         clockIcon = EcoUI.Icon("Clock", vitalsCard.body, "clock", new Vector2(0, 1), new Vector2(0, 1), 18f);
@@ -125,12 +147,22 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // Resources: icon chips in two columns plus the YEP progress bar.
         resourcesCard = new EcoUI.Card("resources", canvas.transform, new Vector2(1, 1), new Vector2(1, 1), "metal", "KAYNAKLAR",
             "Ortak stok: malzeme, ürün, filtre ve YEP. Kartı daralt / genişlet.");
+        resourceQuick = EcoUI.Rect("Resource totals", resourcesCard.root, new Vector2(0, 1), new Vector2(0, 1));
+        for (int i = 0; i < 3; i++)
+        {
+            resourceQuickIcons[i] = EcoUI.Icon("Resource icon " + i, resourceQuick, Chips[i].icon, new Vector2(0, 1), new Vector2(0, 1), 22f);
+            resourceQuickCounts[i] = EcoUI.Label("Resource count " + i, resourceQuick, "0", 14, TextAnchor.MiddleLeft, EcoUI.PaperInk, true);
+            FloatingText(resourceQuickCounts[i]);
+            EcoUI.AddTooltip(resourceQuickIcons[i].gameObject, Chips[i].tip);
+            resourceQuickIcons[i].raycastTarget = true;
+        }
         for (int i = 0; i < Chips.Length; i++)
         {
-            var hit = EcoUI.Panel("Chip " + i, resourcesCard.body, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0.035f));
+            var hit = EcoUI.Panel("Chip " + i, resourcesCard.body, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised);
             chipHits[i] = hit.gameObject; EcoUI.AddTooltip(hit.gameObject, Chips[i].tip);
             chipIcons[i] = EcoUI.Icon("Icon", hit.transform, Chips[i].icon, new Vector2(0, 1), new Vector2(0, 1), 22f);
             chipValues[i] = EcoUI.Label("Value", hit.transform, "0", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+            chipValues[i].verticalOverflow = VerticalWrapMode.Overflow; // a 16 px line is taller than the 17 px slot; Truncate drew nothing
             chipNames[i] = EcoUI.Label("Name", hit.transform, Chips[i].name, 11, TextAnchor.MiddleLeft, EcoUI.Muted);
         }
         yepIcon = EcoUI.Icon("YEP", resourcesCard.body, "yep", new Vector2(0, 1), new Vector2(0, 1), 24f);
@@ -146,57 +178,62 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // Keep the objective first among the card's labels for existing scene consumers which query the first Text.
         objective = EcoUI.Label("Current objective", objectiveCard.body, "", 17, TextAnchor.UpperLeft, EcoUI.Ink, true);
         objective.transform.SetAsFirstSibling();
+        FloatingText(objective); FloatingText(objectiveCard.summary);
     }
 
     private void BuildDock()
     {
         dock = EcoUI.Rect("Toolbelt", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0));
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
             int index = i;
-            slotBg[i] = EcoUI.Panel(ToolNames[i], dock, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface);
+            slotBg[i] = EcoUI.Panel(ToolNames[i], dock, new Vector2(0, 1), new Vector2(0, 1), Color.white, true, EcoUI.ToolSlotSprite);
             slotRects[i] = slotBg[i].rectTransform;
             var button = slotBg[i].gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() => SelectSlot(index));
             EcoUI.AddTooltip(slotBg[i].gameObject, ToolTips[i]);
             slotMarker[i] = EcoUI.Panel("Selection", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent, false, EcoUI.Circle);
-            var key = EcoUI.Panel("Key", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), new Color(0f, 0f, 0f, 0.35f), false, EcoUI.Circle);
+            slotMarker[i].enabled = false;
+            var key = EcoUI.Panel("Key", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), new Color(0.12f, 0.14f, 0.075f, 0.94f), false, EcoUI.Circle);
+            slotKeyBg[i] = key;
             EcoUI.Place(key.rectTransform, new Vector2(6, -6), new Vector2(20, 20));
-            slotKeys[i] = EcoUI.Label("Key text", key.transform, (i + 1).ToString(), 12, TextAnchor.MiddleCenter, EcoUI.Muted, true);
+            slotKeys[i] = EcoUI.Label("Key text", key.transform, (i + 1).ToString(), 12, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
             EcoUI.Layout(slotKeys[i], Vector2.zero, new Vector2(20, 20));
             slotIcon[i] = EcoUI.Icon("Icon", slotRects[i], ToolIcons[i], new Vector2(0.5f, 1), new Vector2(0.5f, 1), 40f);
             if (toolIcons != null && i < toolIcons.Length && toolIcons[i] != null) { slotIcon[i].sprite = toolIcons[i]; slotIcon[i].enabled = true; }
+            slotCountBg[i] = EcoUI.Panel("Quantity badge", slotRects[i], new Vector2(0, 1), new Vector2(0, 1), new Color(0.12f, 0.14f, 0.075f, 0.94f), false);
             slotTitles[i] = EcoUI.Label("Title", slotRects[i], ToolNames[i], 12, TextAnchor.MiddleCenter, EcoUI.Ink, true);
-            slotCounts[i] = EcoUI.Label("Count", slotRects[i], "", 12, TextAnchor.MiddleCenter, EcoUI.Muted);
+            slotCounts[i] = EcoUI.Label("Count", slotRects[i], "", 12, TextAnchor.MiddleCenter, EcoUI.PaperInk);
         }
-        modePanel = EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), EcoUI.Surface).rectTransform;
+        var modeBackground = EcoUI.Panel("Mode", canvas.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), Color.clear, false);
+        modeBackground.enabled = false; modePanel = modeBackground.rectTransform;
         modeIcon = EcoUI.Icon("Mode icon", modePanel, "tool_vacuum", new Vector2(0, 1), new Vector2(0, 1), 24f);
         mode = EcoUI.Label("Active tool", modePanel, "", 16, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+        FloatingText(mode);
         FitOneLine(mode, 16);
         instructions = EcoUI.Label("Controls", modePanel, "", 13, TextAnchor.MiddleRight, EcoUI.Muted);
+        FloatingText(instructions);
         FitOneLine(instructions, 13);
-        contextBg = EcoUI.Panel("Context", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
+        contextBg = EcoUI.Dress(EcoUI.Panel("Context", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false));
         contextPanel = contextBg.rectTransform;
         context = EcoUI.Label("Interaction", contextPanel, "", 17, TextAnchor.MiddleCenter, EcoUI.Ink);
-        feedbackBg = EcoUI.Panel("Feedback", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false);
+        contextBg.enabled = false; FloatingText(context);
+        feedbackBg = EcoUI.Dress(EcoUI.Panel("Feedback", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false));
         feedbackPanel = feedbackBg.rectTransform;
         feedback = EcoUI.Label("Notice", feedbackPanel, "", 16, TextAnchor.MiddleCenter, EcoUI.Accent, true);
-        recoveryBg = EcoUI.Panel("Recovery", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
+        recoveryBg = EcoUI.Dress(EcoUI.Panel("Recovery", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false));
         recoveryPanel = recoveryBg.rectTransform;
         recovery = EcoUI.Label("Recovery status", recoveryPanel, "", 21, TextAnchor.MiddleCenter, EcoUI.Ink, true);
-        aim = EcoUI.Rect("Aim", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
-        Color aimColor = new Color(0.96f, 1f, 0.98f, 0.9f);
-        foreach (var (pos, size) in new[] { (new Vector2(0, 8), new Vector2(2, 5)), (new Vector2(0, -8), new Vector2(2, 5)), (new Vector2(-8, 0), new Vector2(5, 2)), (new Vector2(8, 0), new Vector2(5, 2)), (Vector2.zero, new Vector2(2, 2)) })
-        {
-            var strip = EcoUI.Fill("Aim part", aim, aimColor);
-            var rt = strip.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f); EcoUI.Place(rt, pos, size);
-        }
     }
 
     private void SelectSlot(int index)
     {
-        if (weapons == null) return;
-        if (weapons.Builder != null && weapons.Builder.IsBuilding) weapons.Builder.Select(weapons.Builder.Page * 5 + index);
+        if (weapons == null || index < 0 || index >= PlayerWeaponSystem.ToolCount) return;
+        if (weapons.Builder != null && weapons.Builder.IsBuilding)
+        {
+            if (index >= BuilderSlotCount) return;
+            weapons.Builder.Select(weapons.Builder.Page * BuilderSlotCount + index);
+        }
         else weapons.SelectTool(index);
         Refresh();
     }
@@ -211,12 +248,21 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
         if (buildingLayout != building) dirty = true;
         if (dirty) ApplyLayout();
-        int selected = building ? weapons.Builder.Selection % 5 : (int)weapons.Selected;
-        for (int i = 0; i < 5; i++)
+        int selected = building ? weapons.Builder.Selection % BuilderSlotCount : (int)weapons.Selected;
+        for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
+            bool showSlot = !building || i < BuilderSlotCount;
+            if (slotRects[i].gameObject.activeSelf != showSlot) slotRects[i].gameObject.SetActive(showSlot);
+            if (!showSlot) continue;
             bool active = selected == i;
-            slotBg[i].color = active ? EcoUI.Selected : EcoUI.Surface;
-            slotMarker[i].enabled = active; slotTitles[i].color = active ? Color.white : EcoUI.Ink;
+            slotBg[i].sprite = active ? EcoUI.ActiveToolSlotSprite : EcoUI.ToolSlotSprite;
+            slotBg[i].color = Color.white;
+            var position = slotRects[i].anchoredPosition; position.y = active ? 8f : 0f; slotRects[i].anchoredPosition = position;
+            slotMarker[i].enabled = false;
+            slotTitles[i].color = active ? EcoUI.PaperInk : EcoUI.Ink;
+            slotCounts[i].color = EcoUI.PaperInk;
+            slotKeys[i].color = EcoUI.PaperInk;
+            slotCountBg[i].gameObject.SetActive(!string.IsNullOrEmpty(slotCounts[i].text));
         }
         if (Time.unscaledTime >= refreshAt) { refreshAt = Time.unscaledTime + 0.1f; Refresh(); }
     }
@@ -256,6 +302,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         };
         for (int i = 0; i < counts.Length; i++) chipValues[i].text = counts[i].ToString();
         resourcesCard.summary.text = weapons.Metal + " M  ·  " + weapons.Plastic + " P  ·  " + weapons.Food + " ürün";
+        resourceQuickCounts[0].text = weapons.Metal.ToString();
+        resourceQuickCounts[1].text = weapons.Plastic.ToString();
+        resourceQuickCounts[2].text = weapons.Food.ToString();
         if (weapons.Progression != null)
         {
             bool max = weapons.Progression.Level == EcoProgression.MaximumLevel;
@@ -265,26 +314,30 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.SetMeter(yepFill, yepTrack, max ? 1f : (progression.Experience % EcoProgression.PointsPerRight) / (float)EcoProgression.PointsPerRight, EcoUI.Amber);
         }
         // Tool belt
-        slotCounts[0].text = Mathf.CeilToInt(weapons.Water) + " su";
-        slotCounts[1].text = weapons.MetalMode ? weapons.MetalAmmo + " demir" : weapons.SeedCount(weapons.SelectedSeed) + " tohum";
-        slotCounts[2].text = (weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap + weapons.CollectedOrganicWaste) + " atık";
-        slotCounts[3].text = "Analiz"; slotCounts[4].text = "Etkileşim";
+        slotCounts[0].text = Mathf.CeilToInt(weapons.Water).ToString();
+        slotCounts[1].text = (weapons.MetalMode ? weapons.MetalAmmo : weapons.SeedCount(weapons.SelectedSeed)).ToString();
+        slotCounts[2].text = (weapons.CollectedMetalScrap + weapons.CollectedPlasticScrap + weapons.CollectedOrganicWaste).ToString();
+        slotCounts[3].text = ""; slotCounts[4].text = "";
+        slotCounts[(int)PlayerWeaponSystem.Tool.Flashlight].text = weapons.FlashlightOn ? "Açık" : "Kapalı";
         string[] modes = { "Toplama", "Anti-vakum", "Su" };
         string[] modeIcons = { "tool_vacuum", "w_wind", "water" };
         var tool = weapons.Selected;
         mode.text = ToolNames[(int)tool] + (tool == PlayerWeaponSystem.Tool.Vacuum ? "  ·  " + modes[(int)weapons.Mode]
-            : tool == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate) : "");
+            : tool == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate)
+            : tool == PlayerWeaponSystem.Tool.Flashlight ? "  ·  " + (weapons.FlashlightOn ? "Açık" : "Kapalı") : "");
         EcoUI.SetIcon(modeIcon, tool == PlayerWeaponSystem.Tool.Vacuum ? modeIcons[(int)weapons.Mode] : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "ammo" : ToolIcons[(int)tool]);
         instructions.text = tool == PlayerWeaponSystem.Tool.Hands ? EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim"
+            : tool == PlayerWeaponSystem.Tool.Flashlight ? "[Sol tık] Aç / kapat"
             : tool == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara"
             : tool == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele"
             : "[Sol tık] Kullan  ·  " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod" + (tool == PlayerWeaponSystem.Tool.SeedGun && !weapons.MetalMode ? "  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum" : "");
         context.text = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
+            if (building && i >= BuilderSlotCount) continue;
             slotTitles[i].text = building ? weapons.Builder.SlotName(i) : ToolNames[i];
-            if (building) { slotCounts[i].text = weapons.Builder.SlotCost(i); EcoUI.SetIcon(slotIcon[i], BuildIcon(weapons.Builder.Page * 5 + i)); }
+            if (building) { slotCounts[i].text = weapons.Builder.SlotCost(i); EcoUI.SetIcon(slotIcon[i], BuildIcon(weapons.Builder.Page * BuilderSlotCount + i)); }
             else if (toolIcons == null || i >= toolIcons.Length || toolIcons[i] == null) EcoUI.SetIcon(slotIcon[i], ToolIcons[i]);
         }
         if (building)
@@ -315,6 +368,30 @@ public sealed class EcoQuestHUD : MonoBehaviour
         text.horizontalOverflow = HorizontalWrapMode.Wrap; text.resizeTextForBestFit = true;
         text.resizeTextMaxSize = size * EcoUI.RasterScale; text.resizeTextMinSize = 10 * EcoUI.RasterScale;
     }
+
+    private static void FloatingText(Text text)
+    {
+        text.color = EcoUI.PaperInk;
+        var outline = text.GetComponent<Outline>();
+        if (outline == null) outline = text.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.035f, 0.055f, 0.025f, 0.85f);
+        outline.effectDistance = new Vector2(2f, -2f);
+    }
+
+    private static void HudFrame(EcoUI.Card card, bool visible)
+    {
+        card.background.enabled = visible;
+        card.background.raycastTarget = visible;
+        card.rule.gameObject.SetActive(visible && !card.IsCollapsed);
+    }
+
+    private static void PlaceToggle(EcoUI.Card card, Vector2 position)
+    {
+        var toggleRect = (RectTransform)card.toggle.transform;
+        toggleRect.anchorMin = toggleRect.anchorMax = new Vector2(1, 1);
+        toggleRect.pivot = Vector2.one;
+        EcoUI.Place(toggleRect, position, new Vector2(18f, 18f));
+    }
     private static string BuildIcon(int index)
     {
         if (index == EcoBuildingCatalog.Entries.Length) return "electricity";
@@ -342,7 +419,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
         else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
         else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness) text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
-        else if (alive > 0) text = "Yakında tehdit · " + alive + " düşman (aracın uygun modunu kullan)";
+        else if (alive > 0) text = "Yakında tehdit · " + alive + " çevresel tehdit (aracın uygun modunu kullan)";
         else if (EcoStory.Current != null && !EcoStory.Current.intro) text = "Mahalle çocuğuyla konuş · şehir merkezi, " + EcoKeys.Tag(EcoKeys.Action.Interact);
         else
         {
@@ -376,19 +453,38 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool compact = width < 1250f;
         var hudMode = EcoUI.Mode;
         bool hidden = hudMode == EcoUI.HudMode.Hidden, sade = hudMode == EcoUI.HudMode.Compact;
-        float leftWidth = compact ? 270f : 300f, rightWidth = compact ? 250f : 276f;
+        float leftWidth = LeftColumnWidth, rightWidth = compact ? 250f : 276f;
+        bool narrow = width - leftWidth - rightWidth - 4f * margin < 280f;
 
-        // Vitals card.
+        // Character portrait and meters sit directly over the world, without a card header.
         vitalsCard.SetVisible(!hidden);
-        float vh = vitalsCard.Layout(new Vector2(margin, -margin), leftWidth, 114f);
-        float inner = leftWidth - 24f;
+        vitalsCard.Layout(new Vector2(margin, -margin), leftWidth, 94f);
+        bool vitalsCollapsed = vitalsCard.IsCollapsed;
+        float vh = vitalsCollapsed ? 32f : 94f;
+        vitalsCard.root.sizeDelta = new Vector2(leftWidth, vh);
+        HudFrame(vitalsCard, false);
+        vitalsCard.title.gameObject.SetActive(false); vitalsCard.icon.gameObject.SetActive(false);
+        vitalsCard.summary.gameObject.SetActive(vitalsCollapsed);
+        EcoUI.Layout(vitalsCard.summary, new Vector2(38f, -6f), new Vector2(leftWidth - 66f, 20f));
+        EcoUI.Place(vitalsCard.body, Vector2.zero, new Vector2(leftWidth, 94f));
+        PlaceToggle(vitalsCard, new Vector2(-1f, -5f));
+        bool hasPortrait = portrait.enabled && portrait.sprite != null;
+        portraitRoot.gameObject.SetActive(hasPortrait);
+        portraitFrame.gameObject.SetActive(hasPortrait && portraitFrame.enabled);
+        EcoUI.Place(portraitRoot, vitalsCollapsed ? new Vector2(5f, -3f) : new Vector2(8f, -9f),
+            Vector2.one * (vitalsCollapsed ? 26f : 66f));
+        EcoUI.Place(portraitFrame.rectTransform, vitalsCollapsed ? new Vector2(1f, 1f) : new Vector2(0f, -1f),
+            Vector2.one * (vitalsCollapsed ? 34f : 82f));
+        float meterX = hasPortrait ? 86f : 4f;
         for (int i = 0; i < 3; i++)
         {
-            float y = -8f - i * 36f;
-            EcoUI.LayoutIcon(meterIcons[i], new Vector2(12f, y), 22f);
-            EcoUI.Layout(meterNames[i], new Vector2(40f, y - 1f), new Vector2(inner - 120f, 20f));
-            EcoUI.Layout(meterValues[i], new Vector2(leftWidth - 104f, y - 1f), new Vector2(92f, 20f));
-            EcoUI.Place(meterTracks[i], new Vector2(40f, y - 23f), new Vector2(leftWidth - 52f, 6f));
+            float y = -9f - i * 27f;
+            meterNames[i].gameObject.SetActive(false);
+            meterValues[i].fontSize = 12 * EcoUI.RasterScale;
+            EcoUI.LayoutIcon(meterIcons[i], new Vector2(meterX, y), 20f);
+            EcoUI.Layout(meterValues[i], new Vector2(leftWidth - 80f, y), new Vector2(56f, 20f));
+            EcoUI.Place(meterTracks[i], new Vector2(meterX + 24f, y - 6f), new Vector2(leftWidth - meterX - 108f, 10f));
+            EcoUI.Place(meterHits[i], new Vector2(meterX - 2f, y + 2f), new Vector2(leftWidth - meterX - 20f, 25f));
         }
         // Day, time and weather moved to the map card (GDD §13, top right).
         weatherIcon.gameObject.SetActive(false); weatherText.gameObject.SetActive(false);
@@ -404,61 +500,106 @@ public sealed class EcoQuestHUD : MonoBehaviour
         for (int i = 0; i < Chips.Length; i++)
         {
             var rt = (RectTransform)chipHits[i].transform;
-            EcoUI.Place(rt, new Vector2(10f + (i % 2) * (chipW + 10f), -6f - (i / 2) * 32f), new Vector2(chipW, 28f));
-            EcoUI.LayoutIcon(chipIcons[i], new Vector2(4f, -3f), 22f);
-            EcoUI.Layout(chipValues[i], new Vector2(32f, -4f), new Vector2(40f, 20f));
-            EcoUI.Layout(chipNames[i], new Vector2(70f, -6f), new Vector2(chipW - 72f, 18f));
+            EcoUI.Place(rt, new Vector2(10f + (i % 2) * (chipW + 10f), -6f - (i / 2) * 32f), new Vector2(chipW, 30f));
+            EcoUI.LayoutIcon(chipIcons[i], new Vector2(4f, -4f), 22f);
+            EcoUI.Layout(chipValues[i], new Vector2(32f, -1f), new Vector2(chipW - 38f, 17f));
+            EcoUI.Layout(chipNames[i], new Vector2(32f, -18f), new Vector2(chipW - 38f, 12f));
+            FitOneLine(chipNames[i], 11);
         }
         float yy = -6f - 5 * 32f - 4f;
         EcoUI.LayoutIcon(yepIcon, new Vector2(10f, yy), 24f);
         EcoUI.Layout(yepText, new Vector2(40f, yy), new Vector2(rightWidth - 52f, 18f));
         EcoUI.Place(yepTrack, new Vector2(40f, yy - 21f), new Vector2(rightWidth - 52f, 6f));
-        // Sade keeps the card but shows only its header summary.
+        // Inventory totals remain small; opening the foldout reveals every resource and YEP.
         resourcesCard.Layout(new Vector2(-margin, -ry), rightWidth, sade ? 0f : 206f, sade);
-        if (sade) resourcesCard.body.gameObject.SetActive(false);
+        bool resourceCompact = sade || resourcesCard.IsCollapsed || ry + 240f > height - margin;
+        resourcesCard.title.gameObject.SetActive(!resourceCompact);
+        resourcesCard.icon.gameObject.SetActive(!resourceCompact);
+        resourcesCard.summary.gameObject.SetActive(false);
+        resourceQuick.gameObject.SetActive(resourceCompact);
+        HudFrame(resourcesCard, !resourceCompact);
+        PlaceToggle(resourcesCard, new Vector2(-3f, -6f));
+        if (resourceCompact)
+        {
+            resourcesCard.body.gameObject.SetActive(false);
+            resourcesCard.root.sizeDelta = new Vector2(rightWidth, 30f);
+        }
+        resourceQuick.anchorMin = resourceQuick.anchorMax = Vector2.one; resourceQuick.pivot = Vector2.one;
+        EcoUI.Place(resourceQuick, new Vector2(-28f, -2f), new Vector2(204f, 28f));
+        for (int i = 0; i < 3; i++)
+        {
+            EcoUI.LayoutIcon(resourceQuickIcons[i], new Vector2(i * 68f, -3f), 22f);
+            EcoUI.Layout(resourceQuickCounts[i], new Vector2(i * 68f + 26f, -3f), new Vector2(39f, 22f));
+        }
 
-        // Objective card (top centre, between the columns).
+        // A quest symbol and a short line, rather than a second window across the scene.
         objectiveCard.SetVisible(!hidden);
-        float objectiveWidth = Mathf.Clamp(width - leftWidth - rightWidth - 4f * margin, 260f, 440f);
-        float objectiveCenter = (leftWidth - rightWidth) * 0.5f;
-        float oh = objectiveCard.Layout(new Vector2(objectiveCenter, -margin), objectiveWidth, sade ? 0f : 50f, sade);
-        if (sade) objectiveCard.body.gameObject.SetActive(false);
-        EcoUI.Layout(objective, new Vector2(14f, -2f), new Vector2(objectiveWidth - 28f, 44f));
+        float objectiveWidth = narrow ? Mathf.Min(440f, width - margin * 2f)
+            : Mathf.Min(440f, width - leftWidth - rightWidth - 4f * margin);
+        float objectiveCenter = narrow ? 0f : (leftWidth - rightWidth) * 0.5f;
+        float objectiveTop = narrow ? Mathf.Max(VitalsBottom + 56f, EcoWorldHUD.MapBottom) + 12f : margin;
+        objectiveCard.Layout(new Vector2(objectiveCenter, -objectiveTop), objectiveWidth, 50f, sade);
+        bool objectiveCompact = sade || objectiveCard.IsCollapsed || narrow;
+        float oh = objectiveCompact ? 28f : 52f;
+        objectiveCard.root.sizeDelta = new Vector2(objectiveWidth, oh);
+        HudFrame(objectiveCard, false); objectiveCard.title.gameObject.SetActive(false);
+        EcoUI.LayoutIcon(objectiveCard.icon, new Vector2(0f, -3f), 26f);
+        PlaceToggle(objectiveCard, new Vector2(-1f, -5f));
+        objectiveCard.summary.gameObject.SetActive(objectiveCompact);
+        EcoUI.Layout(objectiveCard.summary, new Vector2(34f, -5f), new Vector2(objectiveWidth - 60f, 22f));
+        objectiveCard.body.gameObject.SetActive(!objectiveCompact);
+        EcoUI.Place(objectiveCard.body, new Vector2(34f, -2f), new Vector2(objectiveWidth - 60f, 48f));
+        EcoUI.Layout(objective, Vector2.zero, new Vector2(objectiveWidth - 60f, 48f));
 
         // Tool belt + mode line.
-        float dockWidth = Mathf.Min(600f, width - 2f * margin);
-        dock.gameObject.SetActive(!hidden);
-        EcoUI.Place(dock, new Vector2(0f, margin), new Vector2(dockWidth, 86f)); // anchored and pivoted at the bottom centre
-        float slotWidth = (dockWidth - 32f) / 5f;
-        for (int i = 0; i < 5; i++)
-        {
-            EcoUI.Place(slotRects[i], new Vector2(i * (slotWidth + 8f), 0f), new Vector2(slotWidth, 86f));
-            EcoUI.Place(slotMarker[i].rectTransform, new Vector2(10f, -2f), new Vector2(slotWidth - 20f, 4f));
-            slotIcon[i].rectTransform.anchoredPosition = new Vector2(0f, -7f);
-            EcoUI.Layout(slotTitles[i], new Vector2(4f, -48f), new Vector2(slotWidth - 8f, 18f));
-            EcoUI.Layout(slotCounts[i], new Vector2(4f, -65f), new Vector2(slotWidth - 8f, 18f));
-        }
         buildingLayout = weapons != null && weapons.Builder != null && weapons.Builder.IsBuilding;
+        int slotCount = buildingLayout ? BuilderSlotCount : PlayerWeaponSystem.ToolCount;
+        float normalDockWidth = PlayerWeaponSystem.ToolCount * 64f + (PlayerWeaponSystem.ToolCount - 1) * 6f;
+        float dockWidth = Mathf.Min(buildingLayout ? 580f : normalDockWidth, width - 2f * margin);
+        float slotHeight = buildingLayout ? 94f : 72f;
+        DockWidth = hidden ? 0f : dockWidth;
+        dock.gameObject.SetActive(!hidden);
+        EcoUI.Place(dock, new Vector2(0f, margin), new Vector2(dockWidth, slotHeight));
+        float slotWidth = (dockWidth - (slotCount - 1) * 6f) / slotCount;
+        for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
+        {
+            bool showSlot = i < slotCount;
+            slotRects[i].gameObject.SetActive(showSlot);
+            if (!showSlot) continue;
+            EcoUI.Place(slotRects[i], new Vector2(i * (slotWidth + 6f), 0f), new Vector2(slotWidth, slotHeight));
+            EcoUI.LayoutIcon(slotIcon[i], new Vector2(0f, -8f), buildingLayout ? 40f : 44f);
+            slotKeyBg[i].rectTransform.sizeDelta = new Vector2(18f, 18f);
+            EcoUI.Place(slotKeyBg[i].rectTransform, new Vector2(2f, -2f), new Vector2(18f, 18f));
+            EcoUI.Layout(slotKeys[i], Vector2.zero, new Vector2(18f, 18f));
+            slotKeyBg[i].rectTransform.SetAsLastSibling();
+            slotTitles[i].gameObject.SetActive(buildingLayout);
+            EcoUI.Layout(slotTitles[i], new Vector2(4f, -49f), new Vector2(slotWidth - 8f, 18f));
+            float countY = buildingLayout ? -71f : -53f;
+            EcoUI.Place(slotCountBg[i].rectTransform, new Vector2(5f, countY), new Vector2(slotWidth - 10f, 16f));
+            EcoUI.Layout(slotCounts[i], new Vector2(5f, countY), new Vector2(slotWidth - 10f, 16f));
+        }
         modePanel.gameObject.SetActive(!hidden);
-        float modeHeight = 36f;
-        EcoUI.Place(modePanel, new Vector2(0f, margin + 86f + 8f), new Vector2(dockWidth, modeHeight));
-        EcoUI.LayoutIcon(modeIcon, new Vector2(10f, -6f), 24f);
-        EcoUI.Layout(mode, new Vector2(42f, -8f), new Vector2(dockWidth * 0.48f - 46f, 20f)); // ends where the key hints begin
+        float modeHeight = sade ? 24f : 44f;
+        float modeWidth = Mathf.Min(buildingLayout ? 600f : 440f, width - 2f * margin);
+        EcoUI.Place(modePanel, new Vector2(0f, margin + slotHeight + 12f), new Vector2(modeWidth, modeHeight));
+        EcoUI.LayoutIcon(modeIcon, new Vector2(8f, -1f), 22f);
+        mode.alignment = TextAnchor.MiddleCenter;
+        EcoUI.Layout(mode, new Vector2(32f, -1f), new Vector2(modeWidth - 40f, 22f));
         instructions.gameObject.SetActive(!sade);
-        EcoUI.Layout(instructions, new Vector2(dockWidth * 0.5f, -9f), new Vector2(dockWidth * 0.5f - 12f, 20f));
-        DockTop = hidden ? margin : margin + 86f + 8f + modeHeight;
+        instructions.alignment = TextAnchor.MiddleCenter;
+        EcoUI.Layout(instructions, new Vector2(0f, -24f), new Vector2(modeWidth, 20f));
+        DockTop = hidden ? margin : margin + slotHeight + 12f + modeHeight;
 
-        float contextWidth = Mathf.Min(560f, width - 2f * margin);
-        EcoUI.Place(contextPanel, new Vector2(0f, -height * 0.5f + DockTop + 70f), new Vector2(contextWidth, 74f));
-        EcoUI.Layout(context, new Vector2(14f, -8f), new Vector2(contextWidth - 28f, 58f));
+        float contextWidth = Mathf.Min(460f, width - 2f * margin);
+        EcoUI.Place(contextPanel, new Vector2(0f, -height * 0.5f + DockTop + 44f), new Vector2(contextWidth, 68f));
+        EcoUI.Layout(context, new Vector2(8f, -4f), new Vector2(contextWidth - 16f, 60f));
         float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
-        feedbackTop = margin + oh + 10f;
-        ObjectiveBottomPixels = (margin + oh) * uiScale;
+        feedbackTop = objectiveTop + oh + 10f;
+        ObjectiveBottomPixels = hidden ? 0f : (objectiveTop + oh) * uiScale;
         EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -feedbackTop), new Vector2(feedbackWidth, 56f));
         EcoUI.Layout(feedback, new Vector2(12f, -6f), new Vector2(feedbackWidth - 24f, 44f));
         EcoUI.Place(recoveryPanel, new Vector2(0f, 80f), new Vector2(Mathf.Min(460f, width - 2f * margin), 72f));
         EcoUI.Layout(recovery, new Vector2(14f, -8f), new Vector2(recoveryPanel.sizeDelta.x - 28f, 56f));
-        aim.gameObject.SetActive(!hidden);
     }
 
     private int DisplayWidth => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.width));
