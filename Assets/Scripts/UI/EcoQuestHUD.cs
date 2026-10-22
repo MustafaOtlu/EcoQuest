@@ -131,9 +131,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             meterIcons[i] = EcoUI.Icon("Meter icon " + i, vitalsCard.body, icons[i], new Vector2(0, 1), new Vector2(0, 1), 22f);
             meterNames[i] = EcoUI.Label("Meter name " + i, vitalsCard.body, names[i], 15, TextAnchor.MiddleLeft, EcoUI.Muted);
             meterValues[i] = EcoUI.Label("Meter value " + i, vitalsCard.body, "", 15, TextAnchor.MiddleRight, EcoUI.Ink, true);
-            FloatingText(meterValues[i]);
             meterFills[i] = EcoUI.Meter("Meter " + i, vitalsCard.body, out meterTracks[i]);
-            meterTracks[i].GetComponent<Image>().color = new Color(0.045f, 0.065f, 0.035f, 0.84f);
             var hit = EcoUI.Panel("Hit " + i, vitalsCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
             meterHits[i] = hit.rectTransform;
             EcoUI.AddTooltip(hit.gameObject, tips[i]);
@@ -478,8 +476,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool vitalsCollapsed = vitalsCard.IsCollapsed;
         float vh = vitalsCollapsed ? 32f : 94f;
         vitalsCard.root.sizeDelta = new Vector2(leftWidth, vh);
-        // Collapsed, the health · EB · SB line gets a paper strip; bright meter colours over grass were hard to read.
-        HudFrame(vitalsCard, vitalsCollapsed); vitalsCard.rule.gameObject.SetActive(false);
+        // Paper behind portrait and meters (open) or the health · EB · SB strip (collapsed); over grass both were hard to read.
+        HudFrame(vitalsCard, true); vitalsCard.rule.gameObject.SetActive(false);
         vitalsCard.title.gameObject.SetActive(false); vitalsCard.icon.gameObject.SetActive(false);
         vitalsCard.summary.gameObject.SetActive(vitalsCollapsed);
         vitalsCard.summary.alignment = TextAnchor.MiddleLeft;
