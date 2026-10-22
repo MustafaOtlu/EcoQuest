@@ -70,6 +70,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private Button bigMapButton;
     private Image clockIcon, weatherIcon, windIcon;
     private Text clockText, weatherText, windText;
+    private RectTransform miniStatusPaper;
     private string announcedWeather = "";
     private readonly List<Image> miniPins = new List<Image>();
 
@@ -186,7 +187,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 string soon = clock.ForecastName(45f);
                 bool harsh = soon != clock.WeatherName && (soon == "Yağmurlu" || soon == "Fırtına");
                 weatherText.text = harsh ? "→ " + soon : clock.WeatherName; // the icon still shows the current weather
-                weatherText.color = harsh ? new Color(1f, 0.83f, 0.42f) : EcoUI.PaperInk;
+                weatherText.color = harsh ? EcoUI.OnPaper(new Color(0.85f, 0.45f, 0.05f)) : EcoUI.Ink; // on the paper strip
                 if (harsh && soon != announcedWeather && weapons != null) { announcedWeather = soon; weapons.ShowFeedback("Hava değişiyor: yaklaşık 45 sn içinde " + soon.ToLowerInvariant() + ". Açık ekinler sulanır, güneş üretimi düşer."); }
                 if (!harsh) announcedWeather = "";
                 float wind = RegionWind(current, clock);
@@ -326,13 +327,14 @@ public sealed class EcoWorldHUD : MonoBehaviour
         bigMapButton = EcoUI.IconButton("Open map", mapCard.root, "ui_layers", 26f, () => SetMap(true), "Büyük harita " + EcoKeys.Tag(EcoKeys.Action.Map));
         // Time and weather float below the map and remain available when the map itself is collapsed.
         miniStatus = EcoUI.Rect("Time and weather", mapCard.root, new Vector2(0, 1), new Vector2(0, 1));
+        // A paper strip behind time and weather: light outlined text vanished over the snow of the glacier region.
+        miniStatusPaper = EcoUI.Dress(EcoUI.Panel("Status paper", miniStatus, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface, false), false).rectTransform;
         clockIcon = EcoUI.Icon("Clock", miniStatus, "clock", new Vector2(0, 1), new Vector2(0, 1), 18f);
-        clockText = EcoUI.Label("Clock text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.PaperInk, true);
+        clockText = EcoUI.Label("Clock text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         weatherIcon = EcoUI.Icon("Weather", miniStatus, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 20f);
-        weatherText = EcoUI.Label("Weather text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.PaperInk);
+        weatherText = EcoUI.Label("Weather text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink);
         windIcon = EcoUI.Icon("Wind", miniStatus, "w_wind", new Vector2(0, 1), new Vector2(0, 1), 20f);
-        windText = EcoUI.Label("Wind text", miniStatus, "", 13, TextAnchor.MiddleRight, EcoUI.PaperInk, true);
-        SetFloatingText(clockText, true); SetFloatingText(weatherText, true); SetFloatingText(windText, true);
+        windText = EcoUI.Label("Wind text", miniStatus, "", 13, TextAnchor.MiddleRight, EcoUI.Ink, true);
         var strip = EcoUI.Panel("Weather hit", miniStatus, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
         miniWeatherHit = strip.rectTransform;
         EcoUI.AddTooltip(strip.gameObject, "Gün, saat ve hava. Bulut güneş üretimini, sakin hava rüzgâr türbinini düşürür; yağmur açık ekinleri sular.");
@@ -1081,12 +1083,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.Place(miniRim, Vector2.zero, new Vector2(mapOuter, mapOuter));
         EcoUI.Place(miniStatus, new Vector2(4f, -statusTop), new Vector2(mapOuter - 8f, 44f));
         EcoUI.Place(miniWeatherHit, Vector2.zero, miniStatus.sizeDelta);
-        EcoUI.LayoutIcon(clockIcon, new Vector2(0f, -1f), 18f);
-        EcoUI.Layout(clockText, new Vector2(24f, 0f), new Vector2(mapOuter - 34f, 20f));
-        EcoUI.LayoutIcon(weatherIcon, new Vector2(0f, -22f), 20f);
-        EcoUI.Layout(weatherText, new Vector2(24f, -22f), new Vector2(mapOuter - 108f, 20f));
-        EcoUI.LayoutIcon(windIcon, new Vector2(mapOuter - 76f, -22f), 20f);
-        EcoUI.Layout(windText, new Vector2(mapOuter - 54f, -22f), new Vector2(40f, 20f));
+        EcoUI.Place(miniStatusPaper, new Vector2(-4f, 3f), new Vector2(mapOuter, 50f));
+        EcoUI.LayoutIcon(clockIcon, new Vector2(6f, -2f), 18f);
+        EcoUI.Layout(clockText, new Vector2(30f, -1f), new Vector2(mapOuter - 44f, 20f));
+        EcoUI.LayoutIcon(weatherIcon, new Vector2(6f, -23f), 20f);
+        EcoUI.Layout(weatherText, new Vector2(30f, -23f), new Vector2(mapOuter - 114f, 20f));
+        EcoUI.LayoutIcon(windIcon, new Vector2(mapOuter - 80f, -23f), 20f);
+        EcoUI.Layout(windText, new Vector2(mapOuter - 58f, -23f), new Vector2(42f, 20f));
         EcoUI.Layout(miniNorth, new Vector2(mapSide * 0.5f - 10f, -5f), new Vector2(20f, 16f));
         var bb = (RectTransform)bigMapButton.transform; bb.anchorMin = bb.anchorMax = new Vector2(0, 1); bb.pivot = new Vector2(0, 1);
         bb.anchoredPosition = mapCollapsed ? new Vector2(4f, -2f) : new Vector2(mapOuter - 36f, -(mapOuter - 36f));
