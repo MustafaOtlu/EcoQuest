@@ -52,6 +52,7 @@ public sealed class EcoCameraFx : MonoBehaviour
     private void OnGUI()
     {
         if (flash <= 0.01f || EcoSettings.ReduceBlur) return;
+        GUI.depth = 10; // damage edge stays behind open panels
         if (edge == null) { edge = new Texture2D(1, 1); edge.SetPixel(0, 0, Color.white); edge.Apply(); }
         var color = EcoSettings.Bad; color.a = 0.28f * flash; var previous = GUI.color; GUI.color = color;
         float t = Mathf.Max(16f, Screen.height * 0.035f);

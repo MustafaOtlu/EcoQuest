@@ -64,6 +64,7 @@ public sealed class PlayerVitals : MonoBehaviour
     }
     private void OnGUI()
     {
+        GUI.depth = 10; // smoke/hit tints sit behind open panels (orders, journal) instead of greying them out
         Color saved = GUI.color;
         if (Time.time < smokeUntil)
         {
