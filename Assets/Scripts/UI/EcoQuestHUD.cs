@@ -117,7 +117,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         portraitFrame = EcoUI.Panel("Portrait frame", vitalsCard.root, new Vector2(0, 1), new Vector2(0, 1), Color.white, false, EcoUI.PortraitFrameSprite);
         portraitFrame.type = Image.Type.Simple; portraitFrame.preserveAspect = true;
         portraitFrame.enabled = EcoUI.PortraitFrameSprite != null;
-        FloatingText(vitalsCard.summary);
+        vitalsCard.summary.color = EcoUI.Ink; // the collapsed line sits on a paper strip (see ApplyLayout)
         string[] icons = { "energy", "electricity", "water" };
         string[] names = { "Karakter enerjisi", "Araç elektriği", "Temiz su" };
         string[] tips =
@@ -282,8 +282,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.SetMeter(meterFills[i], meterTracks[i], values[i] / Mathf.Max(1f, maxima[i]), colors[i]);
             meterValues[i].text = Mathf.CeilToInt(values[i]) + " / " + Mathf.CeilToInt(maxima[i]);
         }
-        vitalsCard.summary.text = "<color=#" + EcoUI.Hex(colors[0]) + ">" + Mathf.CeilToInt(values[0]) + "</color>  ·  <color=#" + EcoUI.Hex(colors[1]) + ">"
-            + Mathf.CeilToInt(values[1]) + " EB</color>  ·  <color=#" + EcoUI.Hex(colors[2]) + ">" + Mathf.CeilToInt(values[2]) + " SB</color>";
+        vitalsCard.summary.text = "<color=#" + EcoUI.Hex(EcoUI.OnPaper(colors[0])) + ">" + Mathf.CeilToInt(values[0]) + "</color>  ·  <color=#" + EcoUI.Hex(EcoUI.OnPaper(colors[1])) + ">"
+            + Mathf.CeilToInt(values[1]) + " EB</color>  ·  <color=#" + EcoUI.Hex(EcoUI.OnPaper(colors[2])) + ">" + Mathf.CeilToInt(values[2]) + " SB</color>";
         if (worldClock != null)
         {
             EcoUI.SetIcon(weatherIcon, EcoIcons.Weather(worldClock));
@@ -478,10 +478,12 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool vitalsCollapsed = vitalsCard.IsCollapsed;
         float vh = vitalsCollapsed ? 32f : 94f;
         vitalsCard.root.sizeDelta = new Vector2(leftWidth, vh);
-        HudFrame(vitalsCard, false);
+        // Collapsed, the health · EB · SB line gets a paper strip; bright meter colours over grass were hard to read.
+        HudFrame(vitalsCard, vitalsCollapsed); vitalsCard.rule.gameObject.SetActive(false);
         vitalsCard.title.gameObject.SetActive(false); vitalsCard.icon.gameObject.SetActive(false);
         vitalsCard.summary.gameObject.SetActive(vitalsCollapsed);
-        EcoUI.Layout(vitalsCard.summary, new Vector2(38f, -6f), new Vector2(leftWidth - 66f, 20f));
+        vitalsCard.summary.alignment = TextAnchor.MiddleLeft;
+        EcoUI.Layout(vitalsCard.summary, new Vector2(46f, -6f), new Vector2(leftWidth - 74f, 20f));
         EcoUI.Place(vitalsCard.body, Vector2.zero, new Vector2(leftWidth, 94f));
         PlaceToggle(vitalsCard, new Vector2(-1f, -5f));
         bool hasPortrait = portrait.enabled && portrait.sprite != null;
