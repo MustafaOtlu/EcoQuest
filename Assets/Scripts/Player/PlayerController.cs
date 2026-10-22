@@ -41,6 +41,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 directTarget;
     private GameObject marker;
     private float markerUntil;
+    private const float CursorIdleSeconds = 1.5f;
+    private float cursorIdleUntil;
 
     private void Awake()
     {
@@ -121,6 +123,7 @@ public class PlayerController : MonoBehaviour
         bool hasControl = !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && !buildBusy && Application.isFocused
             && (vitals == null || !vitals.IsRecovering);
 
+        UpdateCursorVisibility(hasControl, mouse);
         Vector2 stick = hasControl && moveAction != null ? Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f) : Vector2.zero;
         Vector3 desired = Vector3.zero;
         if (isoCamera != null && stick.sqrMagnitude > 0.01f)
@@ -265,6 +268,16 @@ public class PlayerController : MonoBehaviour
         markerUntil = Time.time + 1.2f;
     }
 
+    // The OS pointer stays off the play field unless the mouse is in use; panels and pause always show it.
+    private void UpdateCursorVisibility(bool hasControl, Mouse mouse)
+    {
+        bool mouseActive = mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 0.5f || mouse.scroll.ReadValue().sqrMagnitude > 0f
+            || mouse.leftButton.isPressed || mouse.rightButton.isPressed);
+        if (mouseActive || !hasControl) cursorIdleUntil = Time.unscaledTime + CursorIdleSeconds;
+        bool show = !hasControl || Time.unscaledTime < cursorIdleUntil;
+        if (Cursor.visible != show) Cursor.visible = show;
+    }
+
     private void UpdateMarker()
     {
         if (marker != null && marker.activeSelf && (Time.time > markerUntil || !HasWalkOrder)) marker.SetActive(false);
@@ -310,5 +323,6 @@ public class PlayerController : MonoBehaviour
     {
         if (Paused) SetPaused(false);
         if (marker != null) Destroy(marker);
+        Cursor.visible = true;
     }
 }
