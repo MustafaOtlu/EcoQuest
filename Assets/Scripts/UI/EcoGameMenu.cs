@@ -15,6 +15,7 @@ public sealed class EcoGameMenu : MonoBehaviour
     private float nextSlotScan;
     private int listening = -1;
     private Vector2 scroll;
+    private string keyNotice = "";
 
     private void Start()
     {
@@ -101,7 +102,7 @@ public sealed class EcoGameMenu : MonoBehaviour
             case Screen_.Settings:
             {
                 // Laid out top to bottom inside a scroll area so a large UI scale on a small screen never overlaps "Geri".
-                const float contentHeight = 520f;
+                const float contentHeight = 560f;
                 var view = new Rect(x, y - 14f, w + 18f, r.yMax - 84f - (y - 14f));
                 bool scrolls = view.height < contentHeight;
                 scroll = GUI.BeginScrollView(view, scroll, new Rect(0f, 0f, scrolls ? w - 6f : w, contentHeight));
@@ -119,16 +120,19 @@ public sealed class EcoGameMenu : MonoBehaviour
                 if (Switch(new Rect(0f, 114f, cw, 34f), "Kamera sarsıntısı", EcoSettings.CameraShake) != EcoSettings.CameraShake) EcoSettings.CameraShake = !EcoSettings.CameraShake;
                 if (Switch(new Rect(0f, 152f, cw, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
                 if (Switch(new Rect(0f, 190f, cw, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
-                float audioHeight = EcoAudio.DrawSliders(0f, 236f, cw, EcoTheme.Body);
-                if (EcoTheme.IconButton(new Rect(0f, 236f + audioHeight + 10f, cw, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
-                GUI.Label(new Rect(0f, 236f + audioHeight + 56f, cw, 26f), "F3: performans göstergesi", EcoTheme.Muted);
+                if (Switch(new Rect(0f, 228f, cw, 34f), "Tekerlek yönünü ters çevir (yakınlaştırma)", EcoSettings.InvertZoom) != EcoSettings.InvertZoom) EcoSettings.InvertZoom = !EcoSettings.InvertZoom;
+                float audioHeight = EcoAudio.DrawSliders(0f, 274f, cw, EcoTheme.Body);
+                if (EcoTheme.IconButton(new Rect(0f, 274f + audioHeight + 10f, cw, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
+                GUI.Label(new Rect(0f, 274f + audioHeight + 56f, cw, 26f), "F3: performans göstergesi", EcoTheme.Muted);
                 GUI.EndScrollView();
                 if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) Back();
                 break;
             }
             case Screen_.Keys:
-                DrawKeys(x, y - 20f, w, r.height - 215f);
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w * 0.5f - 6f, 40f), "Varsayılana dön", EcoTheme.Button)) EcoKeys.ResetAll();
+                DrawKeys(x, y - 20f, w, r.height - 245f);
+                // GDD §13: a conflicting binding is not silent; the player sees which action took the old key.
+                if (keyNotice.Length > 0) GUI.Label(new Rect(x, r.yMax - 106f, w, 30f), keyNotice, EcoTheme.Muted);
+                if (GUI.Button(new Rect(x, r.yMax - 70f, w * 0.5f - 6f, 40f), "Varsayılana dön", EcoTheme.Button)) { EcoKeys.ResetAll(); keyNotice = ""; }
                 if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; Back(); }
                 break;
         }
@@ -150,7 +154,13 @@ public sealed class EcoGameMenu : MonoBehaviour
         var e = Event.current;
         if (listening >= 0 && e != null && e.type == EventType.KeyDown && e.keyCode != KeyCode.None)
         {
-            if (e.keyCode != KeyCode.Escape && System.Enum.TryParse(e.keyCode.ToString(), out Key key) && key != Key.None) EcoKeys.Set((EcoKeys.Action)listening, key);
+            if (e.keyCode != KeyCode.Escape && System.Enum.TryParse(e.keyCode.ToString(), out Key key) && key != Key.None)
+            {
+                var action = (EcoKeys.Action)listening;
+                int swapped = EcoKeys.Set(action, key);
+                keyNotice = swapped < 0 ? "" : "Dikkat: " + EcoKeys.Label(action) + " \"" + EcoKeys.Names[swapped] + "\" için kullanılıyordu; o eylem artık "
+                    + EcoKeys.Label((EcoKeys.Action)swapped) + ".";
+            }
             listening = -1; e.Use();
         }
     }
@@ -189,7 +199,7 @@ public sealed class EcoGameMenu : MonoBehaviour
     private void Go(Screen_ target, Screen_ from)
     {
         if (from == Screen_.Main || from == Screen_.Pause) root = from;
-        back = from; screen = target; nextSlotScan = 0f; scroll = Vector2.zero;
+        back = from; screen = target; nextSlotScan = 0f; scroll = Vector2.zero; keyNotice = "";
     }
     // Keys sits under Settings; leaving it must restore Settings' own way back, or Settings' "Geri" returned to itself.
     private void Back()

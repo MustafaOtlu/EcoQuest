@@ -31,6 +31,12 @@ public static class EcoSettings
         get => PlayerPrefs.GetInt("EcoQuest.shake", 1) == 1;
         set { PlayerPrefs.SetInt("EcoQuest.shake", value ? 1 : 0); PlayerPrefs.Save(); }
     }
+    /// <summary>GDD §13: zoom direction is adjustable; on, wheel-up moves the camera away instead of closer.</summary>
+    public static bool InvertZoom
+    {
+        get => PlayerPrefs.GetInt("EcoQuest.invertZoom", 0) == 1;
+        set { PlayerPrefs.SetInt("EcoQuest.invertZoom", value ? 1 : 0); PlayerPrefs.Save(); }
+    }
     public static bool ReduceBlur
     {
         get => PlayerPrefs.GetInt("EcoQuest.reduceBlur", 0) == 1;

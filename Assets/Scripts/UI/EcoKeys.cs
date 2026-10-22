@@ -40,13 +40,15 @@ public static class EcoKeys
     public static bool Held(Action action) { var board = Keyboard.current; return board != null && board[Get(action)].isPressed; }
 
     /// <summary>Binds an action to a key; if another action already uses it the two swap so nothing is lost.</summary>
-    public static void Set(Action action, Key key)
+    /// <summary>Binds the key; an action that already used it takes the old key. Returns that action, or -1 when none.</summary>
+    public static int Set(Action action, Key key)
     {
         Load();
-        int index = (int)action;
-        for (int i = 0; i < keys.Length; i++) if (i != index && keys[i] == key) { keys[i] = keys[index]; PlayerPrefs.SetString("EcoQuest.key." + i, keys[i].ToString()); }
+        int index = (int)action, swapped = -1;
+        for (int i = 0; i < keys.Length; i++) if (i != index && keys[i] == key) { keys[i] = keys[index]; swapped = i; PlayerPrefs.SetString("EcoQuest.key." + i, keys[i].ToString()); }
         keys[index] = key; PlayerPrefs.SetString("EcoQuest.key." + index, key.ToString()); PlayerPrefs.Save();
         ApplyInput();
+        return swapped;
     }
     public static void ResetAll()
     {

@@ -71,7 +71,7 @@ public sealed class EcoIsoCamera : MonoBehaviour
         {
             float scroll = mouse.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) > 0.01f)
-                SetZoom(wantedDistance - Mathf.Sign(scroll) * zoomStep);
+                SetZoom(wantedDistance - Mathf.Sign(scroll) * (EcoSettings.InvertZoom ? -1f : 1f) * zoomStep);
         }
         distance = Mathf.Lerp(distance, wantedDistance, 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
 
