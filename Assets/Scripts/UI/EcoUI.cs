@@ -172,7 +172,9 @@ public static class EcoUI
     public static Texture2D PanelTexture => SkinTexture(ref paperTexture, "panel_brown_corners_a");
     public static Texture2D CardTexture => SkinTexture(ref cardTexture, "panel_brown");
     public static Texture2D ButtonTexture => SkinTexture(ref buttonTexture, "button_brown");
-    public static Texture2D ButtonHoverTexture => SkinTexture(ref buttonHoverTexture, "button_grey");
+    // Hover keeps the wooden frame and warms the cream face toward sage; the pack's blue-grey button clashed with the
+    // theme and left dark ink text with little contrast.
+    public static Texture2D ButtonHoverTexture => buttonHoverTexture != null ? buttonHoverTexture : buttonHoverTexture = TintFace(ButtonTexture, new Color(0.80f, 0.90f, 0.66f));
     public static Texture2D SelectedTexture => SkinTexture(ref selectedTexture, "panel_brown_dark");
     public static Sprite PaperSprite => SkinSprite(ref paperSprite, PanelTexture);
     public static Sprite CardSprite => SkinSprite(ref cardSprite, CardTexture);
@@ -186,6 +188,23 @@ public static class EcoUI
     public static Sprite Grain => PaperSprite;
     public static Sprite Trim => SkinSprite(ref borderSprite, SkinTexture(ref borderTexture, "panel_border_brown_detail"));
     public static readonly Color StitchColor = new Color(0.40f, 0.49f, 0.35f, 0.32f);
+
+    private static Texture2D TintFace(Texture2D source, Color face)
+    {
+        if (source == null || source == Texture2D.whiteTexture) return source;
+        // button_brown.png is imported readable, so the copy keeps its exact colours (a GPU round trip darkened the wood).
+        if (!source.isReadable) return source;
+        var copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false) { name = source.name + " hover", filterMode = source.filterMode, wrapMode = TextureWrapMode.Clamp };
+        var pixels = source.GetPixels();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            var c = pixels[i];
+            float light = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            if (light > 0.72f) pixels[i] = new Color(Mathf.Lerp(c.r, face.r, 0.65f), Mathf.Lerp(c.g, face.g, 0.65f), Mathf.Lerp(c.b, face.b, 0.65f), c.a);
+        }
+        copy.SetPixels(pixels); copy.Apply(false, true);
+        return copy;
+    }
 
     private static Texture2D SkinTexture(ref Texture2D cached, string name)
     {
