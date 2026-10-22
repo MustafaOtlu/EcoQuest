@@ -49,7 +49,7 @@ public sealed class EcoGameMenu : MonoBehaviour
         string heading = screen == Screen_.Main ? "ECOQUEST" : screen == Screen_.Settings ? "AYARLAR" : screen == Screen_.Keys ? "TUŞ ATAMALARI"
             : screen == Screen_.Slots ? "KAYIT SLOTLARI" : "DURAKLATILDI";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Hızlı, elle ve final öncesi kayıtlar." : screen == Screen_.Settings ? "Arayüz, erişilebilirlik ve ses."
-            : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc.";
+            : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc." + LastSaveNote();
         var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
@@ -156,6 +156,23 @@ public sealed class EcoGameMenu : MonoBehaviour
         bool click = GUI.Button(rect, (value ? "✓ " : "✗ ") + label, EcoTheme.Button);
         GUI.color = previous; return click ? !value : value;
     }
+    // GDD §14: the pause menu tells how old the newest save is, so unsaved progress is visible before quitting or loading.
+    private float nextSaveNote; private string saveNote = "";
+    private string LastSaveNote()
+    {
+        if (Time.unscaledTime < nextSaveNote) return saveNote;
+        nextSaveNote = Time.unscaledTime + 1f; saveNote = "";
+        var save = EcoWorldSave.Current; if (save == null) return saveNote;
+        System.DateTime newest = System.DateTime.MinValue;
+        foreach (var slot in save.GetSlots())
+            if (slot.CanLoad && System.DateTime.TryParse(slot.SavedAt, null, System.Globalization.DateTimeStyles.RoundtripKind, out var at) && at > newest) newest = at;
+        if (newest == System.DateTime.MinValue) { saveNote = "  •  Henüz kayıt yok"; return saveNote; }
+        double minutes = (System.DateTime.UtcNow - newest.ToUniversalTime()).TotalMinutes;
+        saveNote = "  •  Son kayıt: " + (minutes < 1 ? "az önce" : minutes < 60 ? Mathf.FloorToInt((float)minutes) + " dk önce"
+            : minutes < 1440 ? Mathf.FloorToInt((float)(minutes / 60)) + " sa önce" : Mathf.FloorToInt((float)(minutes / 1440)) + " gün önce");
+        return saveNote;
+    }
+
     private void Go(Screen_ target, Screen_ from)
     {
         if (from == Screen_.Main || from == Screen_.Pause) root = from;
