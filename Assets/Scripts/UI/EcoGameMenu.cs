@@ -50,7 +50,7 @@ public sealed class EcoGameMenu : MonoBehaviour
             : screen == Screen_.Slots ? "KAYIT SLOTLARI" : "DURAKLATILDI";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Hızlı, elle ve final öncesi kayıtlar." : screen == Screen_.Settings ? "Arayüz, erişilebilirlik ve ses."
             : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc.";
-        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 520f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
+        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
         switch (screen)
@@ -80,13 +80,15 @@ public sealed class EcoGameMenu : MonoBehaviour
                     if (Time.unscaledTime >= nextSlotScan) { nextSlotScan = Time.unscaledTime + 1f; slots = save.GetSlots(); }
                     for (int i = 0; i < slots.Length; i++)
                     {
-                        var s = slots[i]; float row = y + i * 52f;
-                        GUI.Label(new Rect(x, row, w - 190f, 46f), s.Name + "\n" + (s.Exists ? s.Detail : "Boş"), EcoTheme.Body);
+                        // Eight slots on 58 px rows fit above "Geri"; name and detail get their own lines so neither is clipped.
+                        var s = slots[i]; float row = y + i * 58f;
+                        GUI.Label(new Rect(x, row - 2f, w - 190f, 26f), s.Name, EcoTheme.Body);
+                        GUI.Label(new Rect(x, row + 23f, w - 190f, 24f), s.Exists ? s.Detail : "Boş", EcoTheme.Muted);
                         bool manual = s.Id.StartsWith("manual-");
                         GUI.enabled = manual && back == Screen_.Pause;
-                        if (GUI.Button(new Rect(x + w - 180f, row, 86f, 40f), "Kaydet", EcoTheme.Button)) { save.SaveManual(int.Parse(s.Id.Substring(7))); nextSlotScan = 0f; }
+                        if (GUI.Button(new Rect(x + w - 180f, row + 4f, 86f, 40f), "Kaydet", EcoTheme.Button)) { save.SaveManual(int.Parse(s.Id.Substring(7))); nextSlotScan = 0f; }
                         GUI.enabled = s.CanLoad;
-                        if (GUI.Button(new Rect(x + w - 90f, row, 86f, 40f), "Yükle", EcoTheme.Button)) { PlayerController.SetPaused(false); save.LoadSlot(s.Id); }
+                        if (GUI.Button(new Rect(x + w - 90f, row + 4f, 86f, 40f), "Yükle", EcoTheme.Button)) { PlayerController.SetPaused(false); save.LoadSlot(s.Id); }
                         GUI.enabled = true;
                     }
                 }
