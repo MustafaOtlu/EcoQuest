@@ -52,16 +52,17 @@ public sealed class EcoSurvey : MonoBehaviour
     {
         if (!open) return;
         EcoTheme.Begin();
-        if (option == null) { option = new GUIStyle(EcoTheme.Button) { wordWrap = true, fontSize = 14, alignment = TextAnchor.MiddleCenter }; }
+        if (option == null) { option = new GUIStyle(EcoTheme.Button) { wordWrap = true, fontSize = 14, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(12, 12, 4, 6) }; }
         var r = EcoTheme.Window(780f, 640f, post ? "Öğrenme anketi (son)" : "Öğrenme anketi (ön)", "İsteğe bağlı • 5 soru • yanıtlar yalnız bu bilgisayarda kalır.", "ui_journal");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 100f;
         for (int q = 0; q < 5; q++)
         {
-            GUI.Label(new Rect(x, y + q * 82f, w, 26f), (q + 1) + ". " + Questions[q], EcoTheme.Body);
+            GUI.Label(new Rect(x, y + q * 90f, w, 26f), (q + 1) + ". " + Questions[q], EcoTheme.Body);
             for (int o = 0; o < 3; o++)
             {
                 bool on = answers[q] == o; var prev = GUI.color; if (on) GUI.color = EcoSettings.Good;
-                if (GUI.Button(new Rect(x + o * (w / 3f), y + q * 82f + 28f, w / 3f - 6f, 46f), Options[q][o], option)) answers[q] = o;
+                // Two-line answers need the taller 54 px wood; at 46 px they ran into the frame.
+                if (GUI.Button(new Rect(x + o * (w / 3f), y + q * 90f + 28f, w / 3f - 6f, 54f), Options[q][o], option)) answers[q] = o;
                 GUI.color = prev;
             }
         }
