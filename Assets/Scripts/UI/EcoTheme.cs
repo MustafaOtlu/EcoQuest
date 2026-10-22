@@ -156,8 +156,10 @@ public static class EcoTheme
         subtitle=new GUIStyle(body){fontSize=21,fontStyle=FontStyle.Bold};
         TextColors(title, EcoUI.Ink); TextColors(body, EcoUI.Ink);
         TextColors(muted, EcoUI.Muted); TextColors(subtitle, EcoUI.Ink);
-        button=new GUIStyle(GUI.skin.button){font=font,fontSize=18,padding=new RectOffset(14,14,8,8)};
-        button.normal.background=buttonSkin; button.normal.textColor=EcoUI.Ink; button.border=new RectOffset(16,16,12,12);
+        // The 96×48 wooden button has a ~7 px frame and a heavier bottom lip; slicing at 12 px and centring 18 px text
+        // ran the text into that lip on 34 px rows. A thinner vertical slice, 17 px text and a 2 px lift keep it on the cream.
+        button=new GUIStyle(GUI.skin.button){font=font,fontSize=17,padding=new RectOffset(14,14,6,8)};
+        button.normal.background=buttonSkin; button.normal.textColor=EcoUI.Ink; button.border=new RectOffset(16,16,9,10);
         button.hover.background=buttonHover; button.hover.textColor=EcoUI.Ink;
         button.focused.background=buttonHover; button.focused.textColor=EcoUI.Ink;
         button.active.background=buttonHover; button.active.textColor=EcoUI.Ink;
