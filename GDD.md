@@ -490,7 +490,7 @@ Oyuncu toparlanırsa deneme sonlandırılır: geçici final düşmanları/baskı
 
 ### Bilgi düzeni
 
-**Tasarım başlangıcı:** Temiz, sıcak ve doğa temalı arayüz; koyu zemin üzerinde açık metin, yeşil/kehribar/mavi vurgu. Ahşap asset paketinin eksik bağımlılıkları arayüzün çalışmasının şartı değildir.
+**Karar (23 Ekim 2026):** Sıcak, doğa temalı "saha defteri" arayüzü: ahşap çerçeveli krem kâğıt kartlar üzerinde koyu mürekkep yazı, yeşil/kehribar/mavi vurgu (Kenney UI Pack Adventure, CC0). Dünyanın üstünde çerçevesiz yazı bırakılmaz; kompakt satırlar da (Sade mod, daraltılmış kartlar, saat/hava) kâğıt şerit üstündedir. Üzerine gelinen buton ahşap kalır, yüzü adaçayı yeşiline döner. Ahşap asset paketinin eksik bağımlılıkları arayüzün çalışmasının şartı değildir.
 
 | Konum / ekran | Öncelikli bilgi | Etkileşim |
 | --- | --- | --- |
