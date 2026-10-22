@@ -555,6 +555,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
         help.gameObject.SetActive(false);
     }
 
+    /// <summary>Opens the F1 controls panel (pause menu "Kontroller").</summary>
+    public void ShowHelp() => SetHelp(true);
+
     private void SetHelp(bool open)
     {
         if (open && MapOpen) SetMap(false);

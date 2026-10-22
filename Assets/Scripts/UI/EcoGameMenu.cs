@@ -50,7 +50,7 @@ public sealed class EcoGameMenu : MonoBehaviour
             : screen == Screen_.Slots ? "KAYIT SLOTLARI" : "DURAKLATILDI";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Hızlı, elle ve final öncesi kayıtlar." : screen == Screen_.Settings ? "Arayüz, erişilebilirlik ve ses."
             : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc." + LastSaveNote();
-        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
+        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : screen == Screen_.Pause ? 560f : 450f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
         var save = EcoWorldSave.Current;
         switch (screen)
@@ -70,8 +70,12 @@ public sealed class EcoGameMenu : MonoBehaviour
                 if (EcoTheme.IconButton(new Rect(x, y + 54f, w, 44f), "Hızlı kaydet", "calendar")) save?.QuickSave();
                 if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Pause);
                 if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Pause);
-                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(true) ? "Öğrenme anketi (son) ✓" : "Öğrenme anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
-                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
+                // GDD §14 pause menu: also controls/tutorial and a way back to the title screen.
+                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), "Kontroller [F1]", "ui_help"))
+                { PlayerController.SetPaused(false); FindFirstObjectByType<EcoWorldHUD>()?.ShowHelp(); }
+                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), EcoSurvey.Done(true) ? "Öğrenme anketi (son) ✓" : "Öğrenme anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
+                if (EcoTheme.IconButton(new Rect(x, y + 324f, w, 44f), "Ana menüye dön (kaydedilmemiş ilerleme kaybolur)", "yep")) ReturnToTitle();
+                if (EcoTheme.IconButton(new Rect(x, y + 378f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
                 break;
             case Screen_.Slots:
                 if (save == null) { GUI.Label(new Rect(x, y, w, 40f), "Kayıt sistemi bu sahnede yok.", EcoTheme.Body); }
@@ -156,6 +160,15 @@ public sealed class EcoGameMenu : MonoBehaviour
         bool click = GUI.Button(rect, (value ? "✓ " : "✗ ") + label, EcoTheme.Button);
         GUI.color = previous; return click ? !value : value;
     }
+    // Reloading the scene gives the title a fresh world, so "Yeni oyun" there really starts over; the clock is
+    // released first because the title opens through a scaled-time Invoke.
+    private void ReturnToTitle()
+    {
+        PlayerController.SetPaused(false);
+        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
+    }
+
     // GDD §14: the pause menu tells how old the newest save is, so unsaved progress is visible before quitting or loading.
     private float nextSaveNote; private string saveNote = "";
     private string LastSaveNote()
