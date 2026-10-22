@@ -565,13 +565,16 @@ public sealed class EcoWorldSave : MonoBehaviour
     {
         if (Time.unscaledTime > statusUntil || string.IsNullOrEmpty(Status)) return;
         // Small themed toast in the free bottom-right corner (it used to be bare text over the toolbelt).
+        // Drawn above the pause menu's shade (saving from Kayıt slotları), with text kept inside the 16 px wooden frame.
+        GUI.depth = -10;
         EcoTheme.Begin();
         var style = EcoTheme.Muted;
-        float width = Mathf.Min(420f, EcoTheme.Width - 40f), height = style.CalcHeight(new GUIContent(Status), width - 58f) + 18f;
+        float width = Mathf.Min(440f, EcoTheme.Width - 40f), textWidth = width - 74f;
+        float height = style.CalcHeight(new GUIContent(Status), textWidth) + 32f;
         var card = new Rect(EcoTheme.Width - width - 16f, EcoTheme.Height - height - 16f, width, height);
         EcoTheme.Panel(card, false);
-        EcoTheme.Icon(new Rect(card.x + 14f, card.y + (card.height - 26f) * 0.5f, 26f, 26f), "calendar");
-        GUI.Label(new Rect(card.x + 48f, card.y + 9f, width - 58f, height - 18f), Status, style);
+        EcoTheme.Icon(new Rect(card.x + 18f, card.y + (card.height - 26f) * 0.5f, 26f, 26f), "calendar");
+        GUI.Label(new Rect(card.x + 52f, card.y + 16f, textWidth, height - 32f), Status, style);
         EcoTheme.End();
     }
 }
