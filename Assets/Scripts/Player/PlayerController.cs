@@ -144,7 +144,9 @@ public class PlayerController : MonoBehaviour
 
         // Facing: toward the cursor while a tool is held, otherwise toward the walking direction.
         Vector3 aimPoint = default;
-        bool aiming = hasControl && !buildBusy && mouse != null && EcoKeys.FireHeld(mouse) && !EcoIsoCamera.PointerOverUI()
+        // A lit flashlight follows the cursor while standing, so the beam goes where the player looks.
+        bool lampAim = weapons != null && weapons.FlashlightOn && desired.sqrMagnitude < 0.01f;
+        bool aiming = hasControl && !buildBusy && mouse != null && (EcoKeys.FireHeld(mouse) || lampAim) && !EcoIsoCamera.PointerOverUI()
             && EcoIsoCamera.TryCursorPoint(transform, out aimPoint);
         Vector3 face = aiming ? Vector3.ProjectOnPlane(aimPoint - transform.position, Vector3.up) : desired;
         if (face.sqrMagnitude > 0.01f)

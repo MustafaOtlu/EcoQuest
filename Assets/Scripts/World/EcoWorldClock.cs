@@ -45,6 +45,10 @@ public sealed class EcoWorldClock : MonoBehaviour
     public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
     private float originalIntensity, originalAmbient;
     private Quaternion originalRotation;
+    private Color originalColor = Color.white;
+    private const float MoonLight = 0.28f;
+    private static readonly Color MoonColor = new Color(0.62f, 0.72f, 0.95f);
+    private static readonly Quaternion MoonRotation = Quaternion.Euler(58f, -35f, 0f);
     private EcoEveningLighting evening;
     private void OnEnable() => current = null;
     private void OnDisable() { if (current == this) current = null; }
@@ -55,7 +59,7 @@ public sealed class EcoWorldClock : MonoBehaviour
             foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (light.type == LightType.Directional) { sun = light; break; }
         originalAmbient = RenderSettings.ambientIntensity;
-        if (sun != null) { originalIntensity = sun.intensity; originalRotation = sun.transform.rotation; }
+        if (sun != null) { originalIntensity = sun.intensity; originalRotation = sun.transform.rotation; originalColor = sun.color; }
         // Enable the atmosphere in gameplay scenes; isolated simulation fixtures stay independent.
         if (Current == this && EcoAtmosphere.Current == null && FindFirstObjectByType<PlayerController>() != null)
         { var atmosphere = new GameObject("EcoQuest atmosphere").AddComponent<EcoAtmosphere>(); atmosphere.clock = this; }
@@ -67,9 +71,14 @@ public sealed class EcoWorldClock : MonoBehaviour
         EnsureEveningLighting();
         if (advanceTime) Simulate(Time.deltaTime);
         if (!driveLighting || sun == null) return;
-        sun.intensity = originalIntensity * SolarFactor;
-        sun.transform.rotation = Quaternion.LookRotation(-SunDirection);
-        RenderSettings.ambientIntensity = Mathf.Lerp(0.2f, originalAmbient, SolarFactor);
+        // Night keeps a cool, high moonlight so the town stays readable; the flashlight and street lamps add to it, not replace it.
+        float sunHeight = Mathf.Max(0f, Mathf.Sin((hour - 6f) * Mathf.PI / 12f));
+        float daylight = Mathf.SmoothStep(0f, 1f, sunHeight * 4f); // clouds dim the sun but do not turn noon into moonlight
+        sun.intensity = originalIntensity * Mathf.Max(SolarFactor, MoonLight);
+        sun.color = Color.Lerp(MoonColor, originalColor, daylight);
+        Quaternion sunRotation = sunHeight > 0f ? Quaternion.LookRotation(-SunDirection) : MoonRotation;
+        sun.transform.rotation = Quaternion.Slerp(MoonRotation, sunRotation, daylight);
+        RenderSettings.ambientIntensity = Mathf.Lerp(0.45f, originalAmbient, SolarFactor);
     }
     private void EnsureEveningLighting()
     {
@@ -93,7 +102,7 @@ public sealed class EcoWorldClock : MonoBehaviour
     private void OnDestroy()
     {
         if (!driveLighting || (current != null && current != this)) return;
-        if (sun != null) { sun.intensity = originalIntensity; sun.transform.rotation = originalRotation; }
+        if (sun != null) { sun.intensity = originalIntensity; sun.transform.rotation = originalRotation; sun.color = originalColor; }
         RenderSettings.ambientIntensity = originalAmbient;
     }
 }
