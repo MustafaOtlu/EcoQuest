@@ -44,5 +44,5 @@ public sealed class EcoFire : MonoBehaviour
         if (!Burning) flames.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         else { var emission = flames.emission; emission.rateOverTime = 18 * intensity; }
     }
-    public string Describe() => Burning ? "Yangın • Vakumun su moduyla söndür\nYakındaki bitkilere ve yapılara zarar veriyor" : "Yangın söndü";
+    public string Describe() => Burning ? "Yangın • Vakumla nişan al, söndürür\nYakındaki bitkilere ve yapılara zarar veriyor" : "Yangın söndü";
 }

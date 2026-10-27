@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -317,9 +318,10 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             return;
         }
         if (Selected == Tool.SeedGun) { FireSeedGun(); return; }
+        if (Selected == Tool.Vacuum) AutoSelectMode();
         float cost = (Selected == Tool.Recycler ? 1f * Upgrades.RecyclerElectricity : (Mode == VacuumMode.Disperse ? 3f : Mode == VacuumMode.Water ? 1f : 2f) * Upgrades.VacuumElectricity) * deltaTime;
         if (Energy < cost || Time.time < jamUntil) { ResetProcessing(); Notify(Time.time < jamUntil ? "Silah tıkandı, kısa süre bekle." : "Elektrik yetersiz. Şarj istasyonuna bağlan."); return; }
-        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && Water < 2f * deltaTime) { Notify("Su bitti. Toplama moduyla su kaynağından doldur."); return; }
+        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && Water < 2f * deltaTime) { Notify("Su bitti. Vakumu göle ya da su deposuna tut, kendiliğinden dolar."); return; }
         Energy -= cost;
         if (Selected == Tool.Vacuum && Mode == VacuumMode.Water)
         {
@@ -547,6 +549,68 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         { Notify("İsabet • " + enemy.DisplayName + " • Can " + Mathf.CeilToInt(enemy.Health)); nextHitFeedback = Time.time + 0.2f; }
         if (enemy.Health <= 0) Changed?.Invoke();
     }
+    // The vacuum picks its mode from what it is aimed at: clean water fills the tank, a fire or a young plant gets water, waste is
+    // collected and each threat gets the mode that hurts it. Only an empty aim keeps the mode chosen with the mode key.
+    private void AutoSelectMode()
+    {
+        VacuumMode? wanted = null;
+        if (Aim(6f + Upgrades.VacuumRangeBonus, out var hit, Upgrades.CollectionRadius))
+        {
+            var c = hit.collider;
+            var enemy = c.GetComponentInParent<EnemyBrain>();
+            var plant = c.GetComponentInParent<PlantedSeed>();
+            var source = c.GetComponentInParent<WeaponWaterSource>();
+            if (enemy != null) wanted = ModeAgainst(enemy.species);
+            else if (c.GetComponentInParent<EcoFire>() != null) wanted = VacuumMode.Water;
+            else if (plant != null) wanted = plant.IsMature || plant.IsWithered ? (VacuumMode?)null : VacuumMode.Water;
+            else if (c.GetComponentInParent<EcoWaterNode>() != null || (source != null && source.IsClean)) wanted = VacuumMode.Collect;
+            else if (c.GetComponentInParent<RecyclableResource>() != null) wanted = VacuumMode.Collect;
+        }
+        if (wanted == null)
+        {
+            float best = 25f; Vector3 flat = new Vector3(AimDir.x, 0f, AimDir.z);
+            foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
+            {
+                var mode = enemy == null || enemy.State == EnemyBrain.Behaviour.Dead ? null : ModeAgainst(enemy.species);
+                if (mode == null) continue;
+                Vector3 to = enemy.transform.position - owner.position; to.y = 0f;
+                if (to.magnitude > 6f + Upgrades.VacuumRangeBonus) continue;
+                float angle = to.magnitude < 2.5f ? 0f : Vector3.Angle(flat, to);
+                if (angle <= best) { best = angle; wanted = mode; }
+            }
+        }
+        if (wanted == null || wanted.Value == Mode) return;
+        Mode = wanted.Value; processing = null; progress = 0f; Changed?.Invoke();
+    }
+    private static VacuumMode? ModeAgainst(EnemyBrain.Species species)
+    {
+        foreach (VacuumMode mode in Enum.GetValues(typeof(VacuumMode)))
+            if (DamageRate(Tool.Vacuum, mode, species) > 0f) return mode;
+        return null;
+    }
+    /// <summary>[E] waters every young plant within reach from the tank, whichever tool is in hand.</summary>
+    private bool TryWaterNearby()
+    {
+        var thirsty = new List<PlantedSeed>();
+        foreach (var plant in FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None))
+            if (plant != null && !plant.IsMature && !plant.IsWithered && plant.moisture < 0.95f
+                && (plant.transform.position - transform.position).sqrMagnitude <= 3.5f * 3.5f) thirsty.Add(plant);
+        if (thirsty.Count == 0) return false;
+        if (HasDirtyWater) { Notify("Depondaki su kirli, bitkiyi zehirler. Vakumla " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " ile hattı temizle."); return true; }
+        if (Water < 0.5f) { Notify("Su deposu boş. Vakumu göle ya da su deposuna tut, kendiliğinden dolar."); return true; }
+        thirsty.Sort((a, b) => a.moisture.CompareTo(b.moisture));
+        int watered = 0;
+        foreach (var plant in thirsty)
+        {
+            // Same rate as the spray: 5 SB of water for a full root zone.
+            float need = Mathf.Min(1f - plant.moisture, Water / 5f);
+            if (need <= 0.01f) break;
+            plant.WaterPlant(need, true); Water -= need * 5f; watered++;
+            Pulse(WeaponVisualEffects.Burst.Grow, plant.transform.position);
+        }
+        Notify(watered + " bitki sulandı • Depoda " + Mathf.FloorToInt(Water) + " SB su" + (watered < thirsty.Count ? " • Su yetmedi" : ""));
+        Changed?.Invoke(); return true;
+    }
     private static bool SprayActsOn(Collider c) => c.GetComponentInParent<EnemyBrain>() != null || c.GetComponentInParent<EcoFinaleFocus>() != null
         || c.GetComponentInParent<EcoFire>() != null || c.GetComponentInParent<PlantedSeed>() != null;
     private EnemyBrain SprayTarget(float range)
@@ -628,7 +692,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
                 || (tree && nearby.GetComponentInParent<EcoStructure>() != null)) { Notify("Bitkiler ve yapılar arasında biraz boşluk bırak."); return false; }
         var planted = PlantedSeed.Create(hit.point + Vector3.up * 0.01f, kind);
         if (planted == null) return false;
-        Notify("Tohum ekildi. Vakumun su moduyla sula.");
+        Notify("Tohum ekildi. Yanına git, " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile sula.");
         EcoDiscoveries.NotifyPlanting(planted); // may grant a field milestone; its message must not be overwritten
         return true;
     }
@@ -660,7 +724,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var recycling = hit.collider.GetComponentInParent<EcoRecyclingFacility>();
         if (recycling != null) { recycling.Interact(this); return; }
         var farm = hit.collider.GetComponentInParent<EcoFarm>();
-        if (farm != null) { Notify("Tohum silahıyla tarlaya ekim yap. Temiz su hattı otomatik sular."); return; }
+        if (farm != null) { if (!TryWaterNearby()) Notify("Tohum silahıyla tarlaya ekim yap. Temiz su hattı otomatik sular."); return; }
         var waterStore = hit.collider.GetComponentInParent<EcoWaterNode>();
         if (waterStore != null)
         {
@@ -677,6 +741,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         { AddSeeds(plant.kind, seeds); Food += food; Notify("Hasat: +" + seeds + " " + EcoCropCatalog.Get(plant.kind).Name + " tohumu, +" + food + " ürün"); if (food > 0) { cleanProduce[(int)plant.kind] += food; EcoDiscoveries.NotifyCleanHarvest(plant); } else CollectedOrganicWaste++; Changed?.Invoke(); }
         else if (Selected == Tool.Recycler && Energy >= 2f && plant.TryCompost())
         { StopCharging(); Energy -= 2f; Compost++; Notify("Kuruyan bitki gübreye dönüştürüldü."); Changed?.Invoke(); }
+        else TryWaterNearby();
     }
     /// <summary>E without a usable aim: harvest a ripe plant within 3.5 m, otherwise open a market within reach.</summary>
     private void NearbyFallback()
@@ -700,6 +765,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             }
             return;
         }
+        if (TryWaterNearby()) return;
         NearbyMarket()?.Interact(this);
     }
     /// <summary>[E] next to the market opens it even when the cursor points elsewhere.</summary>
@@ -745,9 +811,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (plant != null)
             return plant.Status + " • Su %" + Mathf.RoundToInt(plant.moisture * 100) + " • Büyüme %" + Mathf.RoundToInt(plant.growth * 100)
                 + (plant.IsMature ? (Vector3.Distance(plant.transform.position, transform.position) <= 3.5f ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Hasat et" : "\nHasat için yaklaş") : "")
+                + (!plant.IsMature && !plant.IsWithered && plant.moisture < 0.95f
+                    ? (Vector3.Distance(plant.transform.position, transform.position) <= 3.5f ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Sula (depodan)" : "\nSulamak için yaklaş") : "")
                 + (hit.distance <= 3f && plant.IsWithered && Selected == Tool.Recycler ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Gübreye dönüştür" : "")
                 + (hit.distance <= 3f && !plant.IsWithered && !plant.IsMature && Selected == Tool.Recycler && Compost > 0 ? "\n" + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele" : "");
-        if (hit.collider.GetComponentInParent<WeaponWaterSource>() != null) return "Su kaynağı • Vakum / Toplama ile doldur";
+        if (hit.collider.GetComponentInParent<WeaponWaterSource>() != null) return "Su kaynağı • Vakumla nişan al, depo kendiliğinden dolar";
         var waste = hit.collider.GetComponentInParent<RecyclableResource>();
         if (waste != null) return waste.requiredRecyclerRank > 0 ? "Büyük atık • Geri dönüşüm işleme kademesi " + waste.requiredRecyclerRank : "Atık • Vakumla topla veya geri dönüştür";
         var tree = hit.collider.GetComponentInParent<EcoVegetation>();

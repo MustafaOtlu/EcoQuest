@@ -27,7 +27,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand", "tool_flashlight" };
     private static readonly string[] ToolTips =
     {
-        "Vakum [1]: atık toplar, anti-vakumla duman/asit dağıtır, su moduyla söndürür ve sular. [Q] mod.",
+        "Vakum [1]: neye tutarsan ona göre çalışır; atık toplar, suyu çeker, yangını söndürür, bitkiyi sular, dumanı/asidi dağıtır. Boşlukta [Q] mod.",
         "Tohum aracı [2]: toprağa tohum eker; demir top modunda Teneke'yi sersemletir. [Q] mod, [R] tohum türü.",
         "Geri dönüşüm [3]: atığı yerinde işler, [R] ile gübre uygular.",
         "Tarayıcı [4]: neden, kalite ve bağlantı bilgisini gösterir; hasar vermez.",
@@ -492,7 +492,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             }
             else if (thirsty)
             {
-                text = "Bitkini sula · [1] vakum, " + EcoKeys.Tag(EcoKeys.Action.Mode) + " su modu, sol tık";
+                text = "Bitkini sula · yanında " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ya da vakumla sol tık";
                 goal = Nearest(crops, c => c != null && c.NeedsWater, here); goalName = "Susuz bitki";
             }
             // GDD v4 Ö3/Ö5: the open project is shown while crops grow (the first one is charged at the base station before

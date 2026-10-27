@@ -872,7 +872,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         foreach (var charger in FindObjectsByType<EcoChargingStation>(FindObjectsSortMode.None))
             pois.Add(new Poi { position = charger.transform.position, icon = "poi_charge", title = "Şarj istasyonu", detail = "Araç elektriğini doldurur; ağdaki üretime bağlıdır." });
         foreach (var fire in FindObjectsByType<EcoFire>(FindObjectsSortMode.None))
-            if (fire.Burning) pois.Add(new Poi { position = fire.transform.position, icon = "poi_fire", title = "Yangın", detail = "Vakumun su moduyla söndür.", pulse = true });
+            if (fire.Burning) pois.Add(new Poi { position = fire.transform.position, icon = "poi_fire", title = "Yangın", detail = "Vakumla nişan al, söndürür.", pulse = true });
         foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
             if (enemy != null && enemy.Health > 0f && enemy.State != EnemyBrain.Behaviour.Dead)
                 pois.Add(new Poi { position = enemy.transform.position, icon = "poi_enemy", title = "Çevresel tehdit", detail = "Türüne uygun araçla müdahale et.", size = 20f });
@@ -961,7 +961,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         foreach (var e in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None)) if (e != null && e.Health > 0f && e.State != EnemyBrain.Behaviour.Dead && r.Contains(e.transform.position)) enemies++;
         foreach (var c in FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None)) if (c.NeedsWater && r.Contains(c.transform.position)) thirsty++;
         foreach (var f in FindObjectsByType<EcoFactory>(FindObjectsSortMode.None)) if (r.Contains(f.transform.position)) { factories++; if (f.Filtered) filtered++; }
-        if (fires > 0) tasks.Add(("poi_fire", fires + " aktif yangın · vakumun su moduyla söndür", -1f));
+        if (fires > 0) tasks.Add(("poi_fire", fires + " aktif yangın · vakumla söndür", -1f));
         if (enemies > 0) tasks.Add(("poi_enemy", enemies + " çevresel tehdit bölgede", -1f));
         if (factories > 0) tasks.Add(("poi_factory", "Fabrika filtresi " + filtered + " / " + factories, filtered / (float)factories));
         foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
