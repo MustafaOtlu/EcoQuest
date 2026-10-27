@@ -3,24 +3,28 @@ using System.IO;
 using UnityEngine;
 
 // GDD §16: optional five-question learning check, asked before play and again after the final. Answers are written to
-// the player's local save folder (survey-pre.json / survey-post.json); nothing is sent anywhere.
+// the player's local save folder (survey-v2-pre.json / survey-v2-post.json; v2 = the sustainability questions); nothing is sent anywhere.
 public sealed class EcoSurvey : MonoBehaviour
 {
     public static EcoSurvey Current { get; private set; }
+    // Plain everyday sustainability questions; each one is also something the game itself shows.
     private static readonly string[] Questions =
     {
-        "Güneş paneli geceleyin ne yapar?", "Gölün kirli girişi açıkken yalnızca su toplamak yeter mi?", "Parçacık filtresi karbon sorununu çözer mi?",
-        "Habitat neyle oluşur?", "Buzul izleme istasyonu karbonu kendiliğinden düşürür mü?",
+        "Hangisi yenilenebilir bir enerji kaynağıdır?",
+        "Bir göle fabrikadan kirli su akıyorsa ilk ne yapılmalı?",
+        "Havadaki karbondioksit (CO₂) artarsa ne olur?",
+        "Geri dönüşümün en önemli faydası nedir?",
+        "Güneş paneli gece elektrik üretmez. Gece ışık yakmak için ne gerekir?",
     };
     private static readonly string[][] Options =
     {
-        new[] { "Gün boyu aynı üretimi sürdürür", "Üretmez; batarya depolanmış enerjiyi verir", "Rüzgârdan fazla üretir" },
-        new[] { "Hayır: önce kaynağı kapat, sonra arıt", "Evet, su toplamak yeter", "Gölü kendi haline bırakmak yeter" },
-        new[] { "Evet, karbonu sıfırlar", "Hayır: yakıt dönüşümü de gerekir", "Filtre enerji üretir" },
-        new[] { "Yalnız ağaç sayısıyla", "Yalnız balıkla", "Örtü, temiz su ve temiz toprak birlikte" },
-        new[] { "Evet, otomatik düşürür", "Hayır: ölçer; karbon emisyon azaltmakla düşer", "Buzu dondurur" },
+        new[] { "Kömür", "Rüzgâr", "Doğalgaz" },
+        new[] { "Kirli suyun geldiği yeri kapatmak", "Göle daha çok balık bırakmak", "Gölün suyunu boşaltmak" },
+        new[] { "Dünya soğur", "Hiçbir şey değişmez", "Daha çok ısı tutulur, iklim ısınır" },
+        new[] { "Ham madde ve enerji tasarrufu sağlar", "Çöpü daha hızlı çürütür", "Fabrikaları kapatır" },
+        new[] { "Gündüz fazla elektriği bataryada saklamak", "Paneli lambaya çevirmek", "Daha fazla panel kurmak" },
     };
-    private static readonly int[] Correct = { 1, 0, 1, 2, 1 };
+    private static readonly int[] Correct = { 1, 0, 2, 0, 0 };
 
     [Serializable] private sealed class Result { public string kind, savedAt; public int[] answers; public int score; }
     private bool open, post;
@@ -32,7 +36,7 @@ public sealed class EcoSurvey : MonoBehaviour
     private void Awake() { Current = this; }
     private void OnDestroy() { if (Current == this) Current = null; }
     public static bool Done(bool post) => File.Exists(PathFor(post));
-    private static string PathFor(bool post) => Path.Combine(Application.persistentDataPath, "EcoQuest", post ? "survey-post.json" : "survey-pre.json");
+    private static string PathFor(bool post) => Path.Combine(Application.persistentDataPath, "EcoQuest", post ? "survey-v2-post.json" : "survey-v2-pre.json");
 
     public void Open(bool afterFinal)
     {
@@ -53,7 +57,7 @@ public sealed class EcoSurvey : MonoBehaviour
         if (!open) return;
         EcoTheme.Begin();
         if (option == null) { option = new GUIStyle(EcoTheme.Button) { wordWrap = true, fontSize = 14, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(12, 12, 4, 6) }; }
-        var r = EcoTheme.Window(780f, 640f, post ? "Öğrenme anketi (son)" : "Öğrenme anketi (ön)", "İsteğe bağlı • 5 soru • yanıtlar yalnız bu bilgisayarda kalır.", "ui_journal");
+        var r = EcoTheme.Window(780f, 640f, post ? "Sürdürülebilirlik anketi (son)" : "Sürdürülebilirlik anketi (ön)", "İsteğe bağlı • 5 soru • yanıtlar yalnız bu bilgisayarda kalır.", "ui_journal");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 100f;
         for (int q = 0; q < 5; q++)
         {

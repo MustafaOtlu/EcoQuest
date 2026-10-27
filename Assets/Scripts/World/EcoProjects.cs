@@ -62,16 +62,16 @@ public sealed class EcoProjects : MonoBehaviour
             "Güneş/rüzgâr üreticisini batarya ve şarj istasyonuna kabloyla bağla.",
             "Panel üretir, batarya fazlayı saklar, kablo taşır. Güneşsiz zamanda üretim ve depo aynı şey değildir.", EnergyCheck);
         Add("Gölü canlandır", "Kaynak müdahalesi ve arıtma",
-            "Doğu gölünün girişi kapalı, kendi pompa–arıtma–deposu çalışıyor; su kalitesi en az 70.",
+            "Fabrika Gölü'nün girişi kapalı, kendi pompa–arıtma–deposu çalışıyor; su kalitesi en az 70.",
             "Doğu kıyısında tortu ve azalan balık görülüyor.",
             "Sürekli kirli giriş varken yalnız su toplamak sorunu çözmez.",
             "Giriş sızıntısını kapat; gölden pompa→kirli boru→arıtıcı→temiz boru→depo kur ve göle dönüşü aç.",
             "Kaynağı azaltma ile arıtma birbirini tamamlar. Depolanan suyu aynı anda göle dönmüş sayamayız.", LakeCheck);
-        Add("Koruluğu toparla", "Bitki örtüsü ve habitat",
+        Add("Ormanı toparla", "Bitki örtüsü ve habitat",
             "Yerel bitki örtüsü en az %60, habitat %50; yangın yok ve sağlıklı ekim var.",
-            "Korulukta sessizlik, zarar görmüş ağaçlar ve seyrek örtü var.",
+            "Ormanda sessizlik, zarar görmüş ağaçlar ve seyrek örtü var.",
             "Yangın ve kirli toprak yeni canlıların yerleşmesini zorlaştırır.",
-            "Koruluk/rüzgârlı yükseltide mevcut yangını söndür, uygun sağlıklı ağaç dik ve bakımını sürdür.",
+            "Ormanda mevcut yangını söndür, uygun sağlıklı ağaç dik ve bakımını sürdür.",
             "Habitat yalnız ağaç adedi değildir. Uygun örtü, su ve temiz toprak kuşları ve kelebekleri geri getirir.", GroveCheck);
         Add("Sanayiyi dönüştür", "Filtre ve temiz enerji",
             "Yerel fabrikaların filtreleri ve enerji dönüşümü etkin; hava kalitesi en az 70.",
@@ -141,7 +141,7 @@ public sealed class EcoProjects : MonoBehaviour
         }
     }
     public void ResetChargeObservation() { chargeObserved.Clear(); foreach (var station in FindObjectsByType<EcoChargingStation>(FindObjectsSortMode.None)) chargeObserved[station.GetInstanceID()] = station.TotalDeliveredEnergy; }
-    private EcoRegion Region(string name) => regions.FirstOrDefault(r => r != null && r.regionName.Contains(name));
+    private EcoRegion Region(string name) => regions.FirstOrDefault(r => r != null && r.Key.Contains(name));
     public EcoRegion GroveRegion => Region("Koruluk") ?? regions.FirstOrDefault(r => r != null && r.TryGetComponent<EcoRegionInfo>(out var info) && info.kind == EcoRegionInfo.Kind.Wind)
         ?? Region("Rüzg");
     private static bool Generator(EcoPowerNode node) => node.kind == EcoPowerNode.Kind.Solar || node.kind == EcoPowerNode.Kind.Wind || node.kind == EcoPowerNode.Kind.Hydro;
@@ -166,7 +166,7 @@ public sealed class EcoProjects : MonoBehaviour
     private bool LakeCheck(out string status)
     {
         var lake = Region("Doğu Göl");
-        if (lake == null) { status = "Doğu Gölü bulunamadı"; return false; }
+        if (lake == null) { status = "Fabrika Gölü bulunamadı"; return false; }
         if (!EcoDiscoveries.InletRemediated(lake)) { status = "Doğu kıyısındaki kirletici girişi kapat " + EcoKeys.Tag(EcoKeys.Action.Interact) + ""; return false; }
         foreach (var intake in water)
         {
@@ -182,17 +182,17 @@ public sealed class EcoProjects : MonoBehaviour
                     || !Supported(purifierPower, purifier.litresPerSecond * purifier.electricityPerLitre)) continue;
                 bool tank = water.Any(t => t.Operational && t.kind == EcoWaterNode.Kind.Tank && EcoWaterGrid.AreConnected(purifier, t, EcoWaterNode.Fluid.Clean));
                 if (!tank || purifier.LastProcessedClean <= 0f) continue;
-                status = "Doğu gölü su kalitesi " + (100f - lake.waterPollution).ToString("0") + "/70 • Yerel arıtma ve göle dönüş bağlı";
+                status = "Fabrika Gölü su kalitesi " + (100f - lake.waterPollution).ToString("0") + "/70 • Yerel arıtma ve göle dönüş bağlı";
                 return lake.waterPollution <= 30f;
             }
         }
-        status = "Doğu gölü pompa→kirli hat→enerjili arıtma→temiz depo; aynı göle dönüş açık olmalı";
+        status = "Fabrika Gölü pompa→kirli hat→enerjili arıtma→temiz depo; aynı göle dönüş açık olmalı";
         return false;
     }
     private bool GroveCheck(out string status)
     {
         var grove = GroveRegion;
-        if (grove == null) { status = "Koruluk/rüzgârlı yükselti bulunamadı"; return false; }
+        if (grove == null) { status = "Orman bulunamadı"; return false; }
         bool burning = FindObjectsByType<EcoFire>(FindObjectsSortMode.None).Any(f => f.Burning && grove.Contains(f.transform.position));
         if (burning) WasBurning = true;
         float habitat = grove.TryGetComponent<EcoHabitat>(out var wildlife) ? wildlife.recovery : 0f;
@@ -205,7 +205,7 @@ public sealed class EcoProjects : MonoBehaviour
     private bool IndustryCheck(out string status)
     {
         var region = Region("Sanayi");
-        if (region == null) { status = "Sanayi bölgesi bulunamadı"; return false; }
+        if (region == null) { status = "Fabrikalar bölgesi bulunamadı"; return false; }
         var factories = FindObjectsByType<EcoFactory>(FindObjectsSortMode.None).Where(f => region.Contains(f.transform.position)).ToArray();
         int ready = factories.Count(f => f.Filtered && f.Converted && Supported(f.GetComponent<EcoPowerNode>(), 2f));
         status = "Filtre ve temiz ağ " + ready + "/" + factories.Length + " • Hava kalitesi " + (100f - region.airPollution).ToString("0") + "/70";
@@ -257,6 +257,28 @@ public sealed class EcoProjects : MonoBehaviour
             + (melt == null ? "ölçülmüyor" : melt.MeltRate > 0.0001f ? "artıyor" : "artmıyor");
         return station.Safe && melt != null && melt.MeltRate <= 0.0001f;
     }
+    /// <summary>Where to walk for a project (objective marker): the thing to fix when there is one, otherwise the area.</summary>
+    public (Vector3? position, string label) GuideTarget(int index)
+    {
+        switch (index)
+        {
+            case 0: { var r = Region("Güneş"); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası"); }
+            case 1:
+                foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
+                    if (!inlet.Remediated) return (inlet.transform.position, "Kirletici giriş");
+                { var r = Region("Doğu Göl"); return (r != null ? r.transform.position : (Vector3?)null, "Fabrika Gölü"); }
+            case 2: { var r = GroveRegion; return (r != null ? r.transform.position : (Vector3?)null, "Orman"); }
+            case 3:
+                foreach (var factory in FindObjectsByType<EcoFactory>(FindObjectsSortMode.None))
+                    if (!factory.Filtered) return (factory.transform.position, "Filtresiz fabrika");
+                { var r = Region("Sanayi"); return (r != null ? r.transform.position : (Vector3?)null, "Fabrikalar"); }
+            case 5:
+                if (EcoGlacierStation.Current != null) return (EcoGlacierStation.Current.transform.position, "Buzul istasyonu");
+                { var r = Region("Buzul"); return (r != null ? r.transform.position : (Vector3?)null, "Buzul Dağı"); }
+            default: { var r = Region("Şehir"); return (r != null ? r.transform.position : (Vector3?)null, "Şehir"); }
+        }
+    }
+
     public string RequestHint(int index)
     {
         index = Mathf.Clamp(index, 0, projects.Count - 1); SelectedIndex = index;

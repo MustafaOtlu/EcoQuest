@@ -63,7 +63,7 @@ public sealed class EcoGameMenu : MonoBehaviour
                 GUI.enabled = true;
                 if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Main);
                 if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Main);
-                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(false) ? "Öğrenme anketi (ön) ✓" : "Öğrenme anketi (ön, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(false);
+                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), EcoSurvey.Done(false) ? "Sürdürülebilirlik anketi (ön) ✓" : "Sürdürülebilirlik anketi (ön, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(false);
                 if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
                 break;
             case Screen_.Pause:
@@ -74,7 +74,7 @@ public sealed class EcoGameMenu : MonoBehaviour
                 // GDD §14 pause menu: also controls/tutorial and a way back to the title screen.
                 if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), "Kontroller [F1]", "ui_help"))
                 { PlayerController.SetPaused(false); FindFirstObjectByType<EcoWorldHUD>()?.ShowHelp(); }
-                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), EcoSurvey.Done(true) ? "Öğrenme anketi (son) ✓" : "Öğrenme anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
+                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), EcoSurvey.Done(true) ? "Sürdürülebilirlik anketi (son) ✓" : "Sürdürülebilirlik anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
                 if (EcoTheme.IconButton(new Rect(x, y + 324f, w, 44f), "Ana menüye dön (kaydedilmemiş ilerleme kaybolur)", "yep")) ReturnToTitle();
                 if (EcoTheme.IconButton(new Rect(x, y + 378f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
                 break;

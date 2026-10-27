@@ -10,6 +10,7 @@ public sealed class EcoStory : MonoBehaviour
     public bool cleanHarvest, replanted, cleanFish, intro, finalConversation, requestedHint;
 
     private Transform child;
+    public Transform Child => child;
     private PlayerWeaponSystem weapons;
     private float nextScan;
     private const float Reach = 4.5f;
@@ -105,7 +106,7 @@ public sealed class EcoStory : MonoBehaviour
         }
         if (completed == 7) { w.ShowFeedback("Çocuk mutlu. Üç bakım anı tamam."); return true; }
         w.ShowFeedback("Çocuk bekliyor: " + ((completed & 1) == 0 ? "2 SB temiz su • " : "") + ((completed & 2) == 0 ? "2 temiz ürün veya 1 temiz balık • " : "")
-            + ((completed & 4) == 0 ? "gündüz koruluk habitatı %30+" : ""));
+            + ((completed & 4) == 0 ? "gündüz orman habitatı %30+" : ""));
         return true;
     }
 

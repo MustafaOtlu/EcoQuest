@@ -98,6 +98,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         lastMode = EcoUI.Mode;
         ApplyLayout();
         if (weapons != null) weapons.Changed += OnInventoryChanged;
+        if (GetComponent<EcoGuide>() == null) gameObject.AddComponent<EcoGuide>(); // marker / edge arrow for the objective
         Refresh();
     }
 
@@ -418,6 +419,18 @@ public sealed class EcoQuestHUD : MonoBehaviour
         };
     }
 
+    private static Vector3? Nearest<T>(T[] items, System.Func<T, bool> valid, Vector3 from) where T : Component
+    {
+        Vector3? best = null; float bestDistance = float.MaxValue;
+        foreach (var item in items)
+        {
+            if (!valid(item)) continue;
+            float d = (item.transform.position - from).sqrMagnitude;
+            if (d < bestDistance) { bestDistance = d; best = item.transform.position; }
+        }
+        return best;
+    }
+
     private void RefreshObjective()
     {
         var enemies = FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None); int alive = 0;
@@ -427,28 +440,66 @@ public sealed class EcoQuestHUD : MonoBehaviour
             if (enemies[i] != null && enemies[i].State != EnemyBrain.Behaviour.Dead && enemies[i].Health > 0f
                 && (enemies[i].transform.position - here).sqrMagnitude < 30f * 30f) alive++;
         string text;
+        // Each step says what to do and with which key; the guide marker (EcoGuide) shows where.
+        Vector3? goal = null; string goalName = "";
         var finale = EcoFinale.Current; var readiness = EcoProjects.Current;
         // GDD §12: the endgame state outranks the early-game guidance.
         if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
         else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
-        else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness) text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
-        else if (alive > 0) text = "Yakında tehdit · " + alive + " çevresel tehdit (aracın uygun modunu kullan)";
-        else if (EcoStory.Current != null && !EcoStory.Current.intro) text = "Mahalle çocuğuyla konuş · şehir merkezi, " + EcoKeys.Tag(EcoKeys.Action.Interact);
+        else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness)
+        {
+            text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
+            if (EcoGlacierStation.Current != null) { goal = EcoGlacierStation.Current.transform.position; goalName = "Buzul terminali"; }
+        }
+        else if (alive > 0)
+        {
+            text = "Yakında tehdit · " + alive + " çevresel tehdit (aracın uygun modunu kullan)";
+            goal = Nearest(enemies, e => e != null && e.State != EnemyBrain.Behaviour.Dead && e.Health > 0f, here); goalName = "Tehdit";
+        }
+        else if (EcoStory.Current != null && !EcoStory.Current.intro)
+        {
+            text = "Mahalle çocuğuyla konuş · Şehir meydanı, " + EcoKeys.Tag(EcoKeys.Action.Interact);
+            if (EcoStory.Current.Child != null) { goal = EcoStory.Current.Child.position; goalName = "Mahalle çocuğu"; }
+        }
         else
         {
-            var crops = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None); bool mature = false, living = false;
+            var crops = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None); bool mature = false, living = false, thirsty = false;
             for (int i = 0; i < crops.Length; i++)
             {
                 if (crops[i] == null || crops[i].IsWithered) continue;
-                living = true; if (crops[i].IsMature) mature = true;
+                living = true; if (crops[i].IsMature) mature = true; if (crops[i].NeedsWater) thirsty = true;
             }
             var projects = EcoProjects.Current;
             int open = -1;
             if (projects != null) for (int i = 0; i < projects.All.Count; i++) if (!projects.All[i].done) { open = i; break; }
-            text = !living ? "Tohum ekerek çevreyi canlandır" : mature ? "Olgun bitkiyi hasat et"
-                : weapons.Food > 0 && open >= 0 ? "Proje: " + projects.All[open].name + " · " + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük"
-                : weapons.Food > 0 ? "Ekosistemi koru" : "Bitkini vakumun su moduyla sula";
+            if (!living)
+            {
+                text = "Tarlaya tohum ek · [2] tohum aracı, sol tık";
+                goal = Nearest(FindObjectsByType<EcoFarm>(FindObjectsSortMode.None), f => f != null, here); goalName = "Tarla";
+            }
+            else if (mature)
+            {
+                text = "Olgun bitkiyi hasat et · yanında " + EcoKeys.Tag(EcoKeys.Action.Interact);
+                goal = Nearest(crops, c => c != null && c.IsMature, here); goalName = "Hasat";
+            }
+            else if (weapons.Food > 0 && open >= 0)
+            {
+                text = "Proje: " + projects.All[open].name + " · " + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük";
+                (goal, goalName) = projects.GuideTarget(open);
+            }
+            else if (weapons.Food > 0) text = "Ekosistemi koru";
+            else if (thirsty)
+            {
+                text = "Bitkini sula · [1] vakum, " + EcoKeys.Tag(EcoKeys.Action.Mode) + " su modu, sol tık";
+                goal = Nearest(crops, c => c != null && c.NeedsWater, here); goalName = "Susuz bitki";
+            }
+            else
+            {
+                text = "Bitkin büyüyor · bu sırada atıkları [1] vakumla topla";
+                goal = Nearest(FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None), r => r != null, here); goalName = "Atık";
+            }
         }
+        EcoGuide.Target = goal; EcoGuide.Label = goalName;
         objective.text = text;
         objectiveCard.summary.text = text; // best fit shrinks long goals instead of cutting them at 34 characters
     }

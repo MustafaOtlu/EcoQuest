@@ -74,6 +74,13 @@ public sealed class EcoSaveIdentity : MonoBehaviour
         { "EcoDiscoveries", new[] { "discovered" } },
         { "EcoEquipmentUpgrades", new[] { "ranks", "levels" } },
     };
+    // Design data that belongs to the map, not to a playthrough: an old save must not bring back a region's former
+    // name, size or climate after the map is updated.
+    private static readonly Dictionary<string, string[]> DesignFields = new Dictionary<string, string[]>
+    {
+        { "EcoRegion", new[] { "regionName", "key", "size", "priority", "baseTemperature", "sensitiveHabitat", "groundVisual" } },
+    };
+    private static bool IsDesignField(Type type, string field) => DesignFields.TryGetValue(type.Name, out var names) && Array.IndexOf(names, field) >= 0;
     private static readonly HashSet<string> RelativeTimes = new HashSet<string>
         { "stunnedUntil", "nextAttack", "provokedUntil", "slowedUntil", "smokeUntil", "shieldUntil" };
 
@@ -83,7 +90,7 @@ public sealed class EcoSaveIdentity : MonoBehaviour
         var values = new List<Value>();
         foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))
         {
-            if (field.IsStatic || field.IsInitOnly || field.IsLiteral) continue;
+            if (field.IsStatic || field.IsInitOnly || field.IsLiteral || IsDesignField(type, field.Name)) continue;
             string name = PropertyName(field.Name);
             if (!field.IsPublic && (!PrivateState.TryGetValue(type.Name, out var allowed) || Array.IndexOf(allowed, name) < 0)) continue;
             var value = Encode(field.Name, field.FieldType, field.GetValue(component));
@@ -98,7 +105,7 @@ public sealed class EcoSaveIdentity : MonoBehaviour
         foreach (var value in state.fields ?? Array.Empty<Value>())
         {
             var field = type.GetField(value.name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            if (field == null || field.IsInitOnly || field.IsStatic) continue;
+            if (field == null || field.IsInitOnly || field.IsStatic || IsDesignField(type, field.Name)) continue;
             object decoded = Decode(field.FieldType, value);
             if (decoded != null) field.SetValue(component, decoded);
         }

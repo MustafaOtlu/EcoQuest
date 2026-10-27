@@ -8,7 +8,7 @@ using UnityEngine.UI;
 //  - environment card: the region's air, water, carbon, biodiversity, ecosystem health and temperature, with icons,
 //  - a zoomed mini map that follows the player (north up) with the main points of interest,
 //  - the [M] world map: zoom (wheel), pan (drag), region outlines and weather/wind symbols, points of interest and an
-//    information card for whatever the mouse is over (state, climate, live tasks, opportunities). Click pins a region.
+//    information card for whatever the mouse is over (state with real readings, climate, live tasks). Click pins a region.
 //  - the quick-action column (map, journal, build, skills, settings, help, HUD mode), the [F1] controls sheet,
 //    the region banner and the intro title. [H] cycles the HUD between Tam, Sade and Gizli.
 [DefaultExecutionOrder(45)]
@@ -34,10 +34,10 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private static readonly string[] RowIcons = { "air", "water_quality", "organic", "carbon", "biodiversity", "ecosystem" };
     private static readonly string[] RowTips =
     {
-        "Hava kalitesi = 100 − hava kirliliği. Fabrika filtresi ve yeşil alan iyileştirir.",
-        "Su kalitesi = 100 − su kirliliği. Kirletici girişi kapat, arıtıp göle döndür.",
-        "Toprak kalitesi = 100 − toprak kirliliği. Atık toplamak ve gübre iyileştirir.",
-        "Karbon yükü (düşük iyi). Temiz enerji dönüşümü ve habitat azaltır; buzul bunu izler.",
+        "Hava kalitesi = 100 − hava kirliliği. AQI: hava kalite indeksi (0–50 iyi, 51–100 orta, 150 üstü sağlıksız); PM2.5 ince toz, µg/m³. Fabrika filtresi ve yeşil alan iyileştirir.",
+        "Su kalitesi = 100 − su kirliliği. Çözünmüş oksijen: sağlıklı gölde 8–10 mg/L, 4 mg/L altında balıklar zorlanır. Kirletici girişi kapat, arıtıp göle döndür.",
+        "Toprak kalitesi = 100 − toprak kirliliği. Organik madde: verimli toprakta %3–6, %2 altı yorgun toprak. Atık toplamak ve gübre iyileştirir.",
+        "Karbon yükü (düşük iyi). Havadaki CO₂ bugün dünya ortalamasında yaklaşık 425 ppm; baca ve trafik yanında yükselir. Temiz enerji ve habitat azaltır; buzul bunu izler.",
         "Biyoçeşitlilik: bitki örtüsü, habitat ve su kalitesinden hesaplanır.",
         "Ekosistem sağlığı: hava, su, toprak ve biyoçeşitliliğin ortak özeti.",
     };
@@ -109,11 +109,10 @@ public sealed class EcoWorldHUD : MonoBehaviour
     // Info card pieces
     private Image infoIcon, infoBadge; private Text infoName, infoTag, infoBadgeText, infoEmpty;
     private readonly Image[] infoRowIcon = new Image[6], infoRowFill = new Image[6]; private readonly RectTransform[] infoRowTrack = new RectTransform[6];
-    private readonly Text[] infoRowName = new Text[6], infoRowValue = new Text[6];
-    private Text climateHeader, tasksHeader, featuresHeader;
+    private readonly Text[] infoRowName = new Text[6], infoRowValue = new Text[6], infoRowReading = new Text[6];
+    private Text climateHeader, tasksHeader;
     private readonly Image[] climateIcon = new Image[4]; private readonly Text[] climateText = new Text[4];
     private readonly Image[] taskIcon = new Image[7], taskFill = new Image[7]; private readonly RectTransform[] taskTrack = new RectTransform[7]; private readonly Text[] taskText = new Text[7];
-    private readonly Image[] featureIcon = new Image[4]; private readonly Text[] featureText = new Text[4];
 
     private void Start()
     {
@@ -255,6 +254,21 @@ public sealed class EcoWorldHUD : MonoBehaviour
         return Mathf.Clamp01((clock != null ? clock.windStrength : 0.5f) * exposure);
     }
 
+    /// <summary>The real-world reading that goes with an index row (empty when there is none).</summary>
+    private static string Reading(EcoRegion r, int row, bool brief)
+    {
+        if (r == null) return "";
+        switch (row)
+        {
+            case 0: return brief ? "AQI " + r.AQI : "PM2.5 " + r.PM25.ToString("0") + " µg/m³ · AQI " + r.AQI + " (" + EcoRegion.AqiName(r.AQI) + ")";
+            case 1: return brief ? r.DissolvedOxygen.ToString("0.0") + " mg/L" : "Çözünmüş oksijen " + r.DissolvedOxygen.ToString("0.0") + " mg/L";
+            case 2: return brief ? "%" + r.SoilOrganicMatter.ToString("0.0") : "Organik madde %" + r.SoilOrganicMatter.ToString("0.0");
+            case 3: return "CO₂ " + r.CO2ppm.ToString("0") + " ppm";
+            case 4: return !brief && r.TryGetComponent<EcoHabitat>(out var habitat) ? "Kuş " + habitat.Birds + " · Kelebek " + habitat.Butterflies : "";
+            default: return "";
+        }
+    }
+
     private static string WindTag(float w) => w > 0.8f ? "Fırtınalı" : w > 0.55f ? "Rüzgârlı" : w > 0.25f ? "Esintili" : "Sakin";
 
     // ================================================================== environment card
@@ -291,7 +305,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
             }
             float good = i == 3 ? 1f - shown[i] / 100f : shown[i] / 100f;
             EcoUI.SetMeter(rowFills[i], rowTracks[i], has ? shown[i] / 100f : 0f, EcoUI.GoodColor(good));
-            rowValues[i].text = has ? Mathf.RoundToInt(shown[i]).ToString() : "—";
+            string reading = has ? Reading(current, i, true) : "";
+            rowValues[i].text = !has ? "—" : (reading.Length > 0 ? "<size=" + 11 * EcoUI.RasterScale + "><color=#" + EcoUI.Hex(EcoUI.Muted) + ">" + reading + "</color></size>  " : "")
+                + Mathf.RoundToInt(shown[i]);
         }
         if (has)
         {
@@ -622,6 +638,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             infoRowIcon[i] = EcoUI.Icon("Row icon", infoCard, RowIcons[i], new Vector2(0, 1), new Vector2(0, 1), 18f);
             infoRowName[i] = EcoUI.Label("Row name", infoCard, RowNames[i], 13, TextAnchor.MiddleLeft, EcoUI.Muted);
             infoRowValue[i] = EcoUI.Label("Row value", infoCard, "", 13, TextAnchor.MiddleRight, EcoUI.Ink, true);
+            infoRowReading[i] = EcoUI.Label("Row reading", infoCard, "", 11, TextAnchor.MiddleLeft, EcoUI.Muted);
             infoRowFill[i] = EcoUI.Meter("Row meter", infoCard, out infoRowTrack[i]);
         }
         climateHeader = EcoUI.Label("Climate", infoCard, "İKLİM ŞU AN", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
@@ -636,12 +653,6 @@ public sealed class EcoWorldHUD : MonoBehaviour
             taskIcon[i] = EcoUI.Icon("Task icon", infoCard, "poi_project", new Vector2(0, 1), new Vector2(0, 1), 22f);
             taskText[i] = EcoUI.Label("Task text", infoCard, "", 13, TextAnchor.UpperLeft, EcoUI.Ink);
             taskFill[i] = EcoUI.Meter("Task meter", infoCard, out taskTrack[i]);
-        }
-        featuresHeader = EcoUI.Label("Features", infoCard, "FIRSATLAR", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
-        for (int i = 0; i < featureIcon.Length; i++)
-        {
-            featureIcon[i] = EcoUI.Icon("Feature icon", infoCard, "ui_check", new Vector2(0, 1), new Vector2(0, 1), 16f);
-            featureText[i] = EcoUI.Label("Feature text", infoCard, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink);
         }
     }
 
@@ -864,7 +875,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             if (fire.Burning) pois.Add(new Poi { position = fire.transform.position, icon = "poi_fire", title = "Yangın", detail = "Vakumun su moduyla söndür.", pulse = true });
         foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
             if (enemy != null && enemy.Health > 0f && enemy.State != EnemyBrain.Behaviour.Dead)
-                pois.Add(new Poi { position = enemy.transform.position, icon = "poi_enemy", title = "Kirlilik yaratığı", detail = "Türüne uygun araçla müdahale et.", size = 20f });
+                pois.Add(new Poi { position = enemy.transform.position, icon = "poi_enemy", title = "Çevresel tehdit", detail = "Türüne uygun araçla müdahale et.", size = 20f });
     }
 
     // ------------------------------------------------------------------ info card
@@ -906,7 +917,12 @@ public sealed class EcoWorldHUD : MonoBehaviour
             EcoUI.Layout(infoRowValue[i], new Vector2(w - 56f, y), new Vector2(40f, 18f));
             EcoUI.Place(infoRowTrack[i], new Vector2(170f, y - 7f), new Vector2(w - 232f, 5f));
             EcoUI.SetMeter(infoRowFill[i], infoRowTrack[i], v / 100f, EcoUI.GoodColor(good));
-            y -= 22f;
+            // The measured value a scientist would quote, under the 0–100 index.
+            infoRowReading[i].text = Reading(r, i, false);
+            bool reading = infoRowReading[i].text.Length > 0;
+            infoRowReading[i].gameObject.SetActive(reading);
+            if (reading) EcoUI.Layout(infoRowReading[i], new Vector2(40f, y - 16f), new Vector2(w - 56f, 14f));
+            y -= reading ? 34f : 22f;
         }
         y -= 8f;
         EcoUI.Layout(climateHeader, new Vector2(16f, y), new Vector2(w - 32f, 16f));
@@ -946,7 +962,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         foreach (var c in FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None)) if (c.NeedsWater && r.Contains(c.transform.position)) thirsty++;
         foreach (var f in FindObjectsByType<EcoFactory>(FindObjectsSortMode.None)) if (r.Contains(f.transform.position)) { factories++; if (f.Filtered) filtered++; }
         if (fires > 0) tasks.Add(("poi_fire", fires + " aktif yangın · vakumun su moduyla söndür", -1f));
-        if (enemies > 0) tasks.Add(("poi_enemy", enemies + " kirlilik yaratığı bölgede", -1f));
+        if (enemies > 0) tasks.Add(("poi_enemy", enemies + " çevresel tehdit bölgede", -1f));
         if (factories > 0) tasks.Add(("poi_factory", "Fabrika filtresi " + filtered + " / " + factories, filtered / (float)factories));
         foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
             if (r.Contains(inlet.transform.position)) tasks.Add((inlet.Remediated ? "ui_check" : "poi_inlet", inlet.Remediated ? "Kirletici giriş kapatıldı" : "Kirletici giriş açık · [E] ile kapat", -1f));
@@ -980,20 +996,6 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 y -= 10f;
             }
             y -= 4f;
-        }
-        var features = info != null ? info.features : new string[0];
-        featuresHeader.gameObject.SetActive(features.Length > 0);
-        EcoUI.Layout(featuresHeader, new Vector2(16f, y - 2f), new Vector2(w - 32f, 16f));
-        y -= 22f;
-        for (int i = 0; i < featureIcon.Length; i++)
-        {
-            bool used = i < features.Length;
-            featureIcon[i].gameObject.SetActive(used); featureText[i].gameObject.SetActive(used);
-            if (!used) continue;
-            featureText[i].text = features[i];
-            EcoUI.LayoutIcon(featureIcon[i], new Vector2(18f, y - 1f), 16f);
-            EcoUI.Layout(featureText[i], new Vector2(42f, y), new Vector2(w - 58f, 18f));
-            y -= 22f;
         }
     }
 
@@ -1061,7 +1063,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         {
             float y = -6f - i * 29f;
             EcoUI.LayoutIcon(rowIcons[i], new Vector2(12f, y), 20f);
-            float valueWidth = i == 6 ? 132f : 44f;
+            float valueWidth = i == 6 ? 132f : i <= 3 ? 112f : 44f; // rows 0–3 carry a real reading (AQI, mg/L, %, ppm)
             EcoUI.Layout(rowNames[i], new Vector2(38f, y), new Vector2(leftWidth - valueWidth - 58f, 18f));
             EcoUI.Layout(rowValues[i], new Vector2(leftWidth - valueWidth - 12f, y), new Vector2(valueWidth, 18f));
             EcoUI.Place(rowTracks[i], new Vector2(38f, y - 20f), new Vector2(leftWidth - 50f, 4f));

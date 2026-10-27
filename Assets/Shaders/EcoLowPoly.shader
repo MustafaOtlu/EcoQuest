@@ -10,6 +10,9 @@ Shader "EcoQuest/LowPoly Vertex Lit"
         [Toggle] _FlatShading ("Flat shading", Float) = 1
         _ShadeContrast ("Facet contrast", Range(0, 1)) = 0.35
         _PollutionStrength ("Pollution tint (ground only)", Range(0, 1)) = 0
+        [NoScaleOffset] _DetailTex ("Detail (grey, 0.5 = neutral)", 2D) = "grey" {}
+        _DetailScale ("Detail tile size (m)", Float) = 3.5
+        _DetailStrength ("Detail strength", Range(0, 1.5)) = 0
     }
     SubShader
     {
@@ -23,7 +26,10 @@ Shader "EcoQuest/LowPoly Vertex Lit"
             half _FlatShading;
             half _ShadeContrast;
             half _PollutionStrength;
+            float _DetailScale;
+            half _DetailStrength;
         CBUFFER_END
+        TEXTURE2D(_DetailTex); SAMPLER(sampler_DetailTex);
         // Written by EcoPollutionField: a small map of local pollution (0 clean … 1 heavily polluted) over the play area.
         TEXTURE2D(_EcoPollutionMap); SAMPLER(sampler_EcoPollutionMap);
         float4 _EcoPollutionRect; // origin x, origin z, 1/width, 1/depth
@@ -94,6 +100,18 @@ Shader "EcoQuest/LowPoly Vertex Lit"
                 if (_FlatShading < 0.5) n = smoothN;
 
                 half3 albedo = i.color.rgb * _BaseColor.rgb;
+                // World-space grain (grass blades, gravel) on top of the painted colours. Two samples at unrelated scales
+                // and a rotated UV hide the tiling; a third, very large sample adds soft patches of lighter and darker ground.
+                if (_DetailStrength > 0.001)
+                {
+                    float2 uv = i.positionWS.xz / max(0.1, _DetailScale);
+                    float2 uv2 = float2(uv.x * 0.8 - uv.y * 0.6, uv.x * 0.6 + uv.y * 0.8) * 0.43 + 0.37;
+                    half fine = SAMPLE_TEXTURE2D(_DetailTex, sampler_DetailTex, uv).r;
+                    half mid = SAMPLE_TEXTURE2D(_DetailTex, sampler_DetailTex, uv2).r;
+                    half patch = SAMPLE_TEXTURE2D(_DetailTex, sampler_DetailTex, i.positionWS.xz * 0.011 + 0.21).r;
+                    half grain = (fine - 0.5) * 0.65 + (mid - 0.5) * 0.55 + (patch - 0.5) * 0.9;
+                    albedo *= saturate(1.0 + grain * _DetailStrength);
+                }
                 // Polluted ground loses its green: desaturated towards a dusty brown-grey; cleaning brings the colour back.
                 float2 puv = (i.positionWS.xz - _EcoPollutionRect.xy) * _EcoPollutionRect.zw;
                 half pollution = SAMPLE_TEXTURE2D(_EcoPollutionMap, sampler_EcoPollutionMap, puv).r * _EcoPollutionReady * _PollutionStrength;

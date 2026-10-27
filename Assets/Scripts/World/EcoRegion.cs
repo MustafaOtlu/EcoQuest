@@ -6,6 +6,9 @@ public sealed class EcoRegion : MonoBehaviour
 {
     private static readonly HashSet<EcoRegion> Active = new HashSet<EcoRegion>();
     public string regionName = "Bölge";
+    [Tooltip("Stable id used by saves, discoveries and projects (the region's original name). The shown name can change freely.")]
+    public string key = "";
+    public string Key => string.IsNullOrEmpty(key) ? regionName : key;
     public Vector2 size = new Vector2(24, 32);
     public int priority;
     [Range(0, 100)] public float airPollution, waterPollution, soilPollution, carbon;
@@ -76,6 +79,29 @@ public sealed class EcoRegion : MonoBehaviour
         soilPollution = Mathf.Clamp(soilPollution + soil, 0, 100);
         carbon = Mathf.Clamp(carbon + carbonAdded, 0, 100);
     }
+    // ---------------------------------------------------------------- real-world readings
+    // The simulation keeps 0..100 indices; these map them onto familiar measurements so the map can show both. The
+    // ranges follow common reference values: PM2.5 a few µg/m³ in clean countryside, 15–35 in towns, 50–150 beside
+    // unfiltered industry; outdoor CO₂ about 425 ppm, higher near traffic and chimneys; dissolved oxygen 8–10 mg/L
+    // in a healthy lake, under 4 mg/L where fish struggle; topsoil organic matter 3–6 % in good soil, under 2 % when degraded.
+    public float PM25 => 3f + airPollution * 1.2f;
+    public int AQI => AirQualityIndex(PM25);
+    public float CO2ppm => 425f + carbon * 2.5f;
+    public float DissolvedOxygen => Mathf.Max(0.5f, 9.6f - waterPollution * 0.09f);
+    public float SoilOrganicMatter => 0.5f + Mathf.Pow(1f - soilPollution / 100f, 1.5f) * 4.5f;
+
+    /// <summary>US EPA AQI from a 24 h PM2.5 concentration (2024 breakpoints).</summary>
+    public static int AirQualityIndex(float pm)
+    {
+        float[] c = { 0f, 9.0f, 35.4f, 55.4f, 125.4f, 225.4f, 325.4f };
+        int[] a = { 0, 50, 100, 150, 200, 300, 500 };
+        for (int i = 1; i < c.Length; i++)
+            if (pm <= c[i]) return Mathf.RoundToInt(Mathf.Lerp(a[i - 1], a[i], (pm - c[i - 1]) / (c[i] - c[i - 1])));
+        return 500;
+    }
+    public static string AqiName(int aqi) => aqi <= 50 ? "İyi" : aqi <= 100 ? "Orta" : aqi <= 150 ? "Hassas gruplar için sağlıksız"
+        : aqi <= 200 ? "Sağlıksız" : aqi <= 300 ? "Çok sağlıksız" : "Tehlikeli";
+
     public string Describe() => regionName + " • " + Temperature.ToString("0.0") + " °C"
         + "\nKirlilik: hava %" + airPollution.ToString("0") + " • su %" + waterPollution.ToString("0") + " • toprak %" + soilPollution.ToString("0")
         + "\nKarbon " + carbon.ToString("0") + "/100"

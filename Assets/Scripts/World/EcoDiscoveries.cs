@@ -36,9 +36,9 @@ public sealed class EcoDiscoveries : MonoBehaviour
         return false;
     }
     public static string UnlockReason(string id) => CanBuild(id) ? ""
-        : id == "wind" ? (Has("recipe.wind") ? "Önce \"Mahalleye ilk enerji\" projesini tamamla." : "Rüzgârlı tepelerin üretim koşullarını keşfet.")
+        : id == "wind" ? (Has("recipe.wind") ? "Önce \"Mahalleye ilk enerji\" projesini tamamla." : "Rüzgâr Tepeleri'nin üretim koşullarını keşfet.")
         : id == "hydro" ? "Gölü canlandırma projesi sonrası doğal akış santrali açılır."
-        : id == "station" || id == "glacier" ? "Buzul bölgesine giderek izleme tarifini keşfet."
+        : id == "station" || id == "glacier" ? "Buzul Dağı'na giderek izleme tarifini keşfet."
         : "Su sorunu olan bir gölü incele; temel çözüm tarifi YEP istemez.";
     public static bool CanPlant(EcoCropCatalog.Kind kind) => kind == EcoCropCatalog.Kind.Cabbage
         || kind == EcoCropCatalog.Kind.Tree && (Has("recipe.grove") || Completed(0))
@@ -49,8 +49,8 @@ public sealed class EcoDiscoveries : MonoBehaviour
     public static void DiscoverRegion(EcoRegion region)
     {
         if (region == null) return;
-        bool first = Remember("region." + region.regionName);
-        string name = region.regionName;
+        bool first = Remember("region." + region.Key);
+        string name = region.Key; // stable original name; the shown name may differ
         if (name.Contains("Göl")) Remember("recipe.water");
         if (name.Contains("Koruluk") || name.Contains("Rüzg") || name.Contains("Wind"))
         { Remember("recipe.grove"); Remember("recipe.wind"); }
@@ -85,8 +85,8 @@ public sealed class EcoDiscoveries : MonoBehaviour
         if (!Has("field.placementWarning") || !string.IsNullOrEmpty(EcoRegion.PlacementWarning(buildingId, position))) return;
         Remember("field.safePlacement"); TryAwardField();
     }
-    public static bool InletRemediated(EcoRegion region) => region != null && Has("inlet." + region.regionName);
-    public static void RemediateInlet(EcoRegion region) { if (region != null) Remember("inlet." + region.regionName); }
+    public static bool InletRemediated(EcoRegion region) => region != null && Has("inlet." + region.Key);
+    public static void RemediateInlet(EcoRegion region) { if (region != null) Remember("inlet." + region.Key); }
     public static void TryAwardField()
     {
         var owner = Current != null ? Current.player : FindFirstObjectByType<PlayerWeaponSystem>();
@@ -111,7 +111,7 @@ public sealed class EcoDiscoveries : MonoBehaviour
         if (FindFirstObjectByType<EcoPollutionInlet>() != null) return;
         foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None))
         {
-            if (!region.regionName.Contains("Doğu Göl")) continue;
+            if (!region.Key.Contains("Doğu Göl")) continue;
             Vector3 position = region.transform.TransformPoint(new Vector3(-region.size.x * 0.5f - 1.5f, 0f, 0f));
             if (Physics.Raycast(position + Vector3.up * 150f, Vector3.down, out var ground, 300f, ~0, QueryTriggerInteraction.Ignore)) position.y = ground.point.y;
             var marker = new GameObject("Doğu Gölü - kirletici giriş"); marker.transform.position = position;

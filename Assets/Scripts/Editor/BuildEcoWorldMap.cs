@@ -47,7 +47,7 @@ public static class BuildEcoWorldMap
 
     private sealed class RegionDef
     {
-        public string name, tagline;
+        public string name, key, tagline;
         public EcoRegionInfo.Kind kind;
         public Vector2 center, size;
         public float air, water, soil, carbon, temperature, vegetation, habitat, wind = 1f, sun = 1f;
@@ -65,7 +65,7 @@ public static class BuildEcoWorldMap
         public readonly List<Vector2> pos = new List<Vector2>();
         public readonly List<Vector2> tan = new List<Vector2>();
         public readonly List<float> dist = new List<float>();
-        public bool[] junction, nearJunction;
+        public bool[] junction, nearJunction, nearPaved, nearStreet;
         public Rect bounds;
         public float Width => kind switch
         {
@@ -104,68 +104,77 @@ public static class BuildEcoWorldMap
 
     private static RegionDef Def(EcoRegionInfo.Kind kind) => Defs.First(d => d.kind == kind);
 
+    // Shown names are plain words for what the place is; `key` keeps each region's original name so saves, discoveries
+    // and projects still find it. Starting values are set so the map's real-world readings (PM2.5, CO₂, dissolved
+    // oxygen, soil organic matter, °C) fall in believable ranges for each kind of place on a mild late-spring day.
+    // Temperatures differ by only a few degrees between neighbours (heat island in town and industry, cooler wooded
+    // and windy ground); the glacier surface stays just below freezing.
     private static void DefineRegions()
     {
         Defs.Clear();
-        Defs.Add(new RegionDef { name = "Buzul Bölgesi", kind = EcoRegionInfo.Kind.Glacier, center = P(75, 130), size = P(150, 40), project = 5,
+        Defs.Add(new RegionDef { name = "Buzul Dağı", key = "Buzul Bölgesi", kind = EcoRegionInfo.Kind.Glacier, center = P(75, 130), size = P(150, 40), project = 5,
             tagline = "Erime riski altındaki buzul. Dünya karbonu arttıkça buz çizgisi geri çekilir.", air = 2, water = 2, soil = 0, carbon = 6,
-            temperature = -9f, vegetation = 0.05f, habitat = 0.4f, sensitive = true, wind = 1.4f, sun = 0.9f, color = new Color(0.72f, 0.90f, 1.00f),
+            temperature = -3f, vegetation = 0.05f, habitat = 0.4f, sensitive = true, wind = 1.4f, sun = 0.9f, color = new Color(0.72f, 0.90f, 1.00f),
             features = new[] { "İzleme istasyonu: dünya karbonunu ölçer", "Patika şehirden kuzeye çıkar", "Soğuk: ekime uygun değil" } });
-        Defs.Add(new RegionDef { name = "Rüzgârlı Tepeler", kind = EcoRegionInfo.Kind.Wind, center = P(22, 80), size = P(44, 60), project = -1,
-            tagline = "Açık tepeler. Rüzgâr türbinleri için en verimli yer.", air = 8, water = 6, soil = 6, carbon = 8,
-            temperature = 13f, vegetation = 0.65f, habitat = 0.8f, wind = 1.6f, sun = 0.95f, color = new Color(0.45f, 0.82f, 0.74f),
-            features = new[] { "Rüzgâr türbini verimi yüksek", "Koruluğa komşu: türbini ağaçlardan uzak kur" } });
-        Defs.Add(new RegionDef { name = "Koruluk", kind = EcoRegionInfo.Kind.Grove, center = P(22, 99), size = P(40, 20), priority = 1, project = 2,
-            tagline = "Zarar görmüş ağaçlar ve sessiz bir orman. Kuşlar geri dönmeyi bekliyor.", air = 10, water = 8, soil = 22, carbon = 14,
-            temperature = 14f, vegetation = 0.34f, habitat = 0.28f, sensitive = true, wind = 0.7f, sun = 0.7f, color = new Color(0.36f, 0.66f, 0.36f),
+        Defs.Add(new RegionDef { name = "Rüzgâr Tepeleri", key = "Rüzgârlı Tepeler", kind = EcoRegionInfo.Kind.Wind, center = P(22, 80), size = P(44, 60), project = -1,
+            tagline = "Açık tepeler. Rüzgâr türbinleri için en verimli yer.", air = 6, water = 6, soil = 6, carbon = 8,
+            temperature = 15f, vegetation = 0.65f, habitat = 0.8f, wind = 1.6f, sun = 0.95f, color = new Color(0.45f, 0.82f, 0.74f),
+            features = new[] { "Rüzgâr türbini verimi yüksek", "Ormana komşu: türbini ağaçlardan uzak kur" } });
+        Defs.Add(new RegionDef { name = "Orman", key = "Koruluk", kind = EcoRegionInfo.Kind.Grove, center = P(22, 99), size = P(40, 20), priority = 1, project = 2,
+            tagline = "Zarar görmüş ağaçlar ve sessiz bir orman. Kuşlar geri dönmeyi bekliyor.", air = 8, water = 8, soil = 22, carbon = 14,
+            temperature = 16f, vegetation = 0.34f, habitat = 0.28f, sensitive = true, wind = 0.7f, sun = 0.7f, color = new Color(0.36f, 0.66f, 0.36f),
             features = new[] { "Ağaç tohumu ekmek için ideal", "Hassas habitat: büyük tesis kurma", "Kuş ve kelebekler habitatla döner" } });
-        Defs.Add(new RegionDef { name = "Şehir Merkezi", kind = EcoRegionInfo.Kind.City, center = P(75, 80), size = P(62, 60), project = 4,
-            tagline = "Ev, pazar ve meydan. Güvenli hazırlık alanı; çocuklar burada büyüyor.", air = 32, water = 26, soil = 24, carbon = 32,
-            temperature = 18f, vegetation = 0.25f, habitat = 0.3f, wind = 0.6f, sun = 0.85f, color = new Color(0.95f, 0.84f, 0.55f),
+        Defs.Add(new RegionDef { name = "Şehir", key = "Şehir Merkezi", kind = EcoRegionInfo.Kind.City, center = P(75, 80), size = P(62, 60), project = 4,
+            tagline = "Ev, pazar ve meydan. Güvenli hazırlık alanı; çocuklar burada büyüyor.", air = 20, water = 22, soil = 20, carbon = 28,
+            temperature = 18.5f, vegetation = 0.25f, habitat = 0.3f, wind = 0.6f, sun = 0.85f, color = new Color(0.95f, 0.84f, 0.55f),
             features = new[] { "Ev ve mahalle çocuğu", "Göbekli kavşak ve meydan", "Çevresel tehdit oluşmaz" } });
-        Defs.Add(new RegionDef { name = "Sanayi Bölgesi", kind = EcoRegionInfo.Kind.Industry, center = P(128, 80), size = P(44, 60), project = 3,
+        Defs.Add(new RegionDef { name = "Fabrikalar", key = "Sanayi Bölgesi", kind = EcoRegionInfo.Kind.Industry, center = P(128, 80), size = P(44, 60), project = 3,
             tagline = "Filtresiz fabrikalar. Hava ve karbon kirliliğinin ana kaynağı.", air = 66, water = 55, soil = 58, carbon = 58,
-            temperature = 19f, vegetation = 0.10f, habitat = 0f, wind = 0.9f, sun = 0.7f, color = new Color(0.90f, 0.48f, 0.38f),
-            features = new[] { "Fabrikalara büyük filtre takılabilir", "Kirli kanal Doğu Gölü'ne akıyor", "Teneke ve Duman görülebilir" } });
-        Defs.Add(new RegionDef { name = "Güneşli Çayır", kind = EcoRegionInfo.Kind.Sun, center = P(75, 25), size = P(62, 50), project = 0,
-            tagline = "Geniş açık çayır. İlk güneş üretimi ve küçük tarım için ideal.", air = 6, water = 8, soil = 10, carbon = 10,
-            temperature = 24f, vegetation = 0.50f, habitat = 0.7f, wind = 0.8f, sun = 1.15f, color = new Color(1.00f, 0.84f, 0.38f),
-            features = new[] { "Güneş paneli verimi yüksek", "Başlangıç üssü ve atölye", "Sıcak: domates ve lahana" } });
-        Defs.Add(new RegionDef { name = "Batı Gölü", kind = EcoRegionInfo.Kind.Lake, center = P(22, 25), size = P(44, 50), project = -1,
-            tagline = "Temiz tatlı su ve balık. Su sınırlıdır, aşırı avlama.", air = 5, water = 8, soil = 6, carbon = 6,
-            temperature = 17f, vegetation = 0.70f, habitat = 0.85f, sensitive = true, wind = 1.1f, sun = 1f, color = new Color(0.45f, 0.74f, 1.00f),
+            temperature = 16f, vegetation = 0.10f, habitat = 0f, wind = 0.9f, sun = 0.7f, color = new Color(0.90f, 0.48f, 0.38f),
+            features = new[] { "Fabrikalara büyük filtre takılabilir", "Kirli kanal Fabrika Gölü'ne akıyor", "Teneke ve Duman görülebilir" } });
+        Defs.Add(new RegionDef { name = "Güneş Ovası", key = "Güneşli Çayır", kind = EcoRegionInfo.Kind.Sun, center = P(75, 25), size = P(62, 50), project = 0,
+            tagline = "Geniş açık ova. İlk güneş üretimi ve küçük tarım için ideal.", air = 5, water = 8, soil = 10, carbon = 10,
+            temperature = 20f, vegetation = 0.50f, habitat = 0.7f, wind = 0.8f, sun = 1.15f, color = new Color(1.00f, 0.84f, 0.38f),
+            features = new[] { "Güneş paneli verimi yüksek", "Başlangıç üssü ve atölye", "Ilık: domates ve lahana" } });
+        Defs.Add(new RegionDef { name = "Balık Gölü", key = "Batı Gölü", kind = EcoRegionInfo.Kind.Lake, center = P(22, 25), size = P(44, 50), project = -1,
+            tagline = "Temiz tatlı su ve balık. Su sınırlıdır, aşırı avlama.", air = 4, water = 8, soil = 6, carbon = 6,
+            temperature = 18f, vegetation = 0.70f, habitat = 0.85f, sensitive = true, wind = 1.1f, sun = 1f, color = new Color(0.45f, 0.74f, 1.00f),
             features = new[] { "Temiz su ve balıkçılık", "Doğal akış: küçük hidro kurulabilir", "Hassas kıyı" } });
-        Defs.Add(new RegionDef { name = "Doğu Gölü", kind = EcoRegionInfo.Kind.Lake, center = P(128, 25), size = P(44, 50), project = 1,
-            tagline = "Sanayi kanalının döküldüğü göl. Giriş kapanmalı, su arıtılmalı.", air = 28, water = 64, soil = 35, carbon = 22,
-            temperature = 20f, vegetation = 0.30f, habitat = 0.1f, wind = 1f, sun = 1f, color = new Color(0.58f, 0.62f, 0.40f),
+        Defs.Add(new RegionDef { name = "Fabrika Gölü", key = "Doğu Gölü", kind = EcoRegionInfo.Kind.Lake, center = P(128, 25), size = P(44, 50), project = 1,
+            tagline = "Fabrikaların atık kanalının döküldüğü göl. Giriş kapanmalı, su arıtılmalı.", air = 22, water = 64, soil = 35, carbon = 22,
+            temperature = 18f, vegetation = 0.30f, habitat = 0.1f, wind = 1f, sun = 1f, color = new Color(0.58f, 0.62f, 0.40f),
             features = new[] { "Kirletici giriş kanalı", "Salya görülebilir", "Pompa + arıtma + depo ile göle temiz dönüş" } });
     }
 
+    // Every street now ends on another road, leaves the map (the two boulevards run on into the hills) or, for the few
+    // true dead ends, in a turning circle; side streets continue south to the lake roads and trails close their loops.
     private static void DefineRoads()
     {
         Roads.Clear();
         Vector2 V(float x, float z) => new Vector2(x * L, z * L);
-        Roads.Add(new RoadDef("Ana Cadde (güney)", RoadKind.Avenue, V(75, 29), V(75, 40), V(74.6f, 52), V(75, 63), V(75, 72.4f)));
+        Roads.Add(new RoadDef("Ana Cadde (güney)", RoadKind.Avenue, V(75, 34), V(75, 40), V(74.6f, 52), V(75, 63), V(75, 72.4f)));
         Roads.Add(new RoadDef("Ana Cadde (kuzey)", RoadKind.Avenue, V(75, 87.6f), V(75.4f, 98), V(76.4f, 106), V(77.6f, 111)));
-        Roads.Add(new RoadDef("Batı Bulvarı", RoadKind.Street, V(67.4f, 80), V(60, 80.4f), V(52, 81.5f), V(46, 83.2f), V(38, 86), V(29, 89.5f), V(20, 93.2f), V(12, 96.5f)));
-        Roads.Add(new RoadDef("Doğu Bulvarı", RoadKind.Street, V(82.6f, 80), V(90, 79.6f), V(98, 79.4f), V(106, 79.6f), V(114, 80.2f), V(122, 81.2f), V(132, 81.6f), V(142, 80.6f), V(147, 80)));
+        Roads.Add(new RoadDef("Batı Bulvarı", RoadKind.Street, V(67.4f, 80), V(60, 80.4f), V(52, 81.5f), V(46, 83.2f), V(38, 86), V(29, 89.5f), V(20, 93.2f), V(12, 96.5f), V(4, 99.8f), V(-6, 103.6f), V(-18, 107f)));
+        Roads.Add(new RoadDef("Doğu Bulvarı", RoadKind.Street, V(82.6f, 80), V(90, 79.6f), V(98, 79.4f), V(106, 79.6f), V(114, 80.2f), V(122, 81.2f), V(132, 81.6f), V(142, 80.6f), V(147, 80), V(158, 79.6f), V(172, 79.2f)));
         // Four side streets leave the main cross near the town edge in a pinwheel, each bending away at its own angle.
         // The quarters between them stay deep enough (25–30 m) for a front row and back lots, like a real small town.
         Roads.Add(new RoadDef("Çınar Sokak", RoadKind.Street, V(75.6f, 101.6f), V(68, 102), V(60, 103.2f), V(52, 105.2f), V(45, 107.6f)));
-        Roads.Add(new RoadDef("Lale Sokak", RoadKind.Street, V(74.8f, 57.6f), V(82, 57.2f), V(90, 56), V(98, 53.6f), V(105, 50.6f)));
-        Roads.Add(new RoadDef("Okul Sokağı", RoadKind.Street, V(52, 81.5f), V(51.4f, 74), V(50, 66), V(48, 58), V(46, 51.6f)));
+        Roads.Add(new RoadDef("Lale Sokak", RoadKind.Street, V(74.8f, 57.6f), V(82, 57.2f), V(90, 56), V(98, 53.6f), V(105, 50.6f), V(107.6f, 46f), V(106.4f, 39f), V(104.8f, 33.4f)));
+        Roads.Add(new RoadDef("Okul Sokağı", RoadKind.Street, V(52, 81.5f), V(51.4f, 74), V(50, 66), V(48, 58), V(46, 51.6f), V(45, 44), V(44.4f, 38), V(44.6f, 33.6f)));
         Roads.Add(new RoadDef("Fırın Sokağı", RoadKind.Street, V(98, 79.4f), V(98.6f, 87), V(100, 95), V(102, 102), V(104, 108)));
         Roads.Add(new RoadDef("Batı Göl Yolu", RoadKind.Country, V(75, 34), V(66, 33.6f), V(56, 33), V(46, 33.4f), V(37.5f, 32.6f)));
         Roads.Add(new RoadDef("Doğu Göl Yolu", RoadKind.Country, V(75, 34), V(84, 33.6f), V(94, 33), V(104, 33.2f), V(114.5f, 32.4f)));
         Roads.Add(new RoadDef("Fabrika Halkası", RoadKind.Industrial, V(118, 80.8f), V(117.4f, 90), V(122, 96), V(132, 97.2f), V(140, 93.4f), V(141.2f, 86.4f), V(140.4f, 81.2f)));
         Roads.Add(new RoadDef("Depo Yolu", RoadKind.Industrial, V(124, 81.4f), V(124.4f, 72), V(127.4f, 64.4f), V(132.6f, 60.4f)));
         Roads.Add(new RoadDef("Buzul Patikası", RoadKind.Trail, V(77.6f, 110), V(81, 117), V(87, 124), V(92.4f, 129.4f), V(95.4f, 131.6f)));
-        Roads.Add(new RoadDef("Türbin Patikası", RoadKind.Trail, V(29, 89.5f), V(26, 80), V(20.5f, 72), V(17, 64), V(21, 57.4f), V(30, 55.6f), V(40, 57.4f), V(45, 61)));
-        Roads.Add(new RoadDef("Koruluk Patikası", RoadKind.Trail, V(20, 93.2f), V(17, 100), V(23.6f, 104.4f), V(32.4f, 101.6f), V(36.4f, 95.4f)));
+        Roads.Add(new RoadDef("Türbin Patikası", RoadKind.Trail, V(29, 89.5f), V(26, 80), V(20.5f, 72), V(17, 64), V(21, 57.4f), V(30, 55.6f), V(40, 57.4f), V(45, 60.2f), V(48.6f, 61.2f)));
+        Roads.Add(new RoadDef("Orman Patikası", RoadKind.Trail, V(20, 93.2f), V(17, 100), V(23.6f, 104.4f), V(32.4f, 101.6f), V(36.4f, 95.4f), V(37.4f, 86.4f)));
         Roads.Add(new RoadDef("Batı Kıyı Patikası", RoadKind.Trail, V(37.5f, 32.6f), V(36, 22), V(27, 16.4f), V(16, 18.6f), V(11.4f, 26)));
-        Roads.Add(new RoadDef("Doğu Kıyı Patikası", RoadKind.Trail, V(114.5f, 32.4f), V(118.4f, 40.6f), V(126, 43.4f), V(132, 41.6f)));
+        Roads.Add(new RoadDef("Doğu Kıyı Patikası", RoadKind.Trail, V(114.5f, 32.4f), V(118.4f, 40.6f), V(126, 43.4f), V(132, 41.6f), V(131.6f, 50f), V(132.6f, 59f)));
         Roads.Add(new RoadDef("Batı Güneş Tarlası", RoadKind.Trail, V(66, 33.6f), V(65, 37.4f), V(63.4f, 41)));
         Roads.Add(new RoadDef("Doğu Güneş Tarlası", RoadKind.Trail, V(84, 33.6f), V(85, 37.4f), V(86.6f, 41)));
+        // A short gravel track joins the start base to the main avenue, so the first walk into town follows a road.
+        Roads.Add(new RoadDef("Üs Patikası", RoadKind.Trail, V(75, 30.4f), V(77, 26.5f), V(78.6f, 22.8f)));
         Roads.Add(new RoadDef("Dağ Deresi", RoadKind.Stream, V(-16, 47), V(-5, 42.6f), V(3, 37.4f), V(9, 33.4f), V(14.4f, 30.6f)));
         Roads.Add(new RoadDef("Kirli Kanal", RoadKind.DirtyStream, V(135.6f, 61.4f), V(137.6f, 52), V(137.2f, 44), V(136.2f, 37), V(135.4f, 31.4f)));
         var ring = new RoadDef("Göbekli Kavşak", RoadKind.Ring) { closed = true };
@@ -294,6 +303,17 @@ public static class BuildEcoWorldMap
         return best;
     }
 
+    private static bool OnPavedRoad(Vector2 p)
+    {
+        foreach (var road in Roads)
+        {
+            if (!road.Paved || Distance(road.bounds, p) > 1f) continue;
+            for (int i = 0; i + 1 < road.pos.Count; i++)
+                if (DistToSegment(p, road.pos[i], road.pos[i + 1]) < road.Width * 0.5f + 0.3f) return true;
+        }
+        return false;
+    }
+
     private static float Distance(Rect r, Vector2 p)
     {
         float dx = Mathf.Max(r.xMin - p.x, 0f, p.x - r.xMax), dz = Mathf.Max(r.yMin - p.y, 0f, p.y - r.yMax);
@@ -411,6 +431,173 @@ public static class BuildEcoWorldMap
             if (!silent) EditorUtility.DisplayDialog("EcoWorld", "Hata: " + ex.Message + "\n\nAyrıntı Console'da. MainScene etkilenmedi.", "Tamam");
         }
         finally { EditorUtility.ClearProgressBar(); }
+    }
+
+    // ---------------------------------------------------------------- in-place update
+
+    // Rebuilding the whole scene would throw away everything placed or tuned in EcoWorld.unity since the last build.
+    // This rebuilds only the ground and road meshes from the definitions above, re-seats objects whose ground moved,
+    // clears plants that would now stand on a road, applies the region names and starting data, and re-renders the map image.
+    [MenuItem("EcoQuest/Update ground, roads and regions in place")]
+    public static void UpdateInPlace()
+    {
+        var scene = SceneManager.GetActiveScene();
+        var root = GameObject.Find("EcoWorld");
+        if (scene.path != TargetScene || root == null) { Debug.LogError("Önce " + TargetScene + " sahnesini aç."); return; }
+        report = new StringBuilder("EcoWorld yerinde güncelleme\n");
+        rng = new System.Random(20261020);
+        KeepOut.Clear(); Groups.Clear(); MaterialCache.Clear();
+        DefineRegions(); DefineRoads();
+        worldRoot = root.transform;
+        foreach (Transform t in worldRoot) Groups[t.name] = t;
+        try
+        {
+            Progress("Nesnelerin zemini ölçülüyor", 0.05f);
+            var placed = new List<(Transform t, float ground)>();
+            var oldGround = GroundColliders();
+            foreach (var t in PlacedObjects(scene))
+            {
+                if (!RaycastGround(oldGround, t.position, out float y) || Mathf.Abs(t.position.y - y) > 1.5f) continue;
+                placed.Add((t, y));
+            }
+
+            Progress("Zemin ve yollar", 0.2f);
+            foreach (var name in new[] { "Ground", "Roads" })
+                for (int i = Groups[name].childCount - 1; i >= 0; i--) Object.DestroyImmediate(Groups[name].GetChild(i).gameObject);
+            ComputeHeights();
+            BuildGround();
+            BuildRoads(false);
+
+            Progress("Yol üstündeki bitkiler", 0.6f);
+            int cleared = 0;
+            if (Groups.TryGetValue("Vegetation", out var vegetation))
+                foreach (var plant in vegetation.GetComponentsInChildren<Transform>(true).Where(t => t.parent != null && t.parent.parent == vegetation).ToList())
+                    if (plant != null && RoadEdgeDistance(plant.position.x, plant.position.z, false) < 0.8f) { Object.DestroyImmediate(plant.gameObject); cleared++; }
+
+            Progress("Nesneler yeni zemine oturtuluyor", 0.7f);
+            var newGround = GroundColliders();
+            int moved = 0;
+            foreach (var (t, before) in placed)
+            {
+                if (t == null || !RaycastGround(newGround, t.position, out float after)) continue;
+                float delta = after - before;
+                if (Mathf.Abs(delta) < 0.01f) continue;
+                Undo.RecordObject(t, "Seat on ground"); t.position += Vector3.up * delta; RecordOverride(t); moved++;
+            }
+
+            Progress("Bölgeler", 0.8f);
+            ApplyRegionDefs();
+            RenameTexts(scene);
+
+            Progress("Harita görüntüsü", 0.9f);
+            var mapPath = ResFolder + "Minimap.png";
+            File.WriteAllBytes(mapPath, RenderMinimap().EncodeToPNG());
+            AssetDatabase.ImportAsset(mapPath, ImportAssetOptions.ForceUpdate);
+
+            report.AppendLine("Yola denk gelen bitki: " + cleared + " kaldırıldı; zemini değişen nesne: " + moved + " yeniden oturtuldu");
+            File.WriteAllText(Folder + "UpdateReport.txt", report.ToString());
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log("ECOWORLD_UPDATED\n" + report);
+        }
+        catch (System.Exception ex) { Debug.LogError("EcoWorld güncellenemedi: " + ex); }
+        finally { EditorUtility.ClearProgressBar(); }
+    }
+
+    private static List<Collider> GroundColliders()
+        => Object.FindObjectsByType<EcoGround>(FindObjectsSortMode.None).SelectMany(g => g.GetComponents<Collider>()).Where(c => c != null && c.enabled).ToList();
+
+    private static bool RaycastGround(List<Collider> colliders, Vector3 at, out float height)
+    {
+        height = 0f; bool any = false;
+        var ray = new Ray(new Vector3(at.x, at.y + 60f, at.z), Vector3.down);
+        foreach (var c in colliders)
+            if (c.Raycast(ray, out var hit, 200f) && (!any || hit.point.y > height)) { height = hit.point.y; any = true; }
+        return any;
+    }
+
+    // Objects that stand on the ground: the children of each content group (and of their sub-groups), plus the
+    // scene's own root objects and their children (base, player, practice areas).
+    private static IEnumerable<Transform> PlacedObjects(Scene scene)
+    {
+        foreach (var pair in Groups)
+        {
+            if (pair.Key == "Ground" || pair.Key == "Roads" || pair.Key == "Regions" || pair.Key == "Bounds") continue;
+            foreach (Transform child in pair.Value)
+            {
+                // Sub-groups such as Vegetation/Trees hold the actual objects.
+                bool container = child.GetComponent<Renderer>() == null && child.GetComponent<Collider>() == null && child.childCount > 3;
+                if (container) foreach (Transform item in child) yield return item;
+                else yield return child;
+            }
+        }
+        foreach (var go in scene.GetRootGameObjects())
+        {
+            if (go == worldRoot.gameObject || go.GetComponent<Camera>() != null || go.GetComponent<Light>() != null) continue;
+            yield return go.transform;
+            foreach (Transform child in go.transform) yield return child;
+        }
+    }
+
+    private static void ApplyRegionDefs()
+    {
+        foreach (var region in Object.FindObjectsByType<EcoRegion>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (!region.TryGetComponent<EcoRegionInfo>(out var info))
+            {
+                // The base's two tutorial pockets.
+                if (region.regionName.Contains("bahçe")) { region.regionName = "Üs"; region.key = "Üs bahçesi"; }
+                else if (region.regionName.Contains("atölye")) { region.regionName = "Eski Atölye"; region.key = "Eski atölye sahası"; }
+                RecordOverride(region);
+                continue;
+            }
+            string id = string.IsNullOrEmpty(region.key) ? region.regionName : region.key;
+            var def = Defs.FirstOrDefault(d => d.key == id || d.name == id);
+            if (def == null) { report.AppendLine("UYARI: bölge eşleşmedi: " + id); continue; }
+            region.regionName = def.name; region.key = def.key; region.gameObject.name = def.name;
+            region.airPollution = def.air; region.waterPollution = def.water; region.soilPollution = def.soil; region.carbon = def.carbon;
+            region.baseTemperature = def.temperature;
+            info.tagline = def.tagline; info.features = def.features;
+            RecordOverride(region); RecordOverride(info); RecordOverride(region.gameObject);
+            report.AppendLine("Bölge: " + def.key + " → " + def.name + "  " + region.Temperature.ToString("0.0") + " °C, PM2.5 "
+                + region.PM25.ToString("0") + " µg/m³ (AQI " + region.AQI + "), CO₂ " + region.CO2ppm.ToString("0") + " ppm, ÇO "
+                + region.DissolvedOxygen.ToString("0.0") + " mg/L, organik madde %" + region.SoilOrganicMatter.ToString("0.0"));
+        }
+    }
+
+    private static readonly (string from, string to)[] Renames =
+    {
+        ("Rüzgârlı tepeler", "Rüzgâr Tepeleri"), ("Rüzgârlı Tepeler", "Rüzgâr Tepeleri"), ("DOĞU  Sanayi", "DOĞU  Fabrikalar"),
+        ("KUZEY  Buzul patikası", "KUZEY  Buzul Dağı"), ("KORULUK", "ORMAN"), ("Doğu Gölü", "Fabrika Gölü"), ("Doğu gölü", "Fabrika Gölü"),
+        ("Batı Gölü", "Balık Gölü"), ("Batı gölü", "Balık Gölü"), ("Koruluk", "Orman"), ("koruluk", "orman"), ("Şehir Merkezi", "Şehir"),
+        ("Güneşli Çayır", "Güneş Ovası"), ("Buzul Bölgesi", "Buzul Dağı"), ("Sanayi Bölgesi", "Fabrikalar"),
+    };
+
+    private static string Renamed(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        foreach (var (from, to) in Renames) text = text.Replace(from, to);
+        return text;
+    }
+
+    private static void RenameTexts(Scene scene)
+    {
+        int changed = 0;
+        foreach (var go in scene.GetRootGameObjects())
+        {
+            foreach (var text in go.GetComponentsInChildren<Text>(true))
+            {
+                string next = Renamed(text.text);
+                if (next != text.text) { text.text = next; RecordOverride(text); changed++; }
+            }
+            foreach (var marker in go.GetComponentsInChildren<EcoMapMarker>(true))
+            {
+                string title = Renamed(marker.title), detail = Renamed(marker.detail);
+                if (title != marker.title || detail != marker.detail) { marker.title = title; marker.detail = detail; RecordOverride(marker); changed++; }
+            }
+        }
+        report.AppendLine("Ad değişikliği: " + changed + " tabela/işaret metni");
     }
 
     private static void Progress(string text, float value) => EditorUtility.DisplayProgressBar("EcoWorld", text, value);
@@ -656,8 +843,12 @@ public static class BuildEcoWorldMap
                 }
                 float field = roadField[i, j];
                 float h = heights[i, j];
-                if (bestPaved < 5f) h = Mathf.Lerp(h, field - 0.02f, 1f - Smooth(0.2f, 4.5f, bestPaved));
-                if (bestTrail < 3f) h = Mathf.Lerp(h, field - 0.02f, 1f - Smooth(0.1f, 3f, bestTrail));
+                // Fully level for one grid cell past the edge: a 1.5 m triangle that straddles the kerb would otherwise
+                // interpolate up the hillside and cut jagged teeth into the asphalt.
+                // Under the carriageway itself the ground sits a little lower still, so curvature between grid
+                // points never reaches the asphalt.
+                if (bestPaved < 6f) h = Mathf.Lerp(h, field - Mathf.Lerp(0.03f, 0.2f, 1f - Smooth(-0.5f, Cell, bestPaved)), 1f - Smooth(Cell, 6f, bestPaved));
+                if (bestTrail < 4f) h = Mathf.Lerp(h, field - Mathf.Lerp(0.03f, 0.12f, 1f - Smooth(-0.3f, Cell * 0.8f, bestTrail)), 1f - Smooth(Cell * 0.8f, 4f, bestTrail));
                 if (bestWater < 3.5f)
                 {
                     float bed = field - 1.0f;
@@ -735,6 +926,8 @@ public static class BuildEcoWorldMap
         {
             road.junction = new bool[road.pos.Count];
             road.nearJunction = new bool[road.pos.Count];
+            road.nearPaved = new bool[road.pos.Count];
+            road.nearStreet = new bool[road.pos.Count];
             if (road.Water) continue;
             for (int i = 0; i < road.pos.Count; i++)
             {
@@ -746,9 +939,14 @@ public static class BuildEcoWorldMap
                     float d = float.MaxValue;
                     for (int k = 0; k + 1 < other.pos.Count; k++) d = Mathf.Min(d, DistToSegment(p, other.pos[k], other.pos[k + 1]));
                     float half = other.Width * 0.5f;
-                    if (d < half + 0.6f) road.junction[i] = true;
+                    if (d < half + 0.6f && other.Paved) road.junction[i] = true;
                     // Pavements stop where the crossing street's pavement begins (a little beyond its kerb).
-                    if (d < half + (other.Urban ? Pave : 0.7f) + (road.Urban ? Pave : 0.4f)) road.nearJunction[i] = true;
+                    if (d < half + (other.Urban ? Pave : 0.7f) + (road.Urban ? Pave : 0.4f))
+                    {
+                        road.nearJunction[i] = true;
+                        if (other.Paved && road.Paved) road.nearStreet[i] = true; // a dirt path crossing keeps the pavement whole
+                        if (other.Paved && other.kind != RoadKind.Ring && road.Paved) road.nearPaved[i] = true;
+                    }
                 }
             }
         }
@@ -756,8 +954,8 @@ public static class BuildEcoWorldMap
 
     // ---------------------------------------------------------------- ground mesh
 
-    private static readonly Color GrassA = new Color(0.36f, 0.58f, 0.25f), GrassB = new Color(0.46f, 0.66f, 0.29f);
-    private static readonly Color GrassDark = new Color(0.25f, 0.44f, 0.21f), DryGrass = new Color(0.72f, 0.66f, 0.37f);
+    private static readonly Color GrassA = new Color(0.31f, 0.53f, 0.21f), GrassB = new Color(0.42f, 0.62f, 0.25f);
+    private static readonly Color GrassDark = new Color(0.22f, 0.40f, 0.18f), DryGrass = new Color(0.62f, 0.60f, 0.33f);
     private static readonly Color Dirt = new Color(0.52f, 0.40f, 0.27f), Sand = new Color(0.86f, 0.78f, 0.56f);
     private static readonly Color Rock = new Color(0.52f, 0.52f, 0.54f), Snow = new Color(0.93f, 0.96f, 1.0f), Ice = new Color(0.76f, 0.89f, 0.97f);
     private static readonly Color IndustrialGround = new Color(0.48f, 0.44f, 0.37f), Lawn = new Color(0.42f, 0.65f, 0.30f), Mud = new Color(0.40f, 0.36f, 0.24f);
@@ -771,7 +969,10 @@ public static class BuildEcoWorldMap
 
         int ri = RegionIndexAt(x, z);
         var kind = ri >= 0 ? Defs[ri].kind : (EcoRegionInfo.Kind)(-1);
-        if (kind == EcoRegionInfo.Kind.Sun) c = Color.Lerp(c, DryGrass, 0.35f + 0.4f * Smooth(0.4f, 0.75f, n1));
+        if (kind == EcoRegionInfo.Kind.Sun) c = Color.Lerp(c, DryGrass, 0.15f + 0.3f * Smooth(0.45f, 0.8f, n1));
+        // Bare, trodden soil shows through in small patches, as on any real meadow.
+        float worn = Smooth(0.62f, 0.78f, Fbm(x * 0.13f + 17f, z * 0.13f + 3f, 3));
+        if (kind != EcoRegionInfo.Kind.Glacier) c = Color.Lerp(c, Color.Lerp(Dirt, GrassDark, 0.35f), worn * 0.45f);
         if (kind == EcoRegionInfo.Kind.City) c = Color.Lerp(c, Lawn, 0.6f);
         if (kind == EcoRegionInfo.Kind.Grove) c = Color.Lerp(c, Color.Lerp(GrassDark, Dirt, 0.35f), 0.55f);
         if (kind == EcoRegionInfo.Kind.Industry)
@@ -819,8 +1020,10 @@ public static class BuildEcoWorldMap
     private static void BuildGround()
     {
         var material = VertexMat("EcoGround", true, 0.04f);
+        SetDetail(material, 3.2f, 0.9f);
         material.SetFloat("_PollutionStrength", 1f); // polluted regions fade the ground (EcoPollutionField)
-        var field = Groups["Ground"].gameObject.AddComponent<EcoPollutionField>();
+        var field = Groups["Ground"].gameObject.GetComponent<EcoPollutionField>();
+        if (field == null) field = Groups["Ground"].gameObject.AddComponent<EcoPollutionField>();
         field.area = new Rect(0f, 0f, Size, Size);
         var colors = new Color[N + 1, N + 1];
         for (int i = 0; i <= N; i++) for (int j = 0; j <= N; j++) colors[i, j] = GroundColor(i, j);
@@ -898,9 +1101,10 @@ public static class BuildEcoWorldMap
     private static readonly Color Pavement = new Color(0.70f, 0.69f, 0.65f), Kerb = new Color(0.56f, 0.56f, 0.55f);
     private static readonly Color Gravel = new Color(0.55f, 0.52f, 0.46f), TrailDirt = new Color(0.58f, 0.46f, 0.31f), TrailDark = new Color(0.47f, 0.37f, 0.25f);
 
-    private static void BuildRoads()
+    private static void BuildRoads(bool island = true)
     {
         var roadMat = VertexMat("EcoRoad", false, 0.18f);
+        SetDetail(roadMat, 1.6f, 0.35f);
         var waterClean = Mat("StreamClean", new Color(0.30f, 0.66f, 0.80f, 0.78f), 0.9f, 0f, true);
         var waterDirty = Mat("StreamDirty", new Color(0.38f, 0.40f, 0.20f, 0.88f), 0.6f, 0f, true);
         int paved = 0, trails = 0;
@@ -917,6 +1121,7 @@ public static class BuildEcoWorldMap
                 Vector2 n0 = new Vector2(-road.tan[i].y, road.tan[i].x), n1 = new Vector2(-road.tan[i + 1].y, road.tan[i + 1].x);
                 if (road.kind == RoadKind.Trail)
                 {
+                    if (OnPavedRoad(p0) && OnPavedRoad(p1)) continue; // the asphalt carries on through; no dirt painted over it
                     // Dirt track: irregular edges, two worn wheel ruts, colour noise.
                     float e0 = (Mathf.PerlinNoise(road.dist[i] * 0.35f, 3.1f) - 0.5f) * 0.7f, e1 = (Mathf.PerlinNoise(road.dist[i + 1] * 0.35f, 3.1f) - 0.5f) * 0.7f;
                     float f0 = (Mathf.PerlinNoise(road.dist[i] * 0.35f, 8.7f) - 0.5f) * 0.7f, f1 = (Mathf.PerlinNoise(road.dist[i + 1] * 0.35f, 8.7f) - 0.5f) * 0.7f;
@@ -931,12 +1136,19 @@ public static class BuildEcoWorldMap
                 // Gravel shoulder under the asphalt, then the asphalt itself.
                 float shoulder = road.Urban ? 0f : 0.7f;
                 if (shoulder > 0f)
-                    surface.Quad(RoadPoint(p0 + n0 * (hw + shoulder), 0.025f), RoadPoint(p1 + n1 * (hw + shoulder), 0.025f),
-                        RoadPoint(p0 - n0 * (hw + shoulder), 0.025f), RoadPoint(p1 - n1 * (hw + shoulder), 0.025f), Gravel);
+                    foreach (float side in new[] { -1f, 1f })
+                        surface.Quad(RoadPoint(p0 + n0 * side * (hw + shoulder), 0.025f), RoadPoint(p1 + n1 * side * (hw + shoulder), 0.025f),
+                            RoadPoint(p0 + n0 * side * (hw - 0.2f), 0.025f), RoadPoint(p1 + n1 * side * (hw - 0.2f), 0.025f), Gravel);
                 float tone0 = Mathf.PerlinNoise(p0.x * 0.15f, p0.y * 0.15f), tone1 = Mathf.PerlinNoise(p1.x * 0.15f, p1.y * 0.15f);
                 Color c0 = Color.Lerp(Asphalt, AsphaltLight, tone0), c1 = Color.Lerp(Asphalt, AsphaltLight, tone1);
                 if (road.kind == RoadKind.Industrial) { c0 = Color.Lerp(c0, Dirt, 0.18f); c1 = Color.Lerp(c1, Dirt, 0.18f); }
-                surface.Quad(RoadPoint(p0 + n0 * hw, 0.05f), RoadPoint(p1 + n1 * hw, 0.05f), RoadPoint(p0 - n0 * hw, 0.05f), RoadPoint(p1 - n1 * hw, 0.05f), c0, c1, c0, c1);
+                // Four strips across the width follow the land's curvature; one wide quad cut chords through hill crests.
+                const int strips = 4;
+                for (int sIdx = 0; sIdx < strips; sIdx++)
+                {
+                    float u0 = hw - 2f * hw * sIdx / strips, u1 = hw - 2f * hw * (sIdx + 1) / strips;
+                    surface.Quad(RoadPoint(p0 + n0 * u0, 0.05f), RoadPoint(p1 + n1 * u0, 0.05f), RoadPoint(p0 + n0 * u1, 0.05f), RoadPoint(p1 + n1 * u1, 0.05f), c0, c1, c0, c1);
+                }
 
                 bool skip = road.nearJunction[i] || road.nearJunction[i + 1];
                 bool inside = road.junction[i] || road.junction[i + 1];
@@ -966,7 +1178,7 @@ public static class BuildEcoWorldMap
                     bool outerOnly = road.kind == RoadKind.Ring; // the island side of the ring gets its own kerb
                     foreach (float s in new[] { -1f, 1f })
                     {
-                        if (road.nearJunction[i] && road.nearJunction[i + 1]) continue;
+                        if (road.nearStreet[i] && road.nearStreet[i + 1]) continue;
                         if (outerOnly && s > 0f) continue;
                         Vector2 e0 = p0 + n0 * s * hw, e1 = p1 + n1 * s * hw;
                         Vector2 o0 = p0 + n0 * s * (hw + Pave), o1 = p1 + n1 * s * (hw + Pave);
@@ -986,7 +1198,10 @@ public static class BuildEcoWorldMap
                     if (road.nearJunction[i] == road.nearJunction[i - 1]) continue;
                     int k = road.nearJunction[i] ? i - 1 : i; // first sample outside the junction
                     int dir = road.nearJunction[i] ? -1 : 1;
-                    AddCrossing(details, road, k, dir, hw);
+                    // Zebras only where people actually cross: the main avenue and the roundabout. A zebra on every
+                    // leg of every side street made each junction look like a separate, pasted-in piece.
+                    if (road.kind == RoadKind.Avenue || Vector2.Distance(road.pos[k], Roundabout) < RoundaboutR + 9f)
+                        AddCrossing(details, road, k, dir, hw);
                 }
 
             var mesh = surface.ToMesh(road.name.Replace(" ", "_") + "_surface");
@@ -1010,7 +1225,9 @@ public static class BuildEcoWorldMap
             }
             if (road.kind == RoadKind.Trail) trails++; else paved++;
         }
-        BuildRoundaboutIsland();
+        int junctions = BuildJunctions(roadMat);
+        if (island) BuildRoundaboutIsland();
+        report.AppendLine("Kavşak: " + junctions + " birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi");
         report.AppendLine("Yollar: " + paved + " asfalt yol (bordür, kaldırım, şerit, yaya geçidi), " + trails + " toprak patika, 2 dere; ızgara yok");
     }
 
@@ -1023,6 +1240,184 @@ public static class BuildEcoWorldMap
             Vector2 a = center + n * s, b = center + n * (s + 0.45f);
             Vector2 f = t * 1.4f * -dir;
             mb.Quad(RoadPoint(a, 0.066f), RoadPoint(a + f, 0.066f), RoadPoint(b, 0.066f), RoadPoint(b + f, 0.066f), Paint);
+        }
+    }
+
+    // Grass blades / asphalt grain from a grey detail map (Assets/Shaders/GroundDetail.png, made from the TinyTexturePack
+    // grass textures). The ground keeps its painted region colours; the detail only adds texture.
+    private static void SetDetail(Material material, float tile, float strength)
+    {
+        var detail = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Shaders/GroundDetail.png");
+        if (detail == null) return;
+        material.SetTexture("_DetailTex", detail); material.SetFloat("_DetailScale", tile); material.SetFloat("_DetailStrength", strength);
+        EditorUtility.SetDirty(material);
+    }
+
+    private sealed class Leg { public RoadDef road; public Vector2 p, d, centre; public float hw; }
+
+    private static Vector2 Perp(Vector2 v) => new Vector2(-v.y, v.x);
+
+    // Where paved roads meet, the separate road strips are joined into one piece: an asphalt fill covering the whole
+    // crossing and kerbed pavement corners that curve from one street into the next. Paved dead ends get a turning circle.
+    private static int BuildJunctions(Material roadMat)
+    {
+        var legs = new List<Leg>();
+        foreach (var road in Roads)
+        {
+            if (!road.Paved || road.kind == RoadKind.Ring) continue;
+            for (int i = 1; i < road.pos.Count; i++)
+            {
+                if (road.nearPaved[i] == road.nearPaved[i - 1]) continue;
+                int k = road.nearPaved[i] ? i - 1 : i;           // last sample of open road before the crossing
+                Vector2 away = road.nearPaved[i] ? -road.tan[k] : road.tan[k];
+                // The middle of this road's stretch inside the crossing stands in for the crossing's centre.
+                int a = road.nearPaved[i] ? i : i - 1, b = a, step = road.nearPaved[i] ? 1 : -1;
+                while (b + step >= 0 && b + step < road.pos.Count && road.nearPaved[b + step]) b += step;
+                legs.Add(new Leg { road = road, p = road.pos[k], d = away.normalized, hw = road.Width * 0.5f, centre = road.pos[(a + b) / 2] });
+            }
+        }
+        // Legs that meet at the same crossing share (nearly) the same centre. Comparing leg ends instead chained
+        // neighbouring junctions along a street into one huge piece.
+        var cluster = Enumerable.Range(0, legs.Count).ToArray();
+        int Find(int a) { while (cluster[a] != a) a = cluster[a] = cluster[cluster[a]]; return a; }
+        for (int a = 0; a < legs.Count; a++)
+            for (int b = a + 1; b < legs.Count; b++)
+                if (Vector2.Distance(legs[a].centre, legs[b].centre) < 8f) cluster[Find(a)] = Find(b);
+
+        var group = Group("Kavşaklar", Groups["Roads"]);
+        var fill = new MeshBuilder(); var kerbs = new MeshBuilder();
+        int count = 0;
+        foreach (var set in Enumerable.Range(0, legs.Count).GroupBy(Find))
+        {
+            var members = set.Select(i => legs[i]).ToList();
+            if (members.Count < 2) continue;
+            if (members.Any(l => Vector2.Distance(l.p, Roundabout) < RoundaboutR + 8f)) continue; // the roundabout has its own island
+            members.Sort((a, b) => Mathf.Atan2(a.d.y, a.d.x).CompareTo(Mathf.Atan2(b.d.y, b.d.x)));
+            Vector2 centre = Vector2.zero; foreach (var l in members) centre += l.p; centre /= members.Count;
+            if (members.Any(l => Vector2.Distance(l.p, centre) > 14f)) { report.AppendLine("UYARI: kavşak çok geniş, atlandı @" + centre); continue; }
+            var outline = new List<Vector2>();
+            for (int m = 0; m < members.Count; m++)
+            {
+                var a = members[m]; var b = members[(m + 1) % members.Count];
+                Vector2 right = a.p - Perp(a.d) * a.hw, left = a.p + Perp(a.d) * a.hw;
+                outline.Add(right); outline.Add(left);
+                // Corner from this leg's left kerb to the next leg's right kerb.
+                Vector2 to = b.p - Perp(b.d) * b.hw;
+                var corner = CornerCurve(left, a.d, to, b.d);
+                outline.AddRange(corner.Skip(1).Take(corner.Count - 2));
+                if (a.road.Urban || b.road.Urban) AddCornerPavement(kerbs, corner, centre);
+            }
+            Vector3 c3 = RoadPoint(centre, 0.044f);
+            for (int v = 0; v < outline.Count; v++)
+            {
+                Vector2 p0 = outline[v], p1 = outline[(v + 1) % outline.Count];
+                int baseIndex = fill.v.Count;
+                fill.v.Add(c3); fill.v.Add(RoadPoint(p0, 0.044f)); fill.v.Add(RoadPoint(p1, 0.044f));
+                fill.c.Add(AsphaltTone(centre)); fill.c.Add(AsphaltTone(p0)); fill.c.Add(AsphaltTone(p1));
+                // Wind so the face points up whichever way the outline runs.
+                bool ccw = (p0.x - centre.x) * (p1.y - centre.y) - (p0.y - centre.y) * (p1.x - centre.x) > 0f;
+                if (ccw) { fill.t.Add(baseIndex); fill.t.Add(baseIndex + 2); fill.t.Add(baseIndex + 1); }
+                else { fill.t.Add(baseIndex); fill.t.Add(baseIndex + 1); fill.t.Add(baseIndex + 2); }
+            }
+            count++;
+        }
+        // Turning circles at paved dead ends inside the map.
+        int caps = 0;
+        foreach (var road in Roads)
+        {
+            if (!road.Paved || road.closed) continue;
+            foreach (int end in new[] { 0, road.pos.Count - 1 })
+            {
+                Vector2 p = road.pos[end];
+                if (road.nearJunction[end] || Outside(p.x, p.y) > -2f) continue;
+                if (Roads.Any(o => o != road && !o.Water && o.Paved && o.pos.Any(q => Vector2.Distance(q, p) < o.Width * 0.5f + road.Width))) continue;
+                Vector2 dir = end == 0 ? -road.tan[0] : road.tan[end];
+                AddTurningCircle(fill, kerbs, p + dir * 1.2f, road.Width * 0.5f + 1.6f, road.Urban);
+                caps++;
+            }
+        }
+        if (fill.v.Count > 0) JunctionObject(group, fill, "Junction_fill", "Asphalt", roadMat, EcoGround.Surface.Road);
+        if (kerbs.v.Count > 0) JunctionObject(group, kerbs, "Junction_kerbs", "Corners", roadMat, EcoGround.Surface.Plaza);
+        report.AppendLine("Dönüş cebi: " + caps);
+        return count;
+    }
+
+    private static Color AsphaltTone(Vector2 p) => Color.Lerp(Asphalt, AsphaltLight, Mathf.PerlinNoise(p.x * 0.15f, p.y * 0.15f));
+
+    private static void JunctionObject(Transform parent, MeshBuilder mb, string meshName, string objectName, Material material, EcoGround.Surface surface)
+    {
+        var mesh = mb.ToMesh(meshName);
+        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/" + meshName + ".asset");
+        var go = new GameObject(objectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
+        go.transform.SetParent(parent, false);
+        go.GetComponent<MeshFilter>().sharedMesh = mesh; go.GetComponent<MeshRenderer>().sharedMaterial = material;
+        go.GetComponent<MeshCollider>().sharedMesh = mesh;
+        go.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        go.isStatic = true;
+        go.AddComponent<EcoGround>().surface = surface;
+    }
+
+    // Quadratic curve between two kerb ends; the control point is where the two kerb lines meet, so the corner hugs
+    // both streets. Nearly straight-through pairs (or lines meeting on the wrong side) get a straight edge.
+    private static List<Vector2> CornerCurve(Vector2 from, Vector2 dirFrom, Vector2 to, Vector2 dirTo)
+    {
+        var points = new List<Vector2>();
+        Vector2 control = (from + to) * 0.5f;
+        float denom = dirFrom.x * dirTo.y - dirFrom.y * dirTo.x;
+        if (Mathf.Abs(denom) > 0.15f)
+        {
+            Vector2 w = to - from;
+            float t = (w.x * dirTo.y - w.y * dirTo.x) / denom;   // meeting point = from + dirFrom * t
+            float u = (w.x * dirFrom.y - w.y * dirFrom.x) / denom; // meeting point = to + dirTo * u
+            if (t < 0.5f && u < 0.5f && t > -12f && u > -12f) control = from + dirFrom * t;
+        }
+        int steps = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(from, to) / 0.8f), 2, 16);
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = i / (float)steps;
+            points.Add((1 - t) * (1 - t) * from + 2 * (1 - t) * t * control + t * t * to);
+        }
+        return points;
+    }
+
+    private static void AddCornerPavement(MeshBuilder mb, List<Vector2> curve, Vector2 centre)
+    {
+        Vector2 Outward(int i)
+        {
+            Vector2 a = curve[Mathf.Max(0, i - 1)], b = curve[Mathf.Min(curve.Count - 1, i + 1)];
+            Vector2 n = Perp((b - a).normalized);
+            return Vector2.Dot(n, curve[i] - centre) < 0f ? -n : n;
+        }
+        for (int i = 0; i + 1 < curve.Count; i++)
+        {
+            Vector2 a = curve[i], b = curve[i + 1], na = Outward(i), nb = Outward(i + 1);
+            Vector3 k0 = RoadPoint(a, 0.05f), k1 = RoadPoint(b, 0.05f);
+            Vector3 t0 = k0 + Vector3.up * 0.12f, t1 = k1 + Vector3.up * 0.12f;
+            Vector2 mid = (na + nb).normalized;
+            mb.Quad(k0, k1, t0, t1, Kerb, new Vector3(-mid.x, 0f, -mid.y)); // the kerb face looks at the carriageway
+            mb.Quad(t0, t1, RoadPoint(a + na * Pave, 0.17f), RoadPoint(b + nb * Pave, 0.17f), Pavement);
+        }
+    }
+
+    private static void AddTurningCircle(MeshBuilder fill, MeshBuilder kerbs, Vector2 centre, float radius, bool pavement)
+    {
+        const int seg = 28;
+        Vector3 c = RoadPoint(centre, 0.044f);
+        Color col = AsphaltTone(centre);
+        for (int s = 0; s < seg; s++)
+        {
+            float a0 = s * Mathf.PI * 2f / seg, a1 = (s + 1) * Mathf.PI * 2f / seg;
+            Vector2 d0 = new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)), d1 = new Vector2(Mathf.Cos(a1), Mathf.Sin(a1));
+            int i = fill.v.Count;
+            fill.v.Add(c); fill.v.Add(RoadPoint(centre + d1 * radius, 0.044f)); fill.v.Add(RoadPoint(centre + d0 * radius, 0.044f));
+            fill.c.Add(col); fill.c.Add(AsphaltTone(centre + d1 * radius)); fill.c.Add(AsphaltTone(centre + d0 * radius));
+            fill.t.Add(i); fill.t.Add(i + 1); fill.t.Add(i + 2);
+            if (!pavement) continue;
+            Vector3 k0 = RoadPoint(centre + d0 * radius, 0.05f), k1 = RoadPoint(centre + d1 * radius, 0.05f);
+            Vector3 t0 = k0 + Vector3.up * 0.12f, t1 = k1 + Vector3.up * 0.12f;
+            Vector2 mid = (d0 + d1).normalized;
+            kerbs.Quad(k0, k1, t0, t1, Kerb, new Vector3(-mid.x, 0f, -mid.y));
+            kerbs.Quad(t0, t1, RoadPoint(centre + d0 * (radius + Pave), 0.17f), RoadPoint(centre + d1 * (radius + Pave), 0.17f), Pavement);
         }
     }
 
@@ -1116,7 +1511,7 @@ public static class BuildEcoWorldMap
             var go = new GameObject(def.name); go.transform.SetParent(Groups["Regions"], false);
             go.transform.position = new Vector3(def.center.x, GroundY(def.center.x, def.center.y), def.center.y);
             var region = go.AddComponent<EcoRegion>();
-            region.regionName = def.name; region.size = def.size; region.priority = def.priority;
+            region.regionName = def.name; region.key = def.key; region.size = def.size; region.priority = def.priority;
             region.airPollution = def.air; region.waterPollution = def.water; region.soilPollution = def.soil; region.carbon = def.carbon;
             region.baseTemperature = def.temperature; region.vegetation = def.vegetation; region.sensitiveHabitat = def.sensitive;
             var habitat = go.AddComponent<EcoHabitat>(); habitat.recovery = def.habitat;
@@ -1183,8 +1578,8 @@ public static class BuildEcoWorldMap
 
     private static void BuildLakes()
     {
-        BuildLake("Batı Gölü", LakeA, LakeAR, false, new Vector2(1f, 0.25f));
-        BuildLake("Doğu Gölü", LakeB, LakeBR, true, new Vector2(-1f, 0.25f));
+        BuildLake("Balık Gölü", LakeA, LakeAR, false, new Vector2(1f, 0.25f));
+        BuildLake("Fabrika Gölü", LakeB, LakeBR, true, new Vector2(-1f, 0.25f));
     }
 
     private static void BuildLake(string name, Vector2 center, float radius, bool polluted, Vector2 dockDirection)
@@ -1723,7 +2118,7 @@ public static class BuildEcoWorldMap
         var steel = Mat("PipeSteel", new Color(0.45f, 0.48f, 0.5f), 0.4f, 0.5f);
         var pipeBody = Prim(PrimitiveType.Cylinder, "Pipe", pipe, Vector3.zero, new Vector3(1.1f, 1.6f, 1.1f), steel, true);
         pipeBody.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        EcoMapMarker.Add(pipe.gameObject, "poi_inlet", "Atık su çıkışı", "Fabrikaların kirli suyu bu kanalla Doğu Gölü'ne iniyor.", EcoMapMarker.Category.Danger);
+        EcoMapMarker.Add(pipe.gameObject, "poi_inlet", "Atık su çıkışı", "Fabrikaların kirli suyu bu kanalla Fabrika Gölü'ne iniyor.", EcoMapMarker.Category.Danger);
         report.AppendLine("Sanayi: 2 işlevsel (filtre takılabilir) + 2 depo, tanklar, konteynerler, atık sahası, kirli kanal");
     }
 
@@ -2366,8 +2761,8 @@ public static class BuildEcoWorldMap
                 "DOĞU  Kirli göl  " + Mathf.RoundToInt(Vector2.Distance(Base, LakeB)) + " m",
                 "KUZEY  Buzul  " + Mathf.RoundToInt(StationPad.y - Base.y) + " m",
             });
-        AddSignpost(root, P(82.6f, 64f), "ŞEHİR GİRİŞİ", new[] { "BATI  Rüzgârlı tepeler", "DOĞU  Sanayi", "KUZEY  Buzul patikası" });
-        AddSignpost(root, P(40f, 89.6f), "KORULUK", new[] { "Hassas habitat", "Ağaç dik, yangını söndür" });
+        AddSignpost(root, P(82.6f, 64f), "ŞEHİR GİRİŞİ", new[] { "BATI  Rüzgâr Tepeleri", "DOĞU  Fabrikalar", "KUZEY  Buzul Dağı" });
+        AddSignpost(root, P(40f, 89.6f), "ORMAN", new[] { "Hassas habitat", "Ağaç dik, yangını söndür" });
         AddSignpost(root, P(83.4f, 111.6f), "BUZUL PATİKASI", new[] { "İzleme istasyonu " + Mathf.RoundToInt(Vector2.Distance(P(83.4f, 111.6f), StationPad)) + " m" });
     }
 
@@ -2400,8 +2795,10 @@ public static class BuildEcoWorldMap
         {
             region.priority = 5;
             region.size = new Vector2(Mathf.Min(region.size.x, 14f), Mathf.Min(region.size.y, 14f));
-            if (region.regionName.Contains("koruluk") || region.regionName.Contains("Koruluk")) region.regionName = "Üs bahçesi";
-            else if (region.regionName.Contains("sanayi") || region.regionName.Contains("Sanayi")) region.regionName = "Eski atölye sahası";
+            if (region.regionName.Contains("koruluk") || region.regionName.Contains("Koruluk") || region.regionName.Contains("bahçe"))
+            { region.regionName = "Üs"; region.key = "Üs bahçesi"; }
+            else if (region.regionName.Contains("sanayi") || region.regionName.Contains("Sanayi") || region.regionName.Contains("atölye"))
+            { region.regionName = "Eski Atölye"; region.key = "Eski atölye sahası"; }
             // The flat 10 m "condition sample" mats read as stickers on the new ground; the HUD shows the state instead.
             if (region.groundVisual != null) { region.groundVisual.enabled = false; RecordOverride(region.groundVisual); region.groundVisual = null; }
             RecordOverride(region);

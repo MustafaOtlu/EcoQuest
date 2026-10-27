@@ -48,7 +48,7 @@ public sealed class EcoPollutionInlet : MonoBehaviour
         if (Remediated) { owner.ShowFeedback(Describe()); return true; }
         if (!owner.TrySpendMaterials(10, 5)) { owner.ShowFeedback("Giriş onarımı için 10 metal ve 5 plastik gerekiyor."); return false; }
         EcoDiscoveries.RemediateInlet(region);
-        owner.ShowFeedback("Sızıntı kapatıldı. Doğu Gölü'ne yeni kirli giriş durdu; arıtmayı sürdür."); return true;
+        owner.ShowFeedback("Sızıntı kapatıldı. Fabrika Gölü'ne yeni kirli giriş durdu; arıtmayı sürdür."); return true;
     }
     private void OnGUI()
     {

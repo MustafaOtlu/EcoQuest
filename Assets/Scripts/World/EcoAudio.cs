@@ -67,7 +67,7 @@ public sealed class EcoAudio : MonoBehaviour
         float day = clock != null ? Mathf.Clamp01(clock.SolarFactor) : 1f;
         float air = region != null ? region.airPollution / 100f : 0f;
         float green = region != null ? region.vegetation : 0.3f;
-        bool lake = region != null && region.regionName.Contains("Göl");
+        bool lake = region != null && region.Key.Contains("Göl");
         float k = Time.unscaledDeltaTime * 2f;
         float a = AmbientVolume;
         Fade(wind, (0.05f + 0.22f * (clock != null ? clock.windStrength : 0.4f)) * (1f - 0.4f * air) * a, k);
