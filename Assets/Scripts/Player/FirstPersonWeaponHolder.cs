@@ -131,12 +131,13 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
             weapon.localScale *= length / Mathf.Max(.001f, Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z));
             TryLocalBounds(weapon, out bounds);
             // Place the palm on the rear lower handle, rather than on the model's geometric centre.
-            float gripHeight = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .5f : toolIndex == 1 ? .10f : toolIndex == 2 ? .80f : .18f;
-            float gripDepth = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .28f : toolIndex == 1 ? .58f : toolIndex == 2 ? .45f : toolIndex == 3 ? .35f : .24f;
+            // The vacuum (EcoVacuumTool) is held by its rear carry handle, level with the nozzle.
+            float gripHeight = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .5f : toolIndex == 0 ? .44f : toolIndex == 1 ? .10f : toolIndex == 2 ? .80f : .18f;
+            float gripDepth = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .28f : toolIndex == 0 ? .05f : toolIndex == 1 ? .58f : toolIndex == 2 ? .45f : toolIndex == 3 ? .35f : .24f;
             var palm = new Vector3(bounds.center.x, Mathf.Lerp(bounds.min.y, bounds.max.y, gripHeight),
                 Mathf.Lerp(bounds.min.z, bounds.max.z, gripDepth));
             grip = new Grip { position = -palm, rotation = weapon.localRotation, scale = weapon.localScale,
-                muzzle = new Vector3(bounds.center.x, Mathf.Lerp(bounds.min.y, bounds.max.y, toolIndex == 1 ? .46f : .68f), bounds.max.z + .015f) - palm };
+                muzzle = new Vector3(bounds.center.x, Mathf.Lerp(bounds.min.y, bounds.max.y, toolIndex == 1 ? .46f : toolIndex == 0 ? .44f : .68f), bounds.max.z + .015f) - palm };
             grips.Add(weapon, grip);
         }
         weapon.localPosition = grip.position;

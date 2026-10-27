@@ -196,7 +196,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         maximumWater = 50f; baseWaterCapacity = maximumWater; ApplyEquipmentCapacity();
         Energy = maximumEnergy; Water = 20f; Seeds = 5;
         Metal = 50; Plastic = 40;
-        models[0] = holder.EquippedWeapon;
+        // The vacuum is the friendly EcoVacuumTool, not the scene's old gun model (kept hidden for scene references).
+        if (holder.EquippedWeapon != null) holder.EquippedWeapon.gameObject.SetActive(false);
+        models[0] = EcoVacuumTool.Create(this, holder.transform).transform;
         for (int i = 1; i < models.Length; i++)
         {
             if (i == (int)Tool.Hands || i == (int)Tool.Flashlight || modelPrefabs == null || i >= modelPrefabs.Length || modelPrefabs[i] == null) continue;
@@ -337,28 +339,33 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
                 ShowStream(at, true, (AimOrigin - at).normalized, deltaTime);
                 processing = null; progress = 0f;
                 DamageEnemy(assisted, DamageRate(Selected, Mode, assisted.species) * deltaTime * Upgrades.VacuumStrength);
+                HitFeedback(assisted, at, true);
                 return;
             }
         }
-        ShowStream(found ? hit.point : AimOrigin + AimDir * range, found, found ? hit.normal : -AimDir, deltaTime);
+        ShowStream(found ? hit.point : AimOrigin + AimDir * range, found, found ? hit.normal : -AimDir, deltaTime, found ? hit.collider : null);
         if (!found) { processing = null; progress = 0; return; }
         var focus = hit.collider.GetComponentInParent<EcoFinaleFocus>();
         if (focus != null && Selected == Tool.Vacuum)
         {
             if (Mode == VacuumMode.Water && !dirtyWater) focus.TryUseWater(2f * deltaTime);
             if (Mode == VacuumMode.Disperse) focus.TryUseAir(deltaTime);
+            if (Mode != VacuumMode.Collect) Pulse(Mode == VacuumMode.Water ? WeaponVisualEffects.Burst.Steam : WeaponVisualEffects.Burst.Hit, hit.point);
             return;
         }
         var fire = hit.collider.GetComponentInParent<EcoFire>();
         if (fire != null && Selected == Tool.Vacuum && Mode == VacuumMode.Water)
         {
             fire.Extinguish(10 * deltaTime * Upgrades.VacuumStrength); processing = null; progress = 0;
+            Pulse(WeaponVisualEffects.Burst.Steam, hit.point);
             Notify(fire.Burning ? "Yangın söndürülüyor…" : "Yangın söndürüldü."); return;
         }
         var plant = hit.collider.GetComponentInParent<PlantedSeed>();
         if (plant != null && Selected == Tool.Vacuum && Mode == VacuumMode.Water)
         {
-            plant.WaterPlant(deltaTime * 0.4f * Upgrades.VacuumStrength, !dirtyWater); processing = null; progress = 0f; return;
+            plant.WaterPlant(deltaTime * 0.4f * Upgrades.VacuumStrength, !dirtyWater); processing = null; progress = 0f;
+            if (!dirtyWater) Pulse(WeaponVisualEffects.Burst.Grow, plant.transform.position);
+            return;
         }
         var enemy = hit.collider.GetComponentInParent<EnemyBrain>();
         if (enemy != null)
@@ -366,6 +373,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             processing = null; progress = 0f;
             float dps = DamageRate(Selected, Mode, enemy.species);
             DamageEnemy(enemy, dps * deltaTime * (Selected == Tool.Vacuum ? Upgrades.VacuumStrength : 1));
+            HitFeedback(enemy, hit.point, dps > 0f);
             if (dps <= 0f) Notify("Bu mod etkisiz. Su: Alev • Anti-vakum: Duman/Asit • Demir top: Teneke");
             return;
         }
@@ -391,6 +399,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (progress >= (Selected == Tool.Recycler ? resource.processingSeconds : 0.4f) && resource.TryClaim())
             {
                 int recoveredMetal = Mathf.Max(0, resource.metal), recoveredPlastic = Mathf.Max(0, resource.plastic), recoveredOrganic = Mathf.Max(0, resource.organic);
+                Pulse(WeaponVisualEffects.Burst.Pop, resource.transform.position + Vector3.up * 0.2f);
                 EcoRegion.At(resource.transform.position)?.AddPollution(0, 0, -(recoveredMetal + recoveredPlastic) * 0.3f, 0);
                 if (Selected == Tool.Recycler) AddProcessedResources(recoveredMetal, recoveredPlastic, recoveredOrganic);
                 else { CollectedMetalScrap += recoveredMetal; CollectedPlasticScrap += recoveredPlastic; CollectedOrganicWaste += recoveredOrganic; }
@@ -780,13 +789,29 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         Scanned?.Invoke(LastScan); Changed?.Invoke();
     }
-    private void ShowStream(Vector3 target, bool contact, Vector3 normal, float seconds)
+    private void ShowStream(Vector3 target, bool contact, Vector3 normal, float seconds, Collider aimed = null)
     {
         if (streamEffects == null) return;
+        // Drawing water up from a lake or a tank shows blue droplets instead of dust.
+        bool filling = Selected == Tool.Vacuum && Mode == VacuumMode.Collect && aimed != null
+            && (aimed.GetComponentInParent<WeaponWaterSource>() != null || aimed.GetComponentInParent<EcoWaterNode>() != null);
         var flow = Selected == Tool.Recycler ? WeaponVisualEffects.Flow.Recycle
             : Mode == VacuumMode.Water ? WeaponVisualEffects.Flow.Water
-            : Mode == VacuumMode.Disperse ? WeaponVisualEffects.Flow.Disperse : WeaponVisualEffects.Flow.Collect;
+            : Mode == VacuumMode.Disperse ? WeaponVisualEffects.Flow.Disperse
+            : filling ? WeaponVisualEffects.Flow.Fill : WeaponVisualEffects.Flow.Collect;
         streamEffects.Show(flow, AimOrigin, target, contact, normal, seconds);
+    }
+
+    private void Pulse(WeaponVisualEffects.Burst kind, Vector3 at, Color? tint = null) { if (streamEffects != null) streamEffects.Pulse(kind, at, tint); }
+
+    // The right mode on a threat gets a burst in the mode's colour (steam on Alev); the wrong mode only a grey puff.
+    private void HitFeedback(EnemyBrain enemy, Vector3 at, bool effective)
+    {
+        if (!effective) { Pulse(WeaponVisualEffects.Burst.Fizzle, at); return; }
+        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water) { Pulse(WeaponVisualEffects.Burst.Steam, at); return; }
+        Color tint = Selected == Tool.Recycler ? new Color(0.55f, 1f, 0.45f, 0.95f)
+            : Mode == VacuumMode.Disperse ? new Color(0.95f, 0.98f, 1f, 0.95f) : new Color(1f, 0.85f, 0.45f, 0.95f);
+        Pulse(WeaponVisualEffects.Burst.Hit, at, tint);
     }
     private void ResetProcessing() { processing = null; progress = 0; if (streamEffects != null) streamEffects.Stop(); }
     private void OnDisable() { if (flashlight != null) flashlight.Suspend(); ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
