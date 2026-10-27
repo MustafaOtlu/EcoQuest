@@ -257,12 +257,137 @@ public sealed class EcoProjects : MonoBehaviour
             + (melt == null ? "ölçülmüyor" : melt.MeltRate > 0.0001f ? "artıyor" : "artmıyor");
         return station.Safe && melt != null && melt.MeltRate <= 0.0001f;
     }
+    // ---------------------------------------------------------------- objective card (GDD v4 Ö3, Ö5)
+
+    private static int Cost(string id, bool metal)
+    {
+        int index = EcoBuildingCatalog.Find(id);
+        if (index < 0) return 0;
+        var entry = EcoBuildingCatalog.Entries[index];
+        return metal ? entry.Metal : entry.Plastic;
+    }
+
+    // A charger on a working network with a producer and a battery: the start base already has one, so the first
+    // project is "charge 10 EB here", not "build a grid".
+    private EcoPowerNode ReadyCharger(Vector3 from)
+    {
+        EcoPowerNode best = null; float bestDistance = float.MaxValue;
+        foreach (var charger in power)
+        {
+            if (charger == null || !charger.Operational || charger.kind != EcoPowerNode.Kind.Charger) continue;
+            var circuit = EcoPowerGrid.ComponentOf(charger).ToArray();
+            if (!circuit.Any(Generator) || !circuit.Any(n => n.kind == EcoPowerNode.Kind.Battery)) continue;
+            float d = (charger.transform.position - from).sqrMagnitude;
+            if (d < bestDistance) { bestDistance = d; best = charger; }
+        }
+        return best;
+    }
+
+    /// <summary>Rough metal/plastic still needed for a project's missing structures (an estimate for planning, not a price).</summary>
+    public (int metal, int plastic) MaterialNeed(int index)
+    {
+        if (index < 0 || index >= projects.Count || projects[index].done) return (0, 0);
+        int metal = 0, plastic = 0;
+        void Need(string id) { metal += Cost(id, true); plastic += Cost(id, false); }
+        // Pipes cost 2 plastic and cables 1 metal + 1 plastic per metre; a compact shore layout needs about 6 m of each.
+        void Lines() { metal += 6; plastic += 6 + 12; }
+        switch (index)
+        {
+            case 0:
+                if (ReadyCharger(Vector3.zero) == null) { Need("solar"); Need("battery"); Need("charger"); metal += 8; plastic += 8; }
+                break;
+            case 1:
+            {
+                var lake = Region("Doğu Göl");
+                bool intake = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Intake && n.SourceRegion == lake);
+                bool purifier = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Purifier && n.SourceRegion == lake);
+                bool tank = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Tank);
+                if (!intake) Need("intake");
+                if (!purifier) Need("purifier");
+                if (!tank) Need("tank");
+                if (!intake || !purifier || !tank) Lines();
+                break;
+            }
+            case 3:
+            {
+                var region = Region("Sanayi");
+                var factories = FindObjectsByType<EcoFactory>(FindObjectsSortMode.None).Where(f => region != null && region.Contains(f.transform.position)).ToArray();
+                int filters = Mathf.Max(0, factories.Count(f => !f.Filtered) - (player != null ? player.LargeFilters : 0));
+                int conversions = factories.Count(f => !f.Converted);
+                metal += filters * 6 + conversions * 20; plastic += filters * 4 + conversions * 12; // GDD §8 large filter, §9 conversion package
+                break;
+            }
+            case 4:
+            {
+                bool intake = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Intake);
+                bool purifier = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Purifier);
+                bool tank = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Tank);
+                if (!intake) Need("intake");
+                if (!purifier) Need("purifier");
+                if (!tank) Need("tank");
+                if (!intake || !purifier || !tank) Lines();
+                break;
+            }
+        }
+        return (metal, plastic);
+    }
+
+    /// <summary>What is still missing compared with the player's stock (0 when there is enough).</summary>
+    public (int metal, int plastic) MaterialShortfall(int index)
+    {
+        var need = MaterialNeed(index);
+        int metal = player != null ? player.Metal : 0, plastic = player != null ? player.Plastic : 0;
+        return (Mathf.Max(0, need.metal - metal), Mathf.Max(0, need.plastic - plastic));
+    }
+
+    /// <summary>One objective line for the open project: the next concrete step and its key, or what material is missing
+    /// and where it comes from. The guide marker gets the matching place.</summary>
+    public string Step(int index, out Vector3? goal, out string label)
+    {
+        index = Mathf.Clamp(index, 0, projects.Count - 1);
+        var project = projects[index];
+        (goal, label) = GuideTarget(index);
+        string verifying = project.name + " · doğrulanıyor " + project.held.ToString("0") + "/120 sn";
+        if (index == 0)
+        {
+            if (Charged) return project.met ? verifying : "İlk enerji · ağ beslemesi kesildi; şarj istasyonunun ağına üretici ve batarya bağla";
+            if (player != null && player.Energy > player.maximumEnergy - 1f)
+                return "İlk enerji · aracın dolu; biraz kullan, sonra şarj istasyonunda " + EcoKeys.Tag(EcoKeys.Action.Interact) + " (" + ChargedEnergy.ToString("0") + "/10 EB)";
+            return "İlk enerji · şarj istasyonunda " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile aracına 10 EB şarj et (" + ChargedEnergy.ToString("0") + "/10)";
+        }
+        if (project.met) return verifying;
+        if (index == 1)
+        {
+            var lake = Region("Doğu Göl");
+            if (lake != null && !EcoDiscoveries.InletRemediated(lake)) return "Gölü canlandır · kirletici girişi kapat, yanında " + EcoKeys.Tag(EcoKeys.Action.Interact);
+        }
+        var (metal, plastic) = MaterialShortfall(index);
+        if (plastic > 0 || metal > 0)
+        {
+            string missing = (metal > 0 ? "~" + metal + " metal" : "") + (metal > 0 && plastic > 0 ? ", " : "") + (plastic > 0 ? "~" + plastic + " plastik" : "");
+            string source = plastic >= metal ? "Salya, hasat" : "Teneke, hasat"; // Salya drops 5 plastic, Teneke 6 metal
+            return project.name + " · " + missing + " eksik (" + source + ")";
+        }
+        switch (index)
+        {
+            case 1: return "Gölü canlandır · " + EcoKeys.Tag(EcoKeys.Action.Build) + " kıyıya pompa → arıtma → depo kur, göle dönüşü aç";
+            case 3: return "Sanayiyi dönüştür · fabrikada " + EcoKeys.Tag(EcoKeys.Action.Interact) + " büyük filtre ve dönüşüm";
+            case 5: return "Buzulu koru · istasyonu etkinleştir " + EcoKeys.Tag(EcoKeys.Action.Interact) + ", dünya karbonunu azalt";
+            default: return "Proje: " + project.name + " · " + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük";
+        }
+    }
+
     /// <summary>Where to walk for a project (objective marker): the thing to fix when there is one, otherwise the area.</summary>
     public (Vector3? position, string label) GuideTarget(int index)
     {
         switch (index)
         {
-            case 0: { var r = Region("Güneş"); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası"); }
+            case 0:
+            {
+                var charger = ReadyCharger(player != null ? player.transform.position : Vector3.zero);
+                if (charger != null) return (charger.transform.position, "Şarj istasyonu");
+                var r = Region("Güneş"); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası");
+            }
             case 1:
                 foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
                     if (!inlet.Remediated) return (inlet.transform.position, "Kirletici giriş");
@@ -369,8 +494,15 @@ public sealed class EcoProjects : MonoBehaviour
         return row;
     }
 
-    private static string ProjectStatus(Project project)
-        => (project.done ? "Başarı korundu · Güncel: " : "") + project.status;
+    private string ProjectStatus(Project project)
+    {
+        string status = (project.done ? "Başarı korundu · Güncel: " : "") + project.status;
+        var (metal, plastic) = MaterialNeed(projects.IndexOf(project));
+        if (metal + plastic <= 0) return status;
+        // GDD v4 Ö5: the planning estimate next to what the player has.
+        return status + "\nTahmini malzeme: ~" + metal + " metal · ~" + plastic + " plastik  (sende " + (player != null ? player.Metal : 0)
+            + " · " + (player != null ? player.Plastic : 0) + ")";
+    }
 
     private string ProjectHint(Project project, int index)
         => HintLevels[index] == 1 ? project.symptom : HintLevels[index] == 2 ? project.cause : project.action;

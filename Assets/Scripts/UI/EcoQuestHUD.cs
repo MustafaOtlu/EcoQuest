@@ -99,6 +99,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         ApplyLayout();
         if (weapons != null) weapons.Changed += OnInventoryChanged;
         if (GetComponent<EcoGuide>() == null) gameObject.AddComponent<EcoGuide>(); // marker / edge arrow for the objective
+        if (GetComponent<EcoPlaytestLog>() == null) gameObject.AddComponent<EcoPlaytestLog>(); // GDD v4 §18 event log
         Refresh();
     }
 
@@ -287,6 +288,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.SetIcon(weatherIcon, EcoIcons.Weather(worldClock));
             weatherText.text = "Gün " + worldClock.day + "  " + Mathf.FloorToInt(worldClock.hour).ToString("00") + ":" + Mathf.FloorToInt(worldClock.hour % 1f * 60f).ToString("00")
                 + "  ·  " + worldClock.WeatherName;
+            // GDD v4 Ö2: the first sunset of a game explains why panels stop and introduces the flashlight (once per save).
+            if (EcoWorldClock.IsDaylight(worldClock.hour) && worldClock.SecondsUntilSunset < 20f && EcoDiscoveries.Remember("hint.sunset"))
+                weapons.ShowFeedback("Güneş batıyor · panel durur, batarya ve rüzgâr gece işi sürdürür · [6] fener");
             int wind = Mathf.RoundToInt(worldClock.windStrength * 100);
             windText.text = "%" + wind + (wind > 70 ? " güçlü" : wind < 25 ? " sakin" : "");
         }
@@ -482,17 +486,15 @@ public sealed class EcoQuestHUD : MonoBehaviour
                 text = "Olgun bitkiyi hasat et · yanında " + EcoKeys.Tag(EcoKeys.Action.Interact);
                 goal = Nearest(crops, c => c != null && c.IsMature, here); goalName = "Hasat";
             }
-            else if (weapons.Food > 0 && open >= 0)
-            {
-                text = "Proje: " + projects.All[open].name + " · " + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük";
-                (goal, goalName) = projects.GuideTarget(open);
-            }
-            else if (weapons.Food > 0) text = "Ekosistemi koru";
             else if (thirsty)
             {
                 text = "Bitkini sula · [1] vakum, " + EcoKeys.Tag(EcoKeys.Action.Mode) + " su modu, sol tık";
                 goal = Nearest(crops, c => c != null && c.NeedsWater, here); goalName = "Susuz bitki";
             }
+            // GDD v4 Ö3/Ö5: the open project is shown while crops grow (the first one is charged at the base station before
+            // sunset) and no longer waits for harvested food; the step names the key, or the missing material and its source.
+            else if (open >= 0) text = projects.Step(open, out goal, out goalName);
+            else if (weapons.Food > 0) text = "Ekosistemi koru";
             else
             {
                 text = "Bitkin büyüyor · bu sırada atıkları [1] vakumla topla";
@@ -500,6 +502,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             }
         }
         EcoGuide.Target = goal; EcoGuide.Label = goalName;
+        EcoPlaytestLog.Objective(text);
         objective.text = text;
         objectiveCard.summary.text = text; // best fit shrinks long goals instead of cutting them at 34 characters
     }

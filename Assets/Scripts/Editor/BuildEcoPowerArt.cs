@@ -33,7 +33,7 @@ public static class BuildEcoPowerArt
             var solar = Place(root, "SolarPanel", new Vector3(-4, 0.02f, -4));
             var wind = Place(root, "WindTurbine", new Vector3(-6.5f, 0.02f, -6));
             var battery = Place(root, "Battery", new Vector3(-2.6f, 0.02f, -3));
-            battery.storedEnergy = 80f; // Starter grant only; new constructed batteries are empty.
+            battery.storedEnergy = battery.capacity * 0.5f; // Starter grant only (half full, GDD v4 Ö1); new constructed batteries are empty.
             var charger = Place(root, "ChargingStation", new Vector3(-1.5f, 0.02f, -2));
             Connect(root, solar, battery); Connect(root, wind, battery); Connect(root, battery, charger);
             Label(root.transform, "ELEKTRİK İSTASYONU\n[E] Silah bataryasını şarj et", new Vector3(-1.5f, 1.8f, -2));

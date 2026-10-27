@@ -132,24 +132,31 @@ Aynı anda açık seçenek sayısı: ilk projeden sonra en çok beş proje, üç
 
 ### İlk oturum (gerçek hedef zinciri)
 
-Gün 900 saniyedir; bir oyun saati 37,5 gerçek saniye eder. Oyun **09:00**'da başlar. Güneş paneli 06:00–18:00 arasında üretir. İlk gün batımı oyunun **5,6. dakikasında** gelir; gece **7,5 dakika** sürer (Uygulandı, 27 Ekim durumu).
+**Karar (27 Ekim, S1):** Gün 900 saniyedir. Gün ışığı 06:00–20:00 arasıdır ve gerçek sürenin üçte ikisini (10 dakika) kaplar; gece 5 dakikadır. Gündüz bir oyun saati ~43 sn, gece ~30 sn eder. Oyun **07:00**'de başlar; ilk gün batımı oyunun **9,3. dakikasında** gelir (Uygulandı; editörde ölçüldü).
+
+**Başlangıç üssü:** Üste hazır bir güneş paneli, rüzgâr türbini, batarya ve şarj istasyonu vardır. Batarya yarı dolu başlar (125/250 EB, Ö1). P1 bu hazır ağı da sayar; bu yüzden ilk proje "ağ kur" değil, "üsteki şarj istasyonunda aracına 10 EB şarj et ve ağ 120 sn beslemeyi sürdürsün"tür.
 
 | Aralık | Hedef kartı | Öğretilen | Duygu |
 | --- | --- | --- | --- |
 | 0–2 dk | "Mahalle çocuğuyla konuş · Şehir meydanı, [E]" ve yön oku | Hareket, etkileşim, amaç | Merak |
 | 2–4 dk | "Tarlaya tohum ek · [2] tohum aracı, sol tık", ardından "Bitkini sula · [1] vakum, [Q] su modu" | Araç ve mod | Küçük başarı |
-| 4–6 dk | "Bitkin büyüyor · bu sırada atıkları [1] vakumla topla" | Kaynak, bekleme anında iş | Sakin |
-| 6–7 dk | "Olgun bitkiyi hasat et · yanında [E]" | Hasat, yeniden ekim (saha başarısı +20 YEP) | Yeterlilik |
-| 7–20 dk | "Proje: Mahalleye ilk enerji · [J] günlük" | Panel, batarya, şarj, kablo; gece ve depolama | Kaygı, sonra rahatlama |
-| ~20 dk | P1 tamam: +40 YEP, uzmanlık hakkı, öğrenme kartı | Üretim, depolama ve tüketim farkı | Doruk |
+| 3–6 dk | Bitki büyürken: "İlk enerji · şarj istasyonunda [E] ile aracına 10 EB şarj et (x/10)"; ok üsteki istasyonu gösterir. Araç doluysa "aracın dolu; biraz kullan, sonra…" | Şarj, ağ, depolama | Küçük başarı |
+| 4–8 dk | "Mahalleye ilk enerji · doğrulanıyor x/120 sn" | Ağın beslemeyi sürdürmesi | Bekleyiş |
+| ~6 dk | "Olgun bitkiyi hasat et · yanında [E]" (araya girer) | Hasat, yeniden ekim (saha başarısı +20 YEP) | Yeterlilik |
+| ~6–8 dk (tahmini) | P1 tamam: +40 YEP, uzmanlık hakkı, öğrenme kartı | Üretim, depolama ve tüketim farkı | Doruk |
+| ~9 dk | Gün batımı ipucu (Ö2): "Güneş batıyor · panel durur, batarya ve rüzgâr gece işi sürdürür · [6] fener" | Gece ve depolama; fener | Hafif kaygı, rahatlama |
+| 8 dk → | Göl: "Gölü canlandır · kirletici girişi kapat, yanında [E]", sonra "~16 plastik eksik (Salya, hasat)" ya da "[B] kıyıya pompa → arıtma → depo kur" | Kaynak, maliyet, planlama | Merak |
 
-**Bilinen sorun:** P1 kurulumu ilk gecenin içine düşüyor ve panel üretmediği için şarj başlamıyor; nedeni oyunda söylenmiyor. Öneriler:
-- **[Açık soru]** Gece uzunluğu ve ilk günün başlangıç saati (§19 S1).
-- **[Karar içinde]** Başlangıç bataryası yarı dolu başlasın (120/240 EB).
-- **[Karar içinde]** Gün batımında tek satırlık ipucu: "Güneş batıyor · panel durur, batarya gece işi sürdürür."
-- **[Karar içinde]** P1 kurulumu, lahananın büyüdüğü 4–6. dakikalara alınsın.
+Hedef kartının sırası: ekim → sulama → (bitki büyürken) açık projenin adımı → hasat. Proje adımı artık elde ürün olmasını beklemez (Ö3, Ö5; uygulandı, editörde denendi: 07:00 başlangıç, 125 EB batarya, şarj → doğrulama → P1 → göl adımları).
 
-Hedef: ilk büyük başarı **≤ 15. dakika**. Böylece gece bir engel değil, P1'in dersi olur: "güneş yok, ama depoladığım enerji var."
+**Düzeltme (27 Ekim):** İlk incelemede "ilk gece P1'i kilitliyor" denmişti. Bu yanlıştı: üsteki hazır ağda rüzgâr türbini ve 80 EB'lik batarya olduğu için P1 gece de tamamlanabiliyordu. Gerçek sorunlar şunlardı:
+- Yön oku P1 için Güneş Ovası'nın ortasını gösteriyordu.
+- Proje adımı ancak hasattan sonra çıkıyordu.
+- Kart ne yapılacağını söylemiyordu.
+
+Üçü de Ö3 ve Ö5 ile düzeltildi.
+
+Hedef: ilk büyük başarı **≤ 15. dakika**; zincir P1 adımına ekim ve sulamadan hemen sonra (~3. dk) geçiyor; P1'in bitişi tahminen ~6–8. dakika. Playtest'te ölçülecek.
 
 ### Tempo ve duygu eğrisi
 
@@ -176,7 +183,7 @@ Hedef: ilk büyük başarı **≤ 15. dakika**. Böylece gece bir engel değil, 
 - Üretim azalır ve depolama önem kazanır.
 - Lambalar ve pencereler yanar.
 
-Gecenin oranı şu an günün %50'sidir; hedef oran §19 S1'dedir.
+Gece günün üçte biridir (5 dakika, S1 kararı).
 
 ### İmza an
 
@@ -184,7 +191,7 @@ Gecenin oranı şu an günün %50'sidir; hedef oran §19 S1'dedir.
 - Kirletici giriş kapanır, arıtma suyu göle döner, su rengi değişir, balık sayısı artar.
 - Kartta oksijen 3,8 mg/L'den 7 mg/L'nin üstüne çıkar.
 
-İlk oturumda görülmez; ikinci ve üçüncü oturumun doruğudur. İlk oturumun imza adayı **ilk gece**dir: güneş batınca kendi kurduğu şarj istasyonunun bataryadan çalışmaya devam etmesi. Şu an akşam ışıkları ağdaki enerjiden bağımsız yanıyor, bu yüzden an görünmüyor. **Öneri [Karar içinde]:** Oyuncunun kurduğu şarj istasyonunun çalışma ışığı yalnız ağda enerji varken yansın; böylece batarya gece gözle görülür. İki aday da oyuncunun kendi kurduğu sisteme bağlıdır (Sütun 2 ve 3).
+İlk oturumda görülmez; ikinci ve üçüncü oturumun doruğudur. İlk oturumun imza adayı **ilk gece**dir: güneş batınca şarj istasyonunun bataryadan çalışmaya devam etmesi. Şu an akşam ışıkları ağdaki enerjiden bağımsız yanıyor (19:00'da), bu yüzden an görünmüyor. **Öneri [Karar içinde]:** Oyuncunun kurduğu şarj istasyonunun çalışma ışığı yalnız ağda enerji varken yansın; böylece batarya gece gözle görülür. İki aday da oyuncunun kendi kurduğu sisteme bağlıdır (Sütun 2 ve 3).
 
 ---
 
@@ -336,7 +343,7 @@ Ok şu durumlarda görünmez:
 - Bir panel veya harita açıkken.
 - Arayüz gizliyken.
 
-Hedef kartının önceliği: final → 30 m içindeki tehdit → çocukla tanışma → ekim → hasat → (ürün varsa) açık proje → sulama → atık toplama. Proje adımının ürüne bağlı olması oyuncuya görünmeyen bir kuraldır; Ö5'e bakın.
+Hedef kartının önceliği: final → 30 m içindeki tehdit → çocukla tanışma → ekim → hasat → sulama → açık projenin bir sonraki adımı → atık toplama. Proje adımı somut işi ve tuşu söyler: "şarj istasyonunda [E]", "kirletici girişi kapat", "~16 plastik eksik (Salya, hasat)", "doğrulanıyor x/120 sn" (27 Ekim, Ö3/Ö5).
 
 Çevresel belirtiler, konuşma ve tarama yönlendirmenin ikinci katmanıdır. Proje günlüğü (J) **belirti / bilinen neden / olası müdahale / gözlenen sonuç** kartlarını tutar. Üç ipucu kademesi sunar: bölgeyi hatırlat → sorunun türünü açıkla → ilgili noktayı geçici işaretle. Başlangıç öğretimi tekrar açılabilir, okunmuş metinler geçilebilir.
 
@@ -367,7 +374,7 @@ Orman projesi için önce yangın çıkarmak gerekmez. Başka bölgedeki yangın
 
 **P5 rezerv hesabı:** Gerekli elektrik, 120 saniyelik temel tüketimden mevcut güvenilir üretim çıkarılarak bulunur. Su rezervi de aynı süredeki tüketimi karşılar. Oyuncu seçtiği üreticiyi kontrol panelinden geçici kapatıp sistemi işletir; projeden dolayı haritanın tüm elektriği kesilmez.
 
-**P1'den P2'ye geçiş (hesap):** Başlangıç 50M+40P'den P1 zinciri 34M+24P tutar; geriye 16M+16P kalır. P2'nin kabaca maliyeti şöyledir:
+**P1'den P2'ye geçiş (hesap):** P1 üsteki hazır ağla tamamlandığında başlangıç stoğu (50M+40P) bütünüyle kalır. P2'nin kabaca maliyeti şöyledir:
 
 | Kalem | Maliyet |
 | --- | --- |
@@ -378,10 +385,14 @@ Orman projesi için önce yangın çıkarmak gerekmez. Başka bölgedeki yangın
 | ~10 m kablo | 10M+10P |
 | **Toplam** | **≈ 48M+78P** |
 
-Plastik açığı yaklaşık 62'dir. Bu, lahanayla ~23 dakika tarım demektir; Fabrika Gölü'ndeki Salya ise 5P bırakır.
-- **Öneri [Karar içinde]:** J'deki proje kartı tahmini malzemeyi ve eldekini göstersin ("~48 metal · ~78 plastik · sende 16 · 16").
-- **Öneri [Karar içinde]:** Göl kıyısında pompa, arıtma ve depoyu 6 m içinde kurmaya uygun düz bir alan işaretlensin.
-- **Öneri [Karar içinde]:** Malzeme eksikken hedef kartı kaynağı söylesin ("Plastik topla · Salya 5, temiz hasat 1–2").
+Oyundaki tahmin kıyıda ~6 m boru ve kablo varsayar: ≈ 44M+56P. Başlangıç stoğuyla eksik yaklaşık 16 plastiktir; bu, üç Salya ya da birkaç temiz hasat eder. Kendi ağını kurup P1'i öyle bitiren oyuncuda eksik daha büyüktür.
+
+**Uygulandı (Ö5):**
+- J'deki proje kartı tahmini malzemeyi ve eldekini gösterir ("Tahmini malzeme: ~44 metal · ~56 plastik (sende 50 · 40)").
+- Malzeme eksikken hedef kartı eksiği ve kaynağını söyler ("Gölü canlandır · ~16 plastik eksik (Salya, hasat)").
+- Tahmin; göl, Fabrikalar (büyük filtre, dönüşüm paketi) ve dayanıklılık için yalnız eksik yapıları sayar.
+
+**Öneri [Karar içinde], bekliyor:** Göl kıyısında pompa, arıtma ve depoyu 6 m içinde kurmaya uygun düz bir alan işaretlensin.
 
 ### YEP ve açılmalar
 
@@ -606,7 +617,11 @@ Hava açık → bulutlu → yağışlı → açılan geçişlerle işler. Rüzg�
 
 Yağmur açık ekinleri sulayabilir ve yangını hafifletebilir. Kirli hava endeksi ≥50 ise asit baskısı olasılığı açılır; sağlıklı alan sebepsiz asit yağmuru üretmez. Bulut güneşi, düşük rüzgâr türbini etkiler. Düşman etkisi ile doğal hava ayrı simge/mesaj taşır.
 
-**Zaman kararı:** Bir oyun günü normal hızda 15 gerçek dakika; bir oyun saati 37,5 gerçek saniye. Oyun 09:00'da başlar; güneş 06:00–18:00 arasında üretir. İlk gün batımı 5,6. dakikadadır. Gecenin oranı ve ilk günün saati için §19 S1'e bakın. Planlama, market, harita/günlük ve geliştirmede dünya %10 hızında; duraklatmada sıfır. Saat, düşman, yangın, tesis, bitki, proje ve siparişler aynı simülasyon saatini kullanır. UI hareketleri normal hızdadır. Oyun kapalıyken üretim veya çevre cezası işlemez.
+**Zaman kararı:** Bir oyun günü normal hızda 15 gerçek dakikadır. Gün ışığı 06:00–20:00 arasıdır ve gerçek sürenin üçte ikisini kaplar (10 dk); gece 5 dakikadır (27 Ekim, S1).
+- Güneşin yüksekliği 13:00'te en yüksektir.
+- Sokak lambaları 19:00'da yanar.
+- Oyun 07:00'de başlar.
+- Hava tahmini aynı saat modelini kullanır. Planlama, market, harita/günlük ve geliştirmede dünya %10 hızında; duraklatmada sıfır. Saat, düşman, yangın, tesis, bitki, proje ve siparişler aynı simülasyon saatini kullanır. UI hareketleri normal hızdadır. Oyun kapalıyken üretim veya çevre cezası işlemez.
 
 <a id="mucadele"></a>
 ## 11. Araçlar, düşmanlar ve toparlanma
@@ -840,10 +855,10 @@ Yanıtlar yerel `survey-v2-pre.json` ve `survey-v2-post.json` dosyalarına yazı
 | --- | --- |
 | Ana hikâye / devam | 3–5 saat / serbest oyun |
 | Harita | Yaklaşık 150×150 m; alçak poligon zemin, eğri yollar; inşada 2 m hücre |
-| İlk görünür sonuç / ilk büyük başarı | ~7. dakika (hasat) / P1 şu an ~20. dakika, hedef ≤ 15. dakika |
-| Gün | 15 gerçek dakika; 09:00 başlangıç; güneş 06:00–18:00 (§19 S1) |
+| İlk görünür sonuç / ilk büyük başarı | ~3. dakika (ekim) / P1 tahminen ~6–8. dakika (şarj + 120 sn; ölçülmedi), hedef ≤ 15. dakika |
+| Gün | 15 gerçek dakika; gündüz 06:00–20:00 = 10 dk, gece 5 dk; 07:00 başlangıç; ilk gün batımı 9,3. dk |
 | Kamera | Ortografik, 45° yön, 50° bakış, yakınlaştırma 4–10 (varsayılan 5,5) |
-| Başlangıç stoğu | 50M + 40P, 5 lahana tohumu, 20 temiz su, dolu araç bataryası |
+| Başlangıç stoğu | 50M + 40P, 5 lahana tohumu, 20 temiz su, dolu araç bataryası; üste panel, türbin, yarı dolu batarya (125/250 EB) ve şarj istasyonu |
 | Ganimet | Teneke 6M; Salya 5P; Asit 3P; Duman ve Alev 2P |
 | Planlama / duraklatma | %10 / %0 dünya hızı |
 | Proje doğrulama | 120 simülasyon saniyesi |
@@ -916,7 +931,18 @@ Oturum 60 dakika sürer. İlk 20 dakika açıklama yapılmadan, yorumsuz izlenir
 - Oturumu bırakma anı.
 - 60. dakikada "devam etmek ister misin?" cevabı (keyif ile devam etmek ayrı ölçülür).
 
-**Kayıt aracı (uygulanmadı):** Oyunda şu an yalnız performans kaydı var (F3, CSV). Yukarıdaki süreler için playtest öncesi küçük bir yerel olay günlüğü gerekir. Günlük, hedef kartı adımı değiştiğinde, proje tamamlandığında, bayılmada ve 10 sn girdisizlikte saat damgalı bir satır yazar. Bu araç olmadan süreler gözlemcinin kronometresiyle tutulur.
+**Kayıt aracı (uygulandı, Ö6):** `EcoPlaytestLog` her oturum için `%USERPROFILE%/AppData/LocalLow/DefaultCompany/EcoQuest/playtest/session-<tarih>.csv` dosyası yazar. Sütunlar: gerçek saniye, oyun günü, saat, olay, ayrıntı.
+
+| Olay | Ne zaman yazılır |
+| --- | --- |
+| `oturum_basladi` | Oturum açılınca |
+| `hedef` | Hedef kartının adımı değişince; "4/10" gibi sayaçlar değişiklik sayılmaz |
+| `proje_tamam` | Bir proje tamamlanınca |
+| `bayilma` | Oyuncu bayılınca; konumla birlikte |
+| `bosta_basladi` / `bosta_bitti` | 10 sn ya da daha uzun girdisizlik başlayınca ve bitince; duraklatma sayılmaz |
+| `oturum_bitti` | Oturum kapanınca; toplam boşta kalma süresiyle |
+
+Dosya yalnız yerel bilgisayarda kalır.
 
 <a id="acik"></a>
 ## 19. Açık sorular
@@ -925,7 +951,7 @@ Karar kullanıcınındır. Her soruda önerilen varsayılan yazılıdır.
 
 | # | Soru | Neden önemli | Önerilen varsayılan |
 | --- | --- | --- | --- |
-| S1 | Gece günün ne kadarı olsun, ilk gün kaçta başlasın? | Şu an gece %50 ve ilk gün batımı 5,6. dakikada; P1'i kilitliyor (B) | Gün ışığı 06:00–20:00 ve günün üçte ikisi gündüz; ilk gün 07:00. İlk gün batımı ~9. dakikada, gece ~5 dk |
+| S1 | ~~Gece günün ne kadarı olsun, ilk gün kaçta başlasın?~~ | **Karar verildi (27 Ekim):** gün ışığı 06:00–20:00, günün üçte ikisi; ilk gün 07:00 | Uygulandı |
 | S2 | Yön oku her zaman mı açık kalsın? | Erişim ile keşif arasında denge (§6) | Öğretici zincirde (çocuk → P1) her zaman açık; sonra J'deki "Yerini göster" ile 60 sn. Ayarlarda "Her zaman / Öğretici / Kapalı" |
 | S3 | Ayrı bir "Rahat" zorluk seçeneği olsun mu? | Tek eğri acemi ve küçük yaştaki oyuncuyu kaybettirebilir (Chen 2007) | Yeni oyunda seçim: Rahat (tehdit yarıya iner, toparlanma bedeli %10) / Normal |
 | S4 | Uzmanlıkta gerçek seçim olsun mu? | 9 hak = 9 kademe; sonunda herkes her şeyi alıyor (§7) | Her dalın 3. kademesi iki seçenekten biri (ör. Enerji 3: "gece bataryası +%25" veya "rüzgâr eşiği düşük"); ücretsiz yeniden dağıtım sürer |
@@ -937,16 +963,16 @@ Karar kullanıcınındır. Her soruda önerilen varsayılan yazılıdır.
 
 ### Bekleyen öneriler
 
-Bunlar mevcut kararları bozmaz **[Karar içinde]**. Yine de kullanıcı onaylamadan uygulanmaz.
+Bunlar mevcut kararları bozmaz **[Karar içinde]**. Yine de kullanıcı onaylamadan uygulanmaz. 27 Ekim'de Ö1, Ö2, Ö3, Ö5 ve Ö6 onaylandı ve uygulandı.
 
 | # | Öneri | Bölüm | Amaç |
 | --- | --- | --- | --- |
-| Ö1 | Başlangıç bataryası yarı dolu (120/240 EB) | B | İlk gecede P1 kilitlenmesin |
-| Ö2 | Gün batımında tek satırlık ipucu ve "[6] Fener" tanıtımı | B, §11 | Gecenin nedenini söylemek; araçları teker teker tanıtmak |
-| Ö3 | Hedef zincirinde P1 kurulumunu büyüme süresine (4–6. dk) taşımak | B, §6 | İlk büyük başarıyı ≤ 15. dakikaya çekmek |
+| Ö1 | Başlangıç bataryası yarı dolu (125/250 EB; önceden 80) | B | İlk gece depolama görünür olsun · **uygulandı** |
+| Ö2 | Gün batımında tek satırlık ipucu ve "[6] Fener" tanıtımı | B, §11 | Gecenin nedenini söylemek; araçları teker teker tanıtmak · **uygulandı** (kayıt başına bir kez) |
+| Ö3 | Hedef zincirinde P1'i büyüme süresine taşımak; ok üsteki şarj istasyonunu göstersin | B, §6 | İlk büyük başarıyı ≤ 15. dakikaya çekmek · **uygulandı** |
 | Ö4 | Proje bitişinde 4–6 sn'lik dönüşüm anı | B, §5 | Proje bitişini doruk yapmak (Sütun 3) |
-| Ö5 | Proje kartında tahmini malzeme; göl kıyısında kurulum alanı; hedef kartı açık projeyi her zaman göstersin (şu an yalnız elde ürün varken gösteriyor) ve malzeme eksikken eksiği ve kaynağı söylesin | §6, §7 | P1 → P2 düzlüğünü kısaltmak |
-| Ö6 | Playtest için yerel olay günlüğü | §18 | Hipotezleri ölçebilmek |
+| Ö5 | Proje kartında tahmini malzeme; hedef kartı açık projeyi her zaman göstersin ve malzeme eksikken eksiği ve kaynağı söylesin | §6, §7 | P1 → P2 düzlüğünü kısaltmak · **uygulandı** (göl kıyısı kurulum alanı hâlâ öneri) |
+| Ö6 | Playtest için yerel olay günlüğü | §18 | Hipotezleri ölçebilmek · **uygulandı** |
 
 <a id="kararlar"></a>
 ## 20. Karar kaydı
@@ -972,6 +998,8 @@ Bir konuda birden çok kayıt varsa en sonuncusu geçerlidir. Ayrıntılı uygul
 | 27 Ekim | Anket sürdürülebilirlik sorularına çevrildi (v2) | Mantıklı ve anlaşılır sorular (kullanıcı) | Oyun içi mekanik soruları |
 | 27 Ekim | Hedef kartı tuş ipucu verir; hedef işareti ve ekran kenarı yön oku | "Oyuncu için yönlendirmeler eksik" (kullanıcı) | "Normalde sürekli görev oku yoktur" (v3 §6). Kapsamı için §19 S2'ye bakın |
 | 27 Ekim | GDD v4: deneyim kısmı, açık sorular ve karar kaydı eklendi; v3 arşivlendi | Güncel tasarım tek yerde okunsun | v3 tek belge yapısı |
+| 27 Ekim | Gün ışığı 06:00–20:00 ve günün üçte ikisi; gece 5 dk; ilk gün 07:00 (S1) | İlk gün batımı 5,6. dakikadan 9,3. dakikaya; gece %50'den %33'e | 09:00 başlangıç, 06:00–18:00 güneş, eşit hızlı saat |
+| 27 Ekim | Ö1, Ö2, Ö3, Ö5, Ö6 onaylandı | İlk oturum ve P1 → P2 geçişi (§18 hipotezleri) | — |
 
 <a id="durum"></a>
 ## 21. Uygulama özeti (27 Ekim 2026)
@@ -996,8 +1024,10 @@ Bir konuda birden çok kayıt varsa en sonuncusu geçerlidir. Ayrıntılı uygul
 | Arayüz teması, ayarlar, renk körü paleti, ses kanalları (§13, §15) | Uygulandı | Genel arayüz yenilemesi kullanıcının şablonunu bekliyor |
 | Gece ışıkları ve fener (§5, §15) | Uygulandı | Fener kalacak mı: S7 |
 | Ön ve son anket v2, performans çubuğu F3 (§16, §17) | Uygulandı | Editörde ~110–125 FPS |
-| Dönüşüm anı, gün batımı ipucu, yarı dolu başlangıç bataryası, proje kartında maliyet | Uygulanmadı (Ö1–Ö5) | Playtest öncesi önerilir |
-| Playtest olay günlüğü (§18) | Uygulanmadı (Ö6) | — |
+| Gün ve gece ritmi, 07:00 başlangıç (S1) | Uygulandı, editörde ölçüldü | İlk gün batımı 9,3. dk, gece 5,0 dk, gün 900 sn |
+| Yarı dolu başlangıç bataryası, gün batımı ipucu, hedef zinciri, proje adımı ve malzeme tahmini (Ö1–Ö3, Ö5) | Uygulandı, Play Mode'da kodla denendi | Gerçek fareyle oynanmadı |
+| Playtest olay günlüğü (Ö6) | Uygulandı, Play Mode'da denendi | — |
+| Dönüşüm anı (Ö4), göl kıyısı kurulum alanı | Uygulanmadı (öneri) | — |
 | Gerçek oyuncularla playtest (§18) | Yapılmadı | Plan hazır |
 
 ### Değişiklik günlüğü (27 Ekim sonrası)
@@ -1005,3 +1035,4 @@ Bir konuda birden çok kayıt varsa en sonuncusu geçerlidir. Ayrıntılı uygul
 | Tarih | Madde | Durum |
 | --- | --- | --- |
 | 27 Ekim | GDD v4 oluşturuldu: deneyim hedefi ve sütunlar (A), oyuncu yolculuğu ve tempo (B), ölçüm planı (§18), açık sorular ve bekleyen öneriler (§19), karar kaydı (§20); v3'teki eski bölge adları, eski sahne hedefi, eski kamera değerleri, uygulanmadı denen anket ve "sürekli görev oku yok" kuralı güncellendi; v3 §18 (20 Ekim analizi) arşivde kaldı | Belge; iki akış incelemesi `Documentation/` altında |
+| 27 Ekim | Gün ve gece ritmi (S1) ve Ö1, Ö2, Ö3, Ö5, Ö6. **Saat:** gün ışığı 06:00–20:00, gerçek sürenin üçte ikisi; gece 5 dk; ilk gün 07:00; lambalar 19:00. **Üs:** başlangıç bataryası 125/250 EB. **Gün batımı:** ilk gün batımından ~20 sn önce bir kez ipucu ve fener tanıtımı. **Hedef kartı:** ekim → sulama → bitki büyürken projenin somut adımı → hasat; P1'de ok üsteki şarj istasyonunu gösterir ("şarj istasyonunda [E] ile aracına 10 EB şarj et"); proje adımı ürün beklemez; eksik malzeme ve kaynağı söylenir. **J günlüğü:** tahmini malzeme satırı. **Olay günlüğü:** playtest CSV'si. **Düzeltme:** incelemedeki "ilk gece P1'i kilitliyor" bulgusu yanlıştı (üs ağında rüzgâr ve batarya var); B bölümü düzeltildi | Play Mode'da kodla denendi: 07:00, batarya 125, sulama → şarj → doğrulama → P1 → "kirletici girişi kapat" → "~16 plastik eksik"; saat hesabı ve CSV doğrulandı. Gerçek fareyle oynanmadı |

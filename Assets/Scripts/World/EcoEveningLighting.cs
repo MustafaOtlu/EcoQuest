@@ -7,7 +7,7 @@ using UnityEngine;
 public sealed class EcoEveningLighting : MonoBehaviour
 {
     public EcoWorldClock clock;
-    [Range(0f, 24f)] public float switchOnHour = 17f, switchOffHour = 6f;
+    [Range(0f, 24f)] public float switchOnHour = 19f, switchOffHour = 6f; // sunset is 20:00 (EcoWorldClock)
     [Range(1, 24)] public int maximumNearbyLights = 12;
     [Min(10f)] public float nearbyDistance = 45f;
 

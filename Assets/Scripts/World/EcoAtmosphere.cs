@@ -51,7 +51,7 @@ public sealed class EcoAtmosphere : MonoBehaviour
         if (automatic || clock == null) clock = EcoWorldClock.Current;
         if (viewCamera == null) viewCamera = Camera.main;
         float far = Mathf.Clamp(renderDistance, 50, 2000);
-        float daylight = clock == null ? 1 : Mathf.Clamp01(Mathf.Sin((clock.hour - 6) * Mathf.PI / 12));
+        float daylight = clock == null ? 1 : Mathf.Clamp01(clock.SunHeight);
         float cloud = clock != null ? Mathf.Clamp01(clock.cloudCover) : 0.2f;
         var horizon = Color.Lerp(new Color(0.055f, 0.075f, 0.13f), new Color(0.69f, 0.8f, 0.84f), daylight);
         horizon = Color.Lerp(horizon, new Color(0.36f, 0.43f, 0.47f), Rain * daylight * 0.65f);

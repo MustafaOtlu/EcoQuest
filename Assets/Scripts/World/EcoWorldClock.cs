@@ -22,7 +22,10 @@ public sealed class EcoWorldClock : MonoBehaviour
             return current;
         }
     }
-    [Range(0f, 24f)] public float hour = 9f;
+    // GDD v4 §19 S1: daylight runs 06:00–20:00 and takes two thirds of the real day (10 of 15 minutes); the night is
+    // five minutes. The first day starts at 07:00, so the first sunset comes about nine minutes into a new game.
+    public const float Sunrise = 6f, Sunset = 20f, DaylightShare = 2f / 3f;
+    [Range(0f, 24f)] public float hour = 7f;
     [Min(60f)] public float dayLengthSeconds = 900f;
     public int day = 1;
     public bool advanceTime = true, varyingWeather = true, driveLighting = true;
@@ -34,15 +37,23 @@ public sealed class EcoWorldClock : MonoBehaviour
     public string ForecastName(float seconds)
     {
         if (!varyingWeather) return WeatherName;
-        float time = day * 24f + hour + Mathf.Max(0f, seconds) * 24f / Mathf.Max(60f, dayLengthSeconds);
-        float phase = time * 0.08f;
+        int futureDay = day; float futureHour = hour;
+        Advance(ref futureDay, ref futureHour, Mathf.Max(0f, seconds), dayLengthSeconds);
+        float phase = (futureDay * 24f + futureHour) * 0.08f;
         float wind = Mathf.Lerp(0.05f, 1f, Mathf.PerlinNoise(phase, 7.31f));
         float cloud = Mathf.SmoothStep(0.05f, 0.95f, Mathf.InverseLerp(0.25f, 0.75f, Mathf.PerlinNoise(phase * 0.7f, 2.19f)));
         float rain = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.52f, 0.75f, cloud));
         return rain > 0.65f && wind > 0.7f ? "Fırtına" : rain > 0.15f ? "Yağmurlu" : cloud > 0.3f ? "Bulutlu" : "Açık";
     }
-    public float SolarFactor => Mathf.Max(0f, Mathf.Sin((hour - 6f) * Mathf.PI / 12f)) * (1f - cloudCover * 0.8f);
-    public Vector3 SunDirection => new Vector3(Mathf.Cos((hour - 6f) * Mathf.PI / 12f), Mathf.Sin((hour - 6f) * Mathf.PI / 12f), 0.25f).normalized;
+    /// <summary>0 at sunrise, π at sunset; outside the daylight window the sine is negative (sun below the horizon).</summary>
+    public static float SunAngle(float hour) => (hour - Sunrise) / (Sunset - Sunrise) * Mathf.PI;
+    public static bool IsDaylight(float hour) => hour >= Sunrise && hour < Sunset;
+    /// <summary>Height of the sun, 0 at night and 1 at noon (13:00), without clouds.</summary>
+    public float SunHeight => Mathf.Max(0f, Mathf.Sin(SunAngle(hour)));
+    public float SolarFactor => SunHeight * (1f - cloudCover * 0.8f);
+    public Vector3 SunDirection => new Vector3(Mathf.Cos(SunAngle(hour)), Mathf.Sin(SunAngle(hour)), 0.25f).normalized;
+    /// <summary>Real seconds until the next sunset (0 when it is already night).</summary>
+    public float SecondsUntilSunset => IsDaylight(hour) ? (Sunset - hour) / HoursPerSecond(hour, dayLengthSeconds) : 0f;
     private float originalIntensity, originalAmbient;
     private Quaternion originalRotation;
     private Color originalColor = Color.white;
@@ -72,7 +83,7 @@ public sealed class EcoWorldClock : MonoBehaviour
         if (advanceTime) Simulate(Time.deltaTime);
         if (!driveLighting || sun == null) return;
         // Night keeps a cool, high moonlight so the town stays readable; the flashlight and street lamps add to it, not replace it.
-        float sunHeight = Mathf.Max(0f, Mathf.Sin((hour - 6f) * Mathf.PI / 12f));
+        float sunHeight = SunHeight;
         float daylight = Mathf.SmoothStep(0f, 1f, sunHeight * 4f); // clouds dim the sun but do not turn noon into moonlight
         sun.intensity = originalIntensity * Mathf.Max(SolarFactor, MoonLight);
         sun.color = Color.Lerp(MoonColor, originalColor, daylight);
@@ -90,15 +101,35 @@ public sealed class EcoWorldClock : MonoBehaviour
     public void Simulate(float seconds)
     {
         if (seconds <= 0f || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
-        float next = hour + seconds * 24f / Mathf.Max(60f, dayLengthSeconds);
-        day += Mathf.FloorToInt(next / 24f);
-        hour = Mathf.Repeat(next, 24f);
+        Advance(ref day, ref hour, seconds, dayLengthSeconds);
         if (!varyingWeather) return;
         float phase = (day * 24f + hour) * 0.08f;
         windStrength = Mathf.Lerp(0.05f, 1f, Mathf.PerlinNoise(phase, 7.31f));
         float humidity = Mathf.PerlinNoise(phase * 0.7f, 2.19f);
         cloudCover = Mathf.SmoothStep(0.05f, 0.95f, Mathf.InverseLerp(0.25f, 0.75f, humidity));
     }
+    // Game hours per real second: daylight hours pass more slowly than night hours (see Sunrise/Sunset/DaylightShare).
+    private static float HoursPerSecond(float hour, float dayLength)
+    {
+        dayLength = Mathf.Max(60f, dayLength);
+        return IsDaylight(hour) ? (Sunset - Sunrise) / (dayLength * DaylightShare) : (24f - (Sunset - Sunrise)) / (dayLength * (1f - DaylightShare));
+    }
+
+    /// <summary>Moves a day/hour pair forward by real seconds, switching rate at sunrise and sunset.</summary>
+    public static void Advance(ref int day, ref float hour, float seconds, float dayLength)
+    {
+        for (int guard = 0; seconds > 0f && guard < 1000; guard++)
+        {
+            float rate = HoursPerSecond(hour, dayLength);
+            float boundary = IsDaylight(hour) ? Sunset : hour >= Sunset ? 24f + Sunrise : Sunrise;
+            float needed = (boundary - hour) / rate;
+            if (seconds < needed) { hour += seconds * rate; break; }
+            seconds -= needed; hour = boundary;
+            if (hour >= 24f) { hour -= 24f; day++; }
+        }
+        if (hour >= 24f) { hour -= 24f; day++; }
+    }
+
     private void OnDestroy()
     {
         if (!driveLighting || (current != null && current != this)) return;

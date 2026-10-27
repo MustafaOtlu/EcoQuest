@@ -1317,7 +1317,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adc6c2e13a2d4e50b69815e5e0cb8968, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hour: 9
+  hour: 7
   dayLengthSeconds: 900
   day: 1
   advanceTime: 1
@@ -12616,7 +12616,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8143228076072470770, guid: 91fec2fd1acc7c649a36664bfb186b6f, type: 3}
       propertyPath: storedEnergy
-      value: 80
+      value: 125
       objectReference: {fileID: 0}
     - target: {fileID: 8612081530602968549, guid: 91fec2fd1acc7c649a36664bfb186b6f, type: 3}
       propertyPath: m_Name

@@ -2,6 +2,14 @@
 
 > **Kapsam ve yöntem:** `GDD.md` (v3, 20 Ekim; 27 Ekim'e kadar eklenen kararlar ve 100 satırlık "Uygulama durumu" günlüğüyle) baştan sona okundu. Bir konuda birden çok kayıt varsa en son tarihli kayıt güncel sayıldı (ör. 27 Ekim bölge adları, hedef yönlendirmesi). Birkaç sayı kodla karşılaştırıldı (`EcoWorldClock`, `EcoPowerNode`, `EnemyBrain`, `EcoCropCatalog`). Bu bir **masa başı incelemedir**: tempo, merak ve keyif ancak gerçek oyuncu testinde bilinir. Puanlar ve hedef değerler başlangıç hipotezidir.
 
+
+> **Düzeltme (27 Ekim, uygulama sırasında):** Bu raporun "ilk gece P1'i kilitliyor" bulgusu yanlıştı. Kod okunurken görüldü ki üste hazır bir güneş paneli, **rüzgâr türbini**, 80 EB'lik batarya ve şarj istasyonu var ve P1 bu ağı sayıyor. Yani P1 gece de tamamlanabiliyordu. Gece ve gündüz oranı ile ilk gün saati yine de kullanıcı kararıyla değiştirildi (S1). Önerilen düzeltmeler de uygulandı, ama farklı gerekçeyle. İlk oturumdaki gerçek sorunlar şunlardı:
+> - Yön oku P1 için Güneş Ovası'nın ortasını gösteriyordu.
+> - Proje adımı ancak hasattan sonra çıkıyordu.
+> - Kart somut işi ve tuşu söylemiyordu.
+>
+> Ayrıntı ve güncel durum: `GDD_v4.md` B bölümü ve §21.
+
 ## Kısa hüküm
 
 Çevre konusunu seven ve sakin oyunları seven oyuncu (hedef kitle: TÜBİTAK projesi kapsamında öğrenciler ve genç yetişkinler) **ilk projeyi bitirirse büyük olasılıkla 1–2 saat kalır**. Oyunun kalbi olan "bir sistem kurdum, çalışıyor, çevre değişiyor" hissi iyi tasarlanmış: neden-sonuç açık, hata cezası hafif, ödüller tek seferlik ve bilgi veriyor.

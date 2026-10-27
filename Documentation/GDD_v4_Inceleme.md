@@ -2,6 +2,14 @@
 
 > **Kapsam ve yöntem:** `GDD_v4.md` ilk incelemenin (`GDD_v3_Inceleme.md`) önerileriyle yazıldıktan sonra aynı ölçütlerle yeniden okundu. Ölçütler: katman puanları, M0 belge haritası, M1 ilk oturum, M2 tutarlılık, M3 sayılar, M12 imza an, M14 playtest. v4'teki yeni iddialar kodla karşılaştırıldı (`EcoEnemySpawnZone`, `EcoEveningLighting`, `EcoQuestHUD`, `EcoPerf`). Bu incelemede bulunan sorunların belge içinde düzeltilebilenleri aynı gün v4'e işlendi; aşağıda "düzeltildi" diye işaretli. Masa başı incelemedir.
 
+
+> **Düzeltme (27 Ekim, uygulama sırasında):** Bu raporun "ilk gece P1'i kilitliyor" bulgusu yanlıştı. Kod okunurken görüldü ki üste hazır bir güneş paneli, **rüzgâr türbini**, 80 EB'lik batarya ve şarj istasyonu var ve P1 bu ağı sayıyor. Yani P1 gece de tamamlanabiliyordu. Gece ve gündüz oranı ile ilk gün saati yine de kullanıcı kararıyla değiştirildi (S1). Önerilen düzeltmeler de uygulandı, ama farklı gerekçeyle. İlk oturumdaki gerçek sorunlar şunlardı:
+> - Yön oku P1 için Güneş Ovası'nın ortasını gösteriyordu.
+> - Proje adımı ancak hasattan sonra çıkıyordu.
+> - Kart somut işi ve tuşu söylemiyordu.
+>
+> Ayrıntı ve güncel durum: `GDD_v4.md` B bölümü ve §21.
+
 ## Kısa hüküm
 
 v4, v3'ün **belge olarak** en büyük açıklarını kapatıyor:
