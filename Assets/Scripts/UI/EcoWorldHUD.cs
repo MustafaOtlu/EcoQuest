@@ -312,7 +312,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (has)
         {
             var info = current.GetComponent<EcoRegionInfo>();
-            envCard.title.text = current.regionName.ToUpperInvariant();
+            envCard.title.text = EcoUI.Upper(current.regionName);
             EcoUI.SetIcon(envCard.icon, info != null ? EcoIcons.Region(info.kind, current.waterPollution > 35f) : "region_city");
             float health = shown[5];
             envCard.summary.text = StateName(health) + " · " + Mathf.RoundToInt(health) + "%";

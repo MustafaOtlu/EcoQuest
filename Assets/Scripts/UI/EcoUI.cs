@@ -31,6 +31,10 @@ public static class EcoUI
     private static readonly Vector3[] obstacleCorners = new Vector3[4];
     public static Font Font => font != null ? font : font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
+    /// <summary>Turkish capitals regardless of the machine's culture: i → İ, ı → I ("Sağlık" → "SAĞLIK", not "SAĞLıK").</summary>
+    public static string Upper(string text)
+        => string.IsNullOrEmpty(text) ? text : text.Replace('i', 'İ').Replace('ı', 'I').ToUpperInvariant();
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { tooltip = null; tooltipText = null; tooltipOwner = null; hudMode = -1; worldLabelObstacles.Clear(); }
 

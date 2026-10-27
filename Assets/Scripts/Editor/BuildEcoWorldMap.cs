@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -39,6 +40,8 @@ public static class BuildEcoWorldMap
     private static readonly Vector2 LakeB = new Vector2(127f * L, 30f * L);
     private const float LakeAR = 11f, LakeBR = 10f;
     private static readonly Vector2 StationPad = new Vector2(96f * L, 133f * L);
+    // The tank farm in Fabrikalar; reserved before the town is built so no house lands among the tanks.
+    private static readonly Rect TankFarm = new Rect(102f * L, 86f * L, 14f, 15f);
     // GDD §9: level ground beside the Dağ Deresi mouth so the small hydro plant (6×6 m) can actually be placed.
     private static readonly Vector2 HydroPad = new Vector2(6.5f * L, 24.5f * L);
     private static Vector2 P(float x, float z) => new Vector2(x * L, z * L);
@@ -164,9 +167,11 @@ public static class BuildEcoWorldMap
         Roads.Add(new RoadDef("Fırın Sokağı", RoadKind.Street, V(98, 79.4f), V(98.6f, 87), V(100, 95), V(102, 102), V(104, 108)));
         Roads.Add(new RoadDef("Batı Göl Yolu", RoadKind.Country, V(75, 34), V(66, 33.6f), V(56, 33), V(46, 33.4f), V(37.5f, 32.6f)));
         Roads.Add(new RoadDef("Doğu Göl Yolu", RoadKind.Country, V(75, 34), V(84, 33.6f), V(94, 33), V(104, 33.2f), V(114.5f, 32.4f)));
-        Roads.Add(new RoadDef("Fabrika Halkası", RoadKind.Industrial, V(118, 80.8f), V(117.4f, 90), V(122, 96), V(132, 97.2f), V(140, 93.4f), V(141.2f, 86.4f), V(140.4f, 81.2f)));
+        // Runs 3.3 m clear of Fabrika A's corners and between the tank farm and the hall (it used to clip both).
+        Roads.Add(new RoadDef("Fabrika Halkası", RoadKind.Industrial, V(118, 80.8f), V(117.65f, 86), V(117.65f, 93.1f), V(118.6f, 95.5f), V(121, 96.6f),
+            V(124, 97f), V(132, 97f), V(137, 96.6f), V(139.4f, 95.5f), V(140.4f, 93.1f), V(140.6f, 86.4f), V(140.4f, 81.2f)));
         Roads.Add(new RoadDef("Depo Yolu", RoadKind.Industrial, V(124, 81.4f), V(124.4f, 72), V(127.4f, 64.4f), V(132.6f, 60.4f)));
-        Roads.Add(new RoadDef("Buzul Patikası", RoadKind.Trail, V(77.6f, 110), V(81, 117), V(87, 124), V(92.4f, 129.4f), V(95.4f, 131.6f)));
+        Roads.Add(new RoadDef("Buzul Patikası", RoadKind.Trail, V(77.6f, 110), V(81, 117), V(87, 124), V(91.6f, 128.6f))); // ends at the station door, not under it
         Roads.Add(new RoadDef("Türbin Patikası", RoadKind.Trail, V(29, 89.5f), V(26, 80), V(20.5f, 72), V(17, 64), V(21, 57.4f), V(30, 55.6f), V(40, 57.4f), V(45, 60.2f), V(48.6f, 61.2f)));
         Roads.Add(new RoadDef("Orman Patikası", RoadKind.Trail, V(20, 93.2f), V(17, 100), V(23.6f, 104.4f), V(32.4f, 101.6f), V(36.4f, 95.4f), V(37.4f, 86.4f)));
         Roads.Add(new RoadDef("Batı Kıyı Patikası", RoadKind.Trail, V(37.5f, 32.6f), V(36, 22), V(27, 16.4f), V(16, 18.6f), V(11.4f, 26)));
@@ -490,9 +495,7 @@ public static class BuildEcoWorldMap
             RenameTexts(scene);
 
             Progress("Harita görüntüsü", 0.9f);
-            var mapPath = ResFolder + "Minimap.png";
-            File.WriteAllBytes(mapPath, RenderMinimap().EncodeToPNG());
-            AssetDatabase.ImportAsset(mapPath, ImportAssetOptions.ForceUpdate);
+            RenderMinimapLater();
 
             report.AppendLine("Yola denk gelen bitki: " + cleared + " kaldırıldı; zemini değişen nesne: " + moved + " yeniden oturtuldu");
             File.WriteAllText(Folder + "UpdateReport.txt", report.ToString());
@@ -504,6 +507,26 @@ public static class BuildEcoWorldMap
         catch (System.Exception ex) { Debug.LogError("EcoWorld güncellenemedi: " + ex); }
         finally { EditorUtility.ClearProgressBar(); }
     }
+
+    // The ground and road objects were just recreated; Unity 6 registers new renderers with the GPU-driven renderer on
+    // a later editor frame, so a render in the same frame drew the map without ground or asphalt. Render a few frames on.
+    private static void RenderMinimapLater(int frames = 3)
+    {
+        EditorApplication.CallbackFunction wait = null;
+        wait = () =>
+        {
+            if (--frames > 0) { SceneView.RepaintAll(); return; }
+            EditorApplication.update -= wait;
+            var mapPath = ResFolder + "Minimap.png";
+            File.WriteAllBytes(mapPath, RenderMinimap().EncodeToPNG());
+            AssetDatabase.ImportAsset(mapPath, ImportAssetOptions.ForceUpdate);
+            Debug.Log("ECOWORLD_MINIMAP_RENDERED");
+        };
+        EditorApplication.update += wait;
+    }
+
+    [MenuItem("EcoQuest/Re-render map image")]
+    public static void RerenderMinimap() => RenderMinimapLater(1);
 
     private static List<Collider> GroundColliders()
         => Object.FindObjectsByType<EcoGround>(FindObjectsSortMode.None).SelectMany(g => g.GetComponents<Collider>()).Where(c => c != null && c.enabled).ToList();
@@ -572,13 +595,22 @@ public static class BuildEcoWorldMap
         ("KUZEY  Buzul patikası", "KUZEY  Buzul Dağı"), ("KORULUK", "ORMAN"), ("Doğu Gölü", "Fabrika Gölü"), ("Doğu gölü", "Fabrika Gölü"),
         ("Batı Gölü", "Balık Gölü"), ("Batı gölü", "Balık Gölü"), ("Koruluk", "Orman"), ("koruluk", "orman"), ("Şehir Merkezi", "Şehir"),
         ("Güneşli Çayır", "Güneş Ovası"), ("Buzul Bölgesi", "Buzul Dağı"), ("Sanayi Bölgesi", "Fabrikalar"),
+        ("DOĞU GÖLÜ", "FABRİKA GÖLÜ"), ("BATI GÖLÜ", "BALIK GÖLÜ"),
     };
 
     private static string Renamed(string text)
     {
         if (string.IsNullOrEmpty(text)) return text;
         foreach (var (from, to) in Renames) text = text.Replace(from, to);
-        return text;
+        // Signs capitalised with the invariant culture kept a dotless/dotted small i ("SAĞLıK OCAĞı"); a word that is
+        // upper case apart from i/ı is re-capitalised the Turkish way.
+        return Regex.Replace(text, @"\p{L}+", m =>
+        {
+            string word = m.Value;
+            if (word.Length < 2 || (word.IndexOf('ı') < 0 && word.IndexOf('i') < 0)) return word;
+            foreach (char c in word) if (c != 'ı' && c != 'i' && char.IsLower(c)) return word;
+            return EcoUI.Upper(word);
+        });
     }
 
     private static void RenameTexts(Scene scene)
@@ -1108,6 +1140,7 @@ public static class BuildEcoWorldMap
         var waterClean = Mat("StreamClean", new Color(0.30f, 0.66f, 0.80f, 0.78f), 0.9f, 0f, true);
         var waterDirty = Mat("StreamDirty", new Color(0.38f, 0.40f, 0.20f, 0.88f), 0.6f, 0f, true);
         int paved = 0, trails = 0;
+        CollectCrossings();
         foreach (var road in Roads)
         {
             var group = Group(road.name, Groups["Roads"]);
@@ -1150,7 +1183,8 @@ public static class BuildEcoWorldMap
                     surface.Quad(RoadPoint(p0 + n0 * u0, 0.05f), RoadPoint(p1 + n1 * u0, 0.05f), RoadPoint(p0 + n0 * u1, 0.05f), RoadPoint(p1 + n1 * u1, 0.05f), c0, c1, c0, c1);
                 }
 
-                bool skip = road.nearJunction[i] || road.nearJunction[i + 1];
+                // No lane paint on a zebra crossing, whichever road the crossing belongs to.
+                bool skip = road.nearJunction[i] || road.nearJunction[i + 1] || OnCrossing(p0) || OnCrossing(p1) || OnCrossing((p0 + p1) * 0.5f);
                 bool inside = road.junction[i] || road.junction[i + 1];
                 // Centre line: dashed on streets, double yellow on the avenue, none on the ring (one-way).
                 if (!skip && road.kind != RoadKind.Ring)
@@ -1191,18 +1225,8 @@ public static class BuildEcoWorldMap
                     }
                 }
             }
-            // Zebra crossings where an urban street meets a junction.
-            if (road.Urban && road.kind != RoadKind.Ring)
-                for (int i = 1; i < count; i++)
-                {
-                    if (road.nearJunction[i] == road.nearJunction[i - 1]) continue;
-                    int k = road.nearJunction[i] ? i - 1 : i; // first sample outside the junction
-                    int dir = road.nearJunction[i] ? -1 : 1;
-                    // Zebras only where people actually cross: the main avenue and the roundabout. A zebra on every
-                    // leg of every side street made each junction look like a separate, pasted-in piece.
-                    if (road.kind == RoadKind.Avenue || Vector2.Distance(road.pos[k], Roundabout) < RoundaboutR + 9f)
-                        AddCrossing(details, road, k, dir, hw);
-                }
+            foreach (var crossing in Crossings)
+                if (crossing.road == road) AddCrossing(details, road, crossing.k, crossing.dir, hw);
 
             var mesh = surface.ToMesh(road.name.Replace(" ", "_") + "_surface");
             AssetDatabase.CreateAsset(mesh, Folder + "Meshes/Road_" + Roads.IndexOf(road) + "_surface.asset");
@@ -1229,6 +1253,46 @@ public static class BuildEcoWorldMap
         if (island) BuildRoundaboutIsland();
         report.AppendLine("Kavşak: " + junctions + " birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi");
         report.AppendLine("Yollar: " + paved + " asfalt yol (bordür, kaldırım, şerit, yaya geçidi), " + trails + " toprak patika, 2 dere; ızgara yok");
+    }
+
+    private sealed class Crossing { public RoadDef road; public int k, dir; public Vector2 start, along, across; public float halfWidth; }
+    private static readonly List<Crossing> Crossings = new List<Crossing>();
+
+    // Zebra crossings where an urban street meets a junction, collected before any paint so lane lines of every road
+    // can stop at them (a yellow centre line ran straight through the crossing at the town entrance).
+    private static void CollectCrossings()
+    {
+        Crossings.Clear();
+        foreach (var road in Roads)
+        {
+            if (!road.Urban || road.kind == RoadKind.Ring || road.Water) continue;
+            for (int i = 1; i < road.pos.Count; i++)
+            {
+                if (road.nearJunction[i] == road.nearJunction[i - 1]) continue;
+                int k = road.nearJunction[i] ? i - 1 : i; // first sample outside the junction
+                int dir = road.nearJunction[i] ? -1 : 1;
+                // Zebras only where people actually cross: the main avenue and the roundabout. A zebra on every
+                // leg of every side street made each junction look like a separate, pasted-in piece.
+                if (road.kind != RoadKind.Avenue && Vector2.Distance(road.pos[k], Roundabout) >= RoundaboutR + 9f) continue;
+                Vector2 t = road.tan[k];
+                Crossings.Add(new Crossing
+                {
+                    road = road, k = k, dir = dir, start = road.pos[k] - t * dir * 0.2f, along = -t * dir,
+                    across = new Vector2(-t.y, t.x), halfWidth = road.Width * 0.5f
+                });
+            }
+        }
+    }
+
+    private static bool OnCrossing(Vector2 p)
+    {
+        foreach (var c in Crossings)
+        {
+            Vector2 d = p - c.start;
+            float along = Vector2.Dot(d, c.along), across = Vector2.Dot(d, c.across);
+            if (along > -0.6f && along < 2.0f && Mathf.Abs(across) < c.halfWidth + 0.4f) return true;
+        }
+        return false;
     }
 
     private static void AddCrossing(MeshBuilder mb, RoadDef road, int k, int dir, float hw)
@@ -1619,7 +1683,7 @@ public static class BuildEcoWorldMap
             Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(-0.9f, -1.4f, 1.0f + i * 2.6f), new Vector3(0.28f, 1.6f, 0.28f), wood);
             Prim(PrimitiveType.Cylinder, "Post", dock, new Vector3(0.9f, -1.4f, 1.0f + i * 2.6f), new Vector3(0.28f, 1.6f, 0.28f), wood);
         }
-        WorldLabel(dock, polluted ? "DOĞU GÖLÜ\nKirli • Arıtma gerekiyor" : "BATI GÖLÜ\nTemiz su • [5] Eller → [E] Balık tut", new Vector3(0f, 2.6f, 1f), 0.008f);
+        WorldLabel(dock, polluted ? "FABRİKA GÖLÜ\nKirli • Arıtma gerekiyor" : "BALIK GÖLÜ\nTemiz su • [5] Eller → [E] Balık tut", new Vector3(0f, 2.6f, 1f), 0.008f);
         EcoMapMarker.Add(dock.gameObject, "poi_fishing", polluted ? "Doğu iskelesi" : "Batı iskelesi",
             polluted ? "Balıklar kirli; temiz balık için önce gölü canlandır." : "Temiz balık tutulabilir. Nüfus 4'e inince av durur.", EcoMapMarker.Category.Water);
         if (polluted)
@@ -1762,6 +1826,7 @@ public static class BuildEcoWorldMap
         var bin = FindZiplerModel("cop");
         // The old map's "Lamba" group is mostly traffic lights; only a real lamp model replaces the procedural one.
         var lamp = lampPrefab != null && lampPrefab.name.ToLowerInvariant().Contains("lamp") ? lampPrefab : FindZiplerModel("lamba");
+        KeepOut.Add(TankFarm);
         var city = Def(EcoRegionInfo.Kind.City);
         var cityRect = new Rect(city.center - city.size * 0.5f, city.size);
         // Houses may spill a little past the district edge (village outskirts) but never onto the glacier slope.
@@ -1794,7 +1859,7 @@ public static class BuildEcoWorldMap
                 : plot.name == "Mahalle Pazarı" ? MarketHall(root, pos, yaw) : plot.name == "Sağlık Ocağı" ? Clinic(root, pos, yaw) : ProceduralBuilding(root, pos, yaw, 8.5f, depth, plot.height);
             built.name = plot.name;
             if (TryBounds(built, out var top))
-                WorldLabel(built.transform, plot.name.ToUpperInvariant(), built.transform.InverseTransformPoint(new Vector3(top.center.x, top.max.y + 1.2f, top.center.z)), 0.009f / Mathf.Max(0.01f, built.transform.lossyScale.x));
+                WorldLabel(built.transform, EcoUI.Upper(plot.name), built.transform.InverseTransformPoint(new Vector3(top.center.x, top.max.y + 1.2f, top.center.z)), 0.009f / Mathf.Max(0.01f, built.transform.lossyScale.x));
             EcoMapMarker.Add(built, plot.icon, plot.name, plot.detail, EcoMapMarker.Category.Service, plot.name == "Ev");
             if (plot.name == "Ev")
             {
@@ -2075,11 +2140,11 @@ public static class BuildEcoWorldMap
         var tanks = Group("Tank farm", root);
         for (int i = 0; i < 4; i++)
         {
-            float x = 108f * L + (i % 2) * 6f, z = 90f * L + (i / 2) * 6.5f;
+            float x = 106f * L + (i % 2) * 6f, z = 90f * L + (i / 2) * 6.5f; // clear of Fabrika Halkası
             var t = Prim(PrimitiveType.Cylinder, "Tank", tanks, new Vector3(x, GroundY(x, z) + 2.6f, z), new Vector3(4.6f, 2.6f, 4.6f), tankMat, true);
             Prim(PrimitiveType.Cylinder, "Tank cap", t.transform, new Vector3(0f, 1.02f, 0f), new Vector3(0.9f, 0.04f, 0.9f), Mat("TankCap", new Color(0.3f, 0.33f, 0.35f), 0.3f, 0.5f));
         }
-        KeepOut.Add(new Rect(104f * L, 86f * L, 14f, 15f));
+        KeepOut.Add(TankFarm);
 
         var yard = Group("Container yard", root);
         Color[] colors = { new Color(0.75f, 0.25f, 0.2f), new Color(0.2f, 0.4f, 0.6f), new Color(0.8f, 0.6f, 0.2f), new Color(0.25f, 0.5f, 0.35f) };
@@ -2931,6 +2996,9 @@ public static class BuildEcoWorldMap
         var rt = new RenderTexture(n, n, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB) { antiAliasing = 4 };
         cam.targetTexture = rt;
         Texture2D tex;
+        // Right after a script reload shaders compile asynchronously and draw nothing; the ground and asphalt (custom
+        // shaders) were missing from the map image. Compile them synchronously for this one render.
+        bool async = ShaderUtil.allowAsyncCompilation; ShaderUtil.allowAsyncCompilation = false;
         try
         {
             cam.Render();
@@ -2945,6 +3013,7 @@ public static class BuildEcoWorldMap
             foreach (var b in hidden) if (b != null) b.enabled = true;
             foreach (var r in hiddenRenderers) if (r != null) r.enabled = true;
             RenderSettings.fog = fog;
+            ShaderUtil.allowAsyncCompilation = async;
             if (sun != null) { sun.transform.rotation = sunRotation; sun.intensity = sunIntensity; }
         }
         var pixels = tex.GetPixels();

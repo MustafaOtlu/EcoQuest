@@ -478,8 +478,12 @@ public sealed class EcoQuestHUD : MonoBehaviour
             if (projects != null) for (int i = 0; i < projects.All.Count; i++) if (!projects.All[i].done) { open = i; break; }
             if (!living)
             {
-                text = "Tarlaya tohum ek · [2] tohum aracı, sol tık";
-                goal = Nearest(FindObjectsByType<EcoFarm>(FindObjectsSortMode.None), f => f != null, here); goalName = "Tarla";
+                text = "Ekim alanına tohum ek · [2] tohum aracı, sol tık";
+                // Built farms count, and so do the base's planting beds (the start has beds, not an EcoFarm).
+                var farm = Nearest(FindObjectsByType<EcoFarm>(FindObjectsSortMode.None), f => f != null, here);
+                var bed = Nearest(FindObjectsByType<PlantingSurface>(FindObjectsSortMode.None), s => s != null, here);
+                goal = farm == null || (bed != null && (bed.Value - here).sqrMagnitude < (farm.Value - here).sqrMagnitude) ? bed : farm;
+                goalName = "Ekim alanı";
             }
             else if (mature)
             {
