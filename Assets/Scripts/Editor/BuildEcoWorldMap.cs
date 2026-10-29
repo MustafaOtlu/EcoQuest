@@ -176,10 +176,9 @@ public static class BuildEcoWorldMap
         Roads.Add(new RoadDef("Orman Patikası", RoadKind.Trail, V(20, 93.2f), V(17, 100), V(23.6f, 104.4f), V(32.4f, 101.6f), V(36.4f, 95.4f), V(37.4f, 86.4f)));
         Roads.Add(new RoadDef("Batı Kıyı Patikası", RoadKind.Trail, V(37.5f, 32.6f), V(36, 22), V(27, 16.4f), V(16, 18.6f), V(11.4f, 26)));
         Roads.Add(new RoadDef("Doğu Kıyı Patikası", RoadKind.Trail, V(114.5f, 32.4f), V(118.4f, 40.6f), V(126, 43.4f), V(132, 41.6f), V(131.6f, 50f), V(132.6f, 59f)));
-        Roads.Add(new RoadDef("Batı Güneş Tarlası", RoadKind.Trail, V(66, 33.6f), V(65, 37.4f), V(63.4f, 41)));
-        Roads.Add(new RoadDef("Doğu Güneş Tarlası", RoadKind.Trail, V(84, 33.6f), V(85, 37.4f), V(86.6f, 41)));
         // A short gravel track joins the start base to the main avenue, so the first walk into town follows a road.
-        Roads.Add(new RoadDef("Üs Patikası", RoadKind.Trail, V(75, 30.4f), V(77, 26.5f), V(78.6f, 22.8f)));
+        // It runs right up to the scrap row of the station (it used to stop in the grass 5 m short of the base).
+        Roads.Add(new RoadDef("Üs Patikası", RoadKind.Trail, V(75, 30.4f), V(77, 26.5f), V(78.6f, 22.8f), V(79.4f, 20.2f)));
         Roads.Add(new RoadDef("Dağ Deresi", RoadKind.Stream, V(-16, 47), V(-5, 42.6f), V(3, 37.4f), V(9, 33.4f), V(14.4f, 30.6f)));
         Roads.Add(new RoadDef("Kirli Kanal", RoadKind.DirtyStream, V(135.6f, 61.4f), V(137.6f, 52), V(137.2f, 44), V(136.2f, 37), V(135.4f, 31.4f)));
         var ring = new RoadDef("Göbekli Kavşak", RoadKind.Ring) { closed = true };
@@ -401,6 +400,7 @@ public static class BuildEcoWorldMap
             BuildCity();
             Progress("Sanayi", 0.60f);
             BuildIndustry();
+            RemoveHousesInIndustry();
             Progress("Enerji sahaları", 0.68f);
             BuildEnergy();
             Progress("Buzul", 0.74f);
@@ -489,6 +489,9 @@ public static class BuildEcoWorldMap
                 if (Mathf.Abs(delta) < 0.01f) continue;
                 Undo.RecordObject(t, "Seat on ground"); t.position += Vector3.up * delta; RecordOverride(t); moved++;
             }
+
+            Progress("Ayrıntı düzeltmeleri", 0.75f);
+            TidyScene(scene, newGround);
 
             Progress("Bölgeler", 0.8f);
             ApplyRegionDefs();
@@ -1282,6 +1285,12 @@ public static class BuildEcoWorldMap
                 });
             }
         }
+        // A second junction just beyond the roundabout gave each arm two zebras a few metres apart; keep the one
+        // nearer the roundabout.
+        Crossings.Sort((a, b) => Vector2.Distance(a.start, Roundabout).CompareTo(Vector2.Distance(b.start, Roundabout)));
+        for (int i = Crossings.Count - 1; i > 0; i--)
+            for (int j = 0; j < i; j++)
+                if (Crossings[j].road == Crossings[i].road && Vector2.Distance(Crossings[j].start, Crossings[i].start) < 6f) { Crossings.RemoveAt(i); break; }
     }
 
     private static bool OnCrossing(Vector2 p)
@@ -2002,7 +2011,7 @@ public static class BuildEcoWorldMap
             Vector2 c = new Vector2(F(cityRect.xMin + 4f, cityRect.xMax - 4f), F(cityRect.yMin + 4f, cityRect.yMax - 4f));
             if (RoadEdgeDistance(c.x, c.y) < 0.6f || Overlaps(new Rect(c.x - 1.5f, c.y - 1.5f, 3f, 3f))) continue;
             var bench = Group("Bench", root); bench.position = new Vector3(c.x, GroundY(c.x, c.y), c.y);
-            bench.rotation = Quaternion.Euler(0f, F(0f, 360f), 0f);
+            bench.rotation = FaceNearestRoad(c);
             Prim(PrimitiveType.Cube, "Seat", bench, new Vector3(0f, 0.45f, 0f), new Vector3(1.6f, 0.08f, 0.45f), benchMat, true);
             Prim(PrimitiveType.Cube, "Back", bench, new Vector3(0f, 0.75f, 0.2f), new Vector3(1.6f, 0.4f, 0.06f), benchMat);
             Prim(PrimitiveType.Cube, "Leg", bench, new Vector3(-0.65f, 0.22f, 0f), new Vector3(0.08f, 0.44f, 0.4f), Mat("LampMetal", new Color(0.18f, 0.2f, 0.22f), 0.4f, 0.6f));
@@ -2294,18 +2303,9 @@ public static class BuildEcoWorldMap
             for (int i = 0; i + 1 < poles.Count; i++)
             {
                 if (Vector3.Distance(poles[i], poles[i + 1]) > 26f) continue;
-                var go = new GameObject("Wire"); go.transform.SetParent(wires, false);
-                var line = go.AddComponent<LineRenderer>(); line.useWorldSpace = true; line.widthMultiplier = 0.04f;
-                line.sharedMaterial = lineMat; line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                line.positionCount = 7;
-                for (int k = 0; k < 7; k++)
-                {
-                    float t = k / 6f;
-                    var p = Vector3.Lerp(poles[i], poles[i + 1], t);
-                    p.y -= Mathf.Sin(t * Mathf.PI) * 0.6f;
-                    line.SetPosition(k, p);
-                }
+                Wire(wires, "Wire", poles[i], poles[i + 1], lineMat);
             }
+            ConnectPowerLine(root);
         }
     }
 
@@ -2492,7 +2492,8 @@ public static class BuildEcoWorldMap
         var leafy = BuildSet(new[] { "tree" }, new[] { "palm", "pine", "plateau", "stump", "log", "cone", "tent", "house", "fall", "dead" }, KenneyFolders());
         var pines = BuildSet(new[] { "pine", "cone" }, new[] { "log", "stump", "fall" }, KenneyFolders());
         var dead = BuildSet(new[] { "dead", "stump" }, new[] { "tile", "log" }, KenneyFolders());
-        var rocks = BuildSet(new[] { "rock", "stone" }, new[] { "stepping", "path", "crystal", "tile" }, KenneyFolders());
+        // Cliff and bridge tiles also carry "rock"/"stone" in their names; on their own they read as grass cubes and slabs.
+        var rocks = BuildSet(new[] { "rock", "stone" }, new[] { "stepping", "path", "crystal", "tile", "cliff", "bridge" }, KenneyFolders());
         var plants = BuildSet(new[] { "bush", "flower", "plant", "mushroom" }, new[] { "tile", "pot" }, KenneyFolders());
         report.AppendLine("Bitki modelleri: yapraklı=" + leafy.models.Count + " çam=" + pines.models.Count + " kuru=" + dead.models.Count + " kaya=" + rocks.models.Count + " bitki=" + plants.models.Count);
 
@@ -2871,28 +2872,7 @@ public static class BuildEcoWorldMap
         // The station's flat turf plate is a dark square on the new ground; the mesh ground already covers it.
         foreach (var renderer in alan.GetComponentsInChildren<MeshRenderer>(true))
             if (renderer.name == "Ground cover") { renderer.enabled = false; RecordOverride(renderer); }
-        // The square starter pond becomes a round pond with a stone rim.
-        foreach (var source in alan.GetComponentsInChildren<WeaponWaterSource>(true))
-        {
-            if (!source.name.Contains("pond")) continue;
-            var flat = source.GetComponent<MeshRenderer>();
-            if (flat != null) { flat.enabled = false; RecordOverride(flat); }
-            var pond = Group("Pond visual", source.transform);
-            pond.localPosition = Vector3.zero; pond.localRotation = Quaternion.identity;
-            pond.localScale = new Vector3(1f / Mathf.Max(0.01f, source.transform.lossyScale.x), 1f, 1f / Mathf.Max(0.01f, source.transform.lossyScale.z));
-            var water = new GameObject("Water", typeof(MeshFilter), typeof(MeshRenderer)); water.transform.SetParent(pond, false);
-            water.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            water.GetComponent<MeshFilter>().sharedMesh = DiscMesh("StarterPond_Disc", 2.3f, 4, 20);
-            water.GetComponent<MeshRenderer>().sharedMaterial = WaterMaterial("EcoLakeClean", new Color(0.30f, 0.74f, 0.82f, 0.62f));
-            for (int i = 0; i < 12; i++)
-            {
-                float a = i * Mathf.PI * 2f / 12f;
-                var stone = Prim(PrimitiveType.Sphere, "Rim stone", pond, new Vector3(Mathf.Cos(a) * 2.45f, 0.05f, Mathf.Sin(a) * 2.45f),
-                    new Vector3(F(0.45f, 0.7f), F(0.2f, 0.32f), F(0.45f, 0.7f)), Mat("StreamPebble", new Color(0.55f, 0.55f, 0.52f), 0.2f));
-                stone.transform.rotation = Quaternion.Euler(0f, F(0f, 360f), 0f);
-            }
-            EcoMapMarker.Add(pond.gameObject, "poi_fishing", "Üs göleti", "Temiz su doldurma ve deneme balıkçılığı.", EcoMapMarker.Category.Water);
-        }
+        foreach (var source in alan.GetComponentsInChildren<WeaponWaterSource>(true)) RoundPond(source);
         report.AppendLine("Başlangıç: 'alan' grubu (oyuncu, istasyon, deneme fabrikası/yangın/kirli su) " + Base + " konumuna taşındı; deneme bölgeleri 14×14 m'ye küçültüldü");
         // Enemy placement markers were authored around the old start point; keep their offsets from the base.
         if (enemies != null)
@@ -2917,6 +2897,188 @@ public static class BuildEcoWorldMap
     {
         EditorUtility.SetDirty(target);
         if (PrefabUtility.IsPartOfPrefabInstance(target)) PrefabUtility.RecordPrefabInstancePropertyModifications(target);
+    }
+
+    // The square starter ponds (clean pond at the base, polluted water at the old workshop) become round ponds with a
+    // stone rim; the flat 4×4 m water plate read as a placeholder tile. Runs once per pond.
+    private static void RoundPond(WeaponWaterSource source)
+    {
+        bool dirty = source.name.Contains("polluted");
+        if (!dirty && !source.name.Contains("pond") || source.transform.Find("Pond visual") != null) return;
+        var flat = source.GetComponent<MeshRenderer>();
+        if (flat != null) { flat.enabled = false; RecordOverride(flat); }
+        var pond = Group("Pond visual", source.transform);
+        pond.localPosition = Vector3.zero; pond.localRotation = Quaternion.identity;
+        pond.localScale = new Vector3(1f / Mathf.Max(0.01f, source.transform.lossyScale.x), 1f, 1f / Mathf.Max(0.01f, source.transform.lossyScale.z));
+        var water = new GameObject("Water", typeof(MeshFilter), typeof(MeshRenderer)); water.transform.SetParent(pond, false);
+        water.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+        // Re-creating the disc asset would orphan the mesh the other pond already uses.
+        water.GetComponent<MeshFilter>().sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(Folder + "Meshes/StarterPond_Disc.asset") ?? DiscMesh("StarterPond_Disc", 2.3f, 4, 20);
+        water.GetComponent<MeshRenderer>().sharedMaterial = dirty
+            ? WaterMaterial("EcoLakeDirty", new Color(0.42f, 0.46f, 0.24f, 0.78f))
+            : WaterMaterial("EcoLakeClean", new Color(0.30f, 0.74f, 0.82f, 0.62f));
+        for (int i = 0; i < 12; i++)
+        {
+            float a = i * Mathf.PI * 2f / 12f;
+            var stone = Prim(PrimitiveType.Sphere, "Rim stone", pond, new Vector3(Mathf.Cos(a) * 2.45f, 0.05f, Mathf.Sin(a) * 2.45f),
+                new Vector3(F(0.45f, 0.7f), F(0.2f, 0.32f), F(0.45f, 0.7f)), Mat(dirty ? "MudStone" : "StreamPebble", dirty ? new Color(0.40f, 0.37f, 0.30f) : new Color(0.55f, 0.55f, 0.52f), 0.2f));
+            stone.transform.rotation = Quaternion.Euler(0f, F(0f, 360f), 0f);
+        }
+        if (!dirty) EcoMapMarker.Add(pond.gameObject, "poi_fishing", "Üs göleti", "Temiz su doldurma ve deneme balıkçılığı.", EcoMapMarker.Category.Water);
+    }
+
+    // Benches look at the street they stand beside instead of a random direction.
+    private static Quaternion FaceNearestRoad(Vector2 c)
+    {
+        Vector2 best = Vector2.up; float closest = float.MaxValue;
+        for (int i = 0; i < 16; i++)
+        {
+            float a = i * Mathf.PI / 8f; var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+            float edge = RoadEdgeDistance(c.x + d.x * 3f, c.y + d.y * 3f, false, false);
+            if (edge < closest) { closest = edge; best = d; }
+        }
+        return Quaternion.LookRotation(new Vector3(-best.x, 0f, -best.y)); // the seat faces local -z, the backrest +z
+    }
+
+    // A town house that landed inside a depot or factory hall (Depo C swallowed one) is removed.
+    private static int RemoveHousesInIndustry()
+    {
+        if (!Groups.TryGetValue("City", out var city) || !Groups.TryGetValue("Industry", out var industry)) return 0;
+        var halls = new List<Bounds>();
+        // Only the halls themselves: the dump site and container yard are loose groups whose bounds cover open ground.
+        foreach (Transform t in industry)
+            if ((t.name.StartsWith("Fabrika") || t.name.StartsWith("Depo")) && TryBounds(t.gameObject, out var b)) halls.Add(b);
+        int removed = 0;
+        foreach (var house in city.Cast<Transform>().Where(t => t.name.StartsWith("Building") || t.name.StartsWith("House")).ToList())
+        {
+            if (!TryBounds(house.gameObject, out var b)) continue;
+            bool inside = halls.Any(h => b.min.x + 0.6f < h.max.x && b.max.x - 0.6f > h.min.x && b.min.z + 0.6f < h.max.z && b.max.z - 0.6f > h.min.z);
+            if (!inside) continue;
+            Object.DestroyImmediate(house.gameObject); removed++;
+        }
+        return removed;
+    }
+
+    // Kenney cliff and bridge tiles were picked up as "rocks" and lay about as grass cubes and bridge slabs; each one
+    // becomes a real rock from the same group, seated on the ground.
+    private static int ReplaceTileRocks(List<Collider> ground)
+    {
+        if (!Groups.TryGetValue("Vegetation", out var vegetation)) return 0;
+        var rocks = vegetation.Find("Rocks");
+        if (rocks == null) return 0;
+        bool Tile(Transform t) => t.GetComponentsInChildren<MeshFilter>(true).Any(f => f.sharedMesh != null && (f.sharedMesh.name.Contains("cliff") || f.sharedMesh.name.Contains("bridge")));
+        var all = rocks.Cast<Transform>().ToList();
+        var good = all.Where(t => !Tile(t)).ToList();
+        var bad = all.Where(Tile).ToList();
+        if (good.Count == 0) return 0;
+        foreach (var tile in bad)
+        {
+            var pick = good[rng.Next(good.Count)];
+            float lift = RaycastGround(ground, pick.position, out float under) ? pick.position.y - under : 0f;
+            var copy = Object.Instantiate(pick.gameObject, rocks).transform; copy.name = pick.name;
+            float y = RaycastGround(ground, tile.position, out float at) ? at : tile.position.y;
+            copy.position = new Vector3(tile.position.x, y + lift, tile.position.z);
+            copy.rotation = Quaternion.Euler(0f, F(0f, 360f), 0f);
+            Object.DestroyImmediate(tile.gameObject);
+        }
+        return bad.Count;
+    }
+
+    private static void Wire(Transform parent, string name, Vector3 a, Vector3 b, Material material)
+    {
+        var go = new GameObject(name); go.transform.SetParent(parent, false);
+        var line = go.AddComponent<LineRenderer>(); line.useWorldSpace = true; line.widthMultiplier = 0.04f;
+        line.sharedMaterial = material; line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.positionCount = 7;
+        for (int k = 0; k < 7; k++)
+        {
+            float t = k / 6f;
+            var p = Vector3.Lerp(a, b, t);
+            p.y -= Mathf.Sin(t * Mathf.PI) * Mathf.Min(0.6f, Vector3.Distance(a, b) * 0.05f);
+            line.SetPosition(k, p);
+        }
+    }
+
+    // The power line along the west boulevard stopped in open grass at both ends. Its west end now runs (over extra
+    // poles when the gap is long) to the nearest wind turbine, and its east end into the nearest house of the town.
+    private static void ConnectPowerLine(Transform energy)
+    {
+        var wires = energy.Find("Power lines"); var farm = energy.Find("Wind farm");
+        if (wires == null || farm == null || wires.Find("Turbine link") != null) return;
+        var poles = energy.Cast<Transform>().Where(t => t.name.Contains("pole")).OrderBy(t => t.position.x).ToList();
+        var turbines = farm.Cast<Transform>().Where(t => t.name == "Wind turbine").ToList();
+        if (poles.Count == 0 || turbines.Count == 0) return;
+        var existing = wires.GetComponentInChildren<LineRenderer>();
+        var material = existing != null ? existing.sharedMaterial : Mat("PowerLine", new Color(0.05f, 0.05f, 0.06f), 0.1f);
+        const float top = 6.1f;
+
+        var west = poles[0];
+        var turbine = turbines.OrderBy(t => Vector3.Distance(t.position, west.position)).First();
+        Vector2 from = new Vector2(west.position.x, west.position.z), to = new Vector2(turbine.position.x, turbine.position.z);
+        int spans = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(from, to) / 12f));
+        Vector3 last = west.position + Vector3.up * top;
+        for (int s = 1; s < spans; s++)
+        {
+            Vector2 p = Vector2.Lerp(from, to, s / (float)spans);
+            // Step sideways off a road or path.
+            Vector2 side = Perp((to - from).normalized);
+            for (int tries = 0; tries < 8 && RoadEdgeDistance(p.x, p.y) < 1.5f; tries++) p += side * 1f;
+            var pole = Object.Instantiate(west.gameObject, energy).transform; pole.name = west.name;
+            pole.position = new Vector3(p.x, GroundY(p.x, p.y), p.y);
+            pole.rotation = Quaternion.Euler(0f, Mathf.Atan2(to.x - from.x, to.y - from.y) * Mathf.Rad2Deg + 90f, 0f);
+            ClearPlantsAround(p, 1.6f);
+            KeepOut.Add(new Rect(p.x - 1f, p.y - 1f, 2f, 2f));
+            var next = pole.position + Vector3.up * top;
+            Wire(wires, "Turbine link", last, next, material);
+            last = next;
+        }
+        Vector3 toward = new Vector3(last.x - turbine.position.x, 0f, last.z - turbine.position.z).normalized;
+        Wire(wires, "Turbine link", last, turbine.position + Vector3.up * 4f + toward * 0.4f, material);
+
+        if (!Groups.TryGetValue("City", out var city)) return;
+        var east = poles[poles.Count - 1];
+        Vector3 eastTop = east.position + Vector3.up * top;
+        Bounds house = default; float nearest = 25f;
+        foreach (Transform t in city)
+        {
+            if (!(t.name.StartsWith("Building") || t.name.StartsWith("House") || t.name == "Ev") || !TryBounds(t.gameObject, out var b)) continue;
+            float d = Vector3.Distance(b.ClosestPoint(eastTop), eastTop);
+            if (d < nearest) { nearest = d; house = b; }
+        }
+        if (nearest >= 25f) return;
+        Vector3 wall = house.ClosestPoint(eastTop);
+        wall.y = Mathf.Min(house.max.y - 0.6f, house.min.y + 4.5f);
+        Wire(wires, "Town link", eastTop, wall, material);
+    }
+
+    private static void ClearPlantsAround(Vector2 p, float radius)
+    {
+        if (!Groups.TryGetValue("Vegetation", out var vegetation)) return;
+        foreach (var plant in vegetation.GetComponentsInChildren<Transform>(true).Where(t => t.parent != null && t.parent.parent == vegetation).ToList())
+            if (plant != null && Vector2.Distance(new Vector2(plant.position.x, plant.position.z), p) < radius) Object.DestroyImmediate(plant.gameObject);
+    }
+
+    // Detail fixes that the in-place update applies to an existing scene; a fresh build makes the same things right
+    // where they are created.
+    private static void TidyScene(Scene scene, List<Collider> ground)
+    {
+        int rocks = ReplaceTileRocks(ground);
+        int houses = RemoveHousesInIndustry();
+        int benches = 0;
+        if (Groups.TryGetValue("City", out var city))
+            foreach (Transform bench in city)
+                if (bench.name == "Bench") { bench.rotation = FaceNearestRoad(new Vector2(bench.position.x, bench.position.z)); benches++; }
+        int ponds = 0;
+        foreach (var go in scene.GetRootGameObjects())
+            foreach (var source in go.GetComponentsInChildren<WeaponWaterSource>(true))
+            {
+                bool had = source.transform.Find("Pond visual") != null;
+                RoundPond(source);
+                if (!had && source.transform.Find("Pond visual") != null) ponds++;
+            }
+        if (Groups.TryGetValue("Energy", out var energy)) ConnectPowerLine(energy);
+        report.AppendLine("Toparlama: " + rocks + " uçurum/köprü parçası kayayla değişti, " + houses + " fabrikaya gömülü ev kaldırıldı, "
+            + benches + " bank yola döndürüldü, " + ponds + " kare gölet yuvarlandı, elektrik hattı türbine ve şehre bağlandı");
     }
 
     private static void BuildHud()

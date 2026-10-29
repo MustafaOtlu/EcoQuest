@@ -3,14 +3,15 @@ Zemin ızgarası: 135×135 köşe, hücre 1,5 m, oynanabilir alan 150×150 m
 Zemin: Unity Terrain yerine 16 parça alçak poligon mesh (köşe renkli, MeshCollider)
 Dönüş cebi: 2
 Kavşak: 9 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
-Yollar: 13 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 8 toprak patika, 2 dere; ızgara yok
-Bölge: Koruluk → Orman  17,3 °C, PM2.5 13 µg/m³ (AQI 57), CO₂ 460 ppm, ÇO 8,9 mg/L, organik madde %3,6
+Yollar: 13 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 6 toprak patika, 2 dere; ızgara yok
+Toparlama: 23 uçurum/köprü parçası kayayla değişti, 1 fabrikaya gömülü ev kaldırıldı, 6 bank yola döndürüldü, 1 kare gölet yuvarlandı, elektrik hattı türbine ve şehre bağlandı
 Bölge: Şehir Merkezi → Şehir  21,2 °C, PM2.5 27 µg/m³ (AQI 84), CO₂ 495 ppm, ÇO 7,6 mg/L, organik madde %3,7
-Bölge: Rüzgârlı Tepeler → Rüzgâr Tepeleri  15,8 °C, PM2.5 10 µg/m³ (AQI 52), CO₂ 445 ppm, ÇO 9,1 mg/L, organik madde %4,6
-Bölge: Sanayi Bölgesi → Fabrikalar  22,3 °C, PM2.5 82 µg/m³ (AQI 169), CO₂ 570 ppm, ÇO 4,7 mg/L, organik madde %1,7
+Bölge: Doğu Gölü → Fabrika Gölü  20,3 °C, PM2.5 29 µg/m³ (AQI 89), CO₂ 480 ppm, ÇO 3,8 mg/L, organik madde %2,9
 Bölge: Batı Gölü → Balık Gölü  18,6 °C, PM2.5 8 µg/m³ (AQI 43), CO₂ 440 ppm, ÇO 8,9 mg/L, organik madde %4,6
+Bölge: Koruluk → Orman  17,3 °C, PM2.5 13 µg/m³ (AQI 57), CO₂ 460 ppm, ÇO 8,9 mg/L, organik madde %3,6
 Bölge: Buzul Bölgesi → Buzul Dağı  -2,5 °C, PM2.5 5 µg/m³ (AQI 30), CO₂ 440 ppm, ÇO 9,4 mg/L, organik madde %5,0
 Bölge: Güneşli Çayır → Güneş Ovası  20,9 °C, PM2.5 9 µg/m³ (AQI 50), CO₂ 450 ppm, ÇO 8,9 mg/L, organik madde %4,3
-Bölge: Doğu Gölü → Fabrika Gölü  20,3 °C, PM2.5 29 µg/m³ (AQI 89), CO₂ 480 ppm, ÇO 3,8 mg/L, organik madde %2,9
+Bölge: Rüzgârlı Tepeler → Rüzgâr Tepeleri  15,8 °C, PM2.5 10 µg/m³ (AQI 52), CO₂ 445 ppm, ÇO 9,1 mg/L, organik madde %4,6
+Bölge: Sanayi Bölgesi → Fabrikalar  22,3 °C, PM2.5 82 µg/m³ (AQI 169), CO₂ 570 ppm, ÇO 4,7 mg/L, organik madde %1,7
 Ad değişikliği: 0 tabela/işaret metni
 Yola denk gelen bitki: 0 kaldırıldı; zemini değişen nesne: 0 yeniden oturtuldu
