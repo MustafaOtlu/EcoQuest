@@ -422,7 +422,7 @@ public sealed class EcoProjects : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!EcoUI.ForeignWindowOpen && !EcoWorldHUD.OverlayOpen && Time.unscaledTime < HintUntil && Camera.main != null)
+        if (!EcoUI.WorldCovered && Time.unscaledTime < HintUntil && Camera.main != null)
         {
             Vector3 point = Camera.main.WorldToScreenPoint(HintPosition + Vector3.up * 3f);
             if (point.z > 0)

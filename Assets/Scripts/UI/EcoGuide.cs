@@ -17,7 +17,7 @@ public sealed class EcoGuide : MonoBehaviour
     private void OnGUI()
     {
         if (Event.current.type != EventType.Repaint || Target == null) return;
-        if (PlayerController.Paused || EcoUI.ForeignWindowOpen || EcoWorldHUD.OverlayOpen || EcoUI.Mode == EcoUI.HudMode.Hidden) return;
+        if (PlayerController.Paused || EcoUI.WorldCovered || EcoUI.Mode == EcoUI.HudMode.Hidden) return;
         var cam = Camera.main;
         if (cam == null) return;
         if (player == null) { var p = FindFirstObjectByType<PlayerController>(); if (p == null) return; player = p.transform; }

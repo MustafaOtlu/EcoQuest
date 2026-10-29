@@ -128,6 +128,10 @@ public static class EcoUI
         }
     }
 
+    /// <summary>True while any window covers the world (menus, market, map, quest board): world-anchored markers and
+    /// labels hide so they never draw over it.</summary>
+    public static bool WorldCovered => ForeignWindowOpen || EcoUIFlow.WorldBlocked || EcoMarketUI.IsOpen || EcoWorldHUD.OverlayOpen;
+
     // ------------------------------------------------------------------ canvas
 
     public static Canvas CreateCanvas(string name, int order, out CanvasScaler scaler)
