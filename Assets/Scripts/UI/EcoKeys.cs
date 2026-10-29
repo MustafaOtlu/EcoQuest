@@ -6,14 +6,14 @@ using UnityEngine.InputSystem;
 // EcoKeys.Pressed; WASD and sprint are remapped on the PlayerController input actions (binding overrides).
 public static class EcoKeys
 {
-    public enum Action { MoveUp, MoveDown, MoveLeft, MoveRight, Sprint, Interact, Mode, Rotate, Build, Orders, Journal, Skills, Map, Finale, Upgrade, Toggle, Dismantle, Settings, QuickSave, QuickLoad }
+    public enum Action { MoveUp, MoveDown, MoveLeft, MoveRight, Sprint, Interact, Mode, Rotate, Build, Orders, Journal, Skills, Map, Finale, Upgrade, Toggle, Dismantle, Settings, QuickSave, QuickLoad, Quests }
     private static readonly Key[] Defaults =
     {
-        Key.W, Key.S, Key.A, Key.D, Key.LeftShift, Key.E, Key.Q, Key.R, Key.B, Key.O, Key.J, Key.K, Key.M, Key.F, Key.U, Key.T, Key.X, Key.F2, Key.F5, Key.F9,
+        Key.W, Key.S, Key.A, Key.D, Key.LeftShift, Key.E, Key.Q, Key.R, Key.B, Key.O, Key.J, Key.K, Key.M, Key.F, Key.U, Key.T, Key.X, Key.F2, Key.F5, Key.F9, Key.G,
     };
     public static readonly string[] Names =
     {
-        "Yürü ileri", "Yürü geri", "Yürü sol", "Yürü sağ", "Koş", "Etkileşim / topla", "Mod değiştir", "Döndür / ikincil", "İnşa modu", "Siparişler", "Proje günlüğü", "Uzmanlık", "Harita", "Final terminali", "Yükselt", "Aç/kapat", "Söküm", "Ses ayarı", "Hızlı kaydet", "Hızlı yükle",
+        "Yürü ileri", "Yürü geri", "Yürü sol", "Yürü sağ", "Koş", "Etkileşim / topla", "Mod değiştir", "Döndür / ikincil", "İnşa modu", "Siparişler", "Proje günlüğü", "Uzmanlık", "Harita", "Final terminali", "Yükselt", "Aç/kapat", "Söküm", "Ses ayarı", "Hızlı kaydet", "Hızlı yükle", "Görev panosu",
     };
     private static Key[] keys;
     private static bool loadedFire, holdToggle, latch;

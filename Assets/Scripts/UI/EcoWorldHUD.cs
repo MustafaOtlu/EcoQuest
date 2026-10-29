@@ -9,7 +9,8 @@ using UnityEngine.UI;
 //  - a zoomed mini map that follows the player (north up) with the main points of interest,
 //  - the [M] world map: zoom (wheel), pan (drag), region outlines and weather/wind symbols, points of interest and an
 //    information card for whatever the mouse is over (state with real readings, climate, live tasks). Click pins a region.
-//  - the quick-action column (map, journal, build, skills, settings, help, HUD mode), the [F1] controls sheet,
+//  - the [G] quest board: every open job grouped by region, easy → hard; a click tracks one for the objective arrow,
+//  - the quick-action column (map, quests, journal, build, skills, settings, help, HUD mode), the [F1] controls sheet,
 //    the region banner and the intro title. [H] cycles the HUD between Tam, Sade and Gizli.
 [DefaultExecutionOrder(45)]
 public sealed class EcoWorldHUD : MonoBehaviour
@@ -28,6 +29,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
     public static float BannerBottom { get; private set; }
     private float bannerBottom;
     public static bool MapOpen { get; private set; }
+    /// <summary>The world map or the quest board covers the screen: world markers and floating cards stay hidden.</summary>
+    public static bool OverlayOpen => MapOpen || BoardOpen;
 
     private const float MiniWindow = 56f;  // metres shown across the corner map
     private static readonly string[] RowNames = { "Hava kalitesi", "Su kalitesi", "Toprak kalitesi", "Karbon yükü", "Biyoçeşitlilik", "Ekosistem sağlığı" };
@@ -113,6 +116,17 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private Text climateHeader, tasksHeader;
     private readonly Image[] climateIcon = new Image[4]; private readonly Text[] climateText = new Text[4];
     private readonly Image[] taskIcon = new Image[7], taskFill = new Image[7]; private readonly RectTransform[] taskTrack = new RectTransform[7]; private readonly Text[] taskText = new Text[7];
+    private readonly Image[] taskHit = new Image[7]; private readonly EcoQuestBoard.Quest[] taskQuest = new EcoQuestBoard.Quest[7];
+
+    // Quest board
+    public static bool BoardOpen { get; private set; }
+    private readonly EcoUI.HudPanel boardOwner = new EcoUI.HudPanel();
+    private RectTransform boardRoot, boardCard, boardViewport, boardContent;
+    private Text boardHint, boardEmpty;
+    private float boardRefreshAt;
+    private sealed class BoardRow { public RectTransform root, track; public Image bg, icon, chip, fill; public Text chipText, title, detail, action; public EcoQuestBoard.Quest quest; }
+    private readonly List<BoardRow> boardRows = new List<BoardRow>();
+    private readonly List<Text> boardHeaders = new List<Text>();
 
     private void Start()
     {
@@ -126,6 +140,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         BuildActions();
         BuildHelp();
         BuildBigMap();
+        BuildBoard();
         BuildIntro();
         foreach (var root in new[] { envCard.root, mapCard.root, actions, banner, help, intro })
             EcoUI.RegisterWorldLabelObstacle(root);
@@ -141,7 +156,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.LayoutChanged -= MarkDirty;
         if (MapOpen) EcoUIFlow.SetPanel(this, false);
         if (helpOpen) EcoUIFlow.SetPanel(helpOwner, false);
-        MapOpen = false;
+        if (BoardOpen) EcoUIFlow.SetPanel(boardOwner, false);
+        MapOpen = false; BoardOpen = false;
         if (canvas != null) Destroy(canvas.gameObject);
         if (overlay != null) Destroy(overlay.gameObject);
     }
@@ -201,6 +217,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         UpdateMiniMap();
         UpdateBanner();
         if (MapOpen) UpdateBigMap();
+        if (BoardOpen && Time.unscaledTime >= boardRefreshAt) { boardRefreshAt = Time.unscaledTime + 0.5f; RefreshBoard(); }
     }
 
     private void HandleKeys()
@@ -209,7 +226,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (keyboard == null) return;
         bool typing = PlayerController.Paused;
         if (!typing && EcoKeys.Pressed(EcoKeys.Action.Map)) SetMap(!MapOpen);
-        if (keyboard.escapeKey.wasPressedThisFrame) { if (MapOpen) { EcoUIFlow.ConsumeEscape(); SetMap(false); } else if (helpOpen) { EcoUIFlow.ConsumeEscape(); SetHelp(false); } }
+        if (!typing && EcoKeys.Pressed(EcoKeys.Action.Quests)) SetBoard(!BoardOpen);
+        if (keyboard.escapeKey.wasPressedThisFrame)
+        {
+            if (MapOpen) { EcoUIFlow.ConsumeEscape(); SetMap(false); }
+            else if (BoardOpen) { EcoUIFlow.ConsumeEscape(); SetBoard(false); }
+            else if (helpOpen) { EcoUIFlow.ConsumeEscape(); SetHelp(false); }
+        }
         if (!typing && keyboard.f1Key.wasPressedThisFrame) SetHelp(!helpOpen);
         if (!typing && keyboard.hKey.wasPressedThisFrame && !MapOpen) CycleHud();
     }
@@ -495,6 +518,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     {
         actions = EcoUI.Rect("Quick actions", canvas.transform, Vector2.zero, Vector2.zero);
         AddAction("map", "ui_map", EcoKeys.Label(EcoKeys.Action.Map), "Dünya haritası", () => SetMap(!MapOpen));
+        AddAction("quests", "poi_quest", EcoKeys.Label(EcoKeys.Action.Quests), "Görev panosu", () => SetBoard(!BoardOpen));
         AddAction("journal", "ui_journal", EcoKeys.Label(EcoKeys.Action.Journal), "Proje günlüğü", () => { var p = EcoProjects.Current; if (p != null) p.SetOpen(!p.PanelOpen); });
         AddAction("build", "ui_build", EcoKeys.Label(EcoKeys.Action.Build), "İnşa modu", () => { if (weapons != null && weapons.Builder != null) weapons.Builder.SetBuildMode(!weapons.Builder.IsBuilding); });
         AddAction("skills", "ui_skills", EcoKeys.Label(EcoKeys.Action.Skills), "Uzmanlık", () => { var s = FindFirstObjectByType<EcoSpecialization>(); if (s != null) s.SetOpen(!s.PanelOpen); });
@@ -540,7 +564,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void BuildHelp()
     {
         var card = EcoUI.Dress(EcoUI.Panel("Help", overlay.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface));
-        help = card.rectTransform; help.sizeDelta = new Vector2(780f, 540f);
+        help = card.rectTransform; help.sizeDelta = new Vector2(780f, 590f);
         var icon = EcoUI.Icon("Icon", help, "ui_help", new Vector2(0, 1), new Vector2(0, 1), 34f); EcoUI.LayoutIcon(icon, new Vector2(22f, -18f), 34f);
         var title = EcoUI.Label("Title", help, "KONTROLLER", 22, TextAnchor.MiddleLeft, EcoUI.Accent, true); EcoUI.Layout(title, new Vector2(66f, -22f), new Vector2(400f, 28f));
         var sub = EcoUI.Label("Sub", help, "Tuşlar Ayarlar > Tuş atamaları'ndan değiştirilebilir. Paneller açıkken dünya %10 hızda akar.", 13, TextAnchor.MiddleLeft, EcoUI.Muted);
@@ -558,6 +582,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             ("ui_orders", EcoKeys.Label(EcoKeys.Action.Orders), "Siparişler (pazarın yanında)"), ("poi_finale", EcoKeys.Label(EcoKeys.Action.Finale), "Final terminali (buzul istasyonu)"),
             ("ui_gear", EcoKeys.Label(EcoKeys.Action.Settings), "Ses ayarları"), ("calendar", "F5 / F9", "Hızlı kaydet / yükle"),
             ("ui_hud", "H", "Arayüz: Tam · Sade · Gizli"), ("ui_pause", "Esc", "Paneli kapat / duraklat"),
+            ("poi_quest", EcoKeys.Label(EcoKeys.Action.Quests), "Görev panosu: görev seç, ok yol gösterir"),
         };
         for (int i = 0; i < rows.Length; i++)
         {
@@ -577,6 +602,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void SetHelp(bool open)
     {
         if (open && MapOpen) SetMap(false);
+        if (open && BoardOpen) SetBoard(false);
         helpOpen = open; help.gameObject.SetActive(open);
         EcoUIFlow.SetPanel(helpOwner, open);
     }
@@ -647,18 +673,24 @@ public sealed class EcoWorldHUD : MonoBehaviour
             climateIcon[i] = EcoUI.Icon("Climate icon", infoCard, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 26f);
             climateText[i] = EcoUI.Label("Climate text", infoCard, "", 12, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         }
-        tasksHeader = EcoUI.Label("Tasks", infoCard, "GÖREVLER VE DURUM", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
+        tasksHeader = EcoUI.Label("Tasks", infoCard, "GÖREVLER · KOLAYDAN ZORA · TIKLA: TAKİP ET", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
         for (int i = 0; i < taskIcon.Length; i++)
         {
             taskIcon[i] = EcoUI.Icon("Task icon", infoCard, "poi_project", new Vector2(0, 1), new Vector2(0, 1), 22f);
             taskText[i] = EcoUI.Label("Task text", infoCard, "", 13, TextAnchor.UpperLeft, EcoUI.Ink);
             taskFill[i] = EcoUI.Meter("Task meter", infoCard, out taskTrack[i]);
+            taskHit[i] = EcoUI.Panel("Task hit", infoCard, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0f));
+            int row = i;
+            var button = taskHit[i].gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
+            button.onClick.AddListener(() => { if (taskQuest[row] != null) { EcoQuestBoard.Toggle(taskQuest[row]); mapRefreshAt = 0f; } });
+            EcoUI.AddTooltip(taskHit[i].gameObject, "Tıkla: bu görevi takip et (ok yol gösterir) · tekrar tıkla: bırak");
         }
     }
 
     public void SetMap(bool open)
     {
         if (open && helpOpen) SetHelp(false);
+        if (open && BoardOpen) SetBoard(false);
         MapOpen = open;
         bigRoot.gameObject.SetActive(open);
         EcoUIFlow.SetPanel(this, open);
@@ -876,6 +908,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
         foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
             if (enemy != null && enemy.Health > 0f && enemy.State != EnemyBrain.Behaviour.Dead)
                 pois.Add(new Poi { position = enemy.transform.position, icon = "poi_enemy", title = "Çevresel tehdit", detail = "Türüne uygun araçla müdahale et.", size = 20f });
+        var tracked = EcoQuestBoard.Tracked(player.position);
+        if (tracked != null && tracked.target.HasValue)
+            pois.Add(new Poi { position = tracked.target.Value, icon = "poi_quest", title = "Takip edilen görev · " + tracked.title, detail = tracked.detail, size = 34f, pulse = true });
     }
 
     // ------------------------------------------------------------------ info card
@@ -946,34 +981,20 @@ public sealed class EcoWorldHUD : MonoBehaviour
         }
         y -= 40f;
 
-        // Live tasks for this region.
-        var tasks = new List<(string icon, string text, float progress)>();
+        // This region's quests from the quest board, easy first and harder below; a click tracks one. Finished projects
+        // and live readings (fish, station) follow as plain status lines.
+        var tasks = new List<(string icon, string text, float progress, EcoQuestBoard.Quest quest)>();
+        foreach (var q in EcoQuestBoard.For(r, player.position).OrderBy(q => q.level))
+            tasks.Add((q.icon, LevelTag(q.level) + "  <b>" + q.title + "</b>" + (EcoQuestBoard.IsTracked(q) ? "  <color=#" + EcoUI.Hex(EcoUI.Accent) + ">· takipte</color>" : "") + "\n" + q.detail, q.progress, q));
         var projects = EcoProjects.Current;
-        if (info != null && info.projectIndex >= 0 && projects != null && info.projectIndex < projects.All.Count)
-        {
-            var p = projects.All[info.projectIndex];
-            tasks.Add((p.done ? "ui_check" : "poi_project", "<b>" + p.name + "</b>  " + (p.done ? "<color=#" + EcoUI.Hex(EcoUI.Accent) + ">tamamlandı</color>" : "") + "\n" + (p.done ? "Başarı korunuyor" : p.status),
-                p.done ? 1f : p.held / EcoProjects.VerifySeconds));
-        }
-        int trash = 0, fires = 0, enemies = 0, thirsty = 0, factories = 0, filtered = 0;
-        foreach (var t in FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None)) if (r.Contains(t.transform.position)) trash++;
-        foreach (var f in FindObjectsByType<EcoFire>(FindObjectsSortMode.None)) if (f.Burning && r.Contains(f.transform.position)) fires++;
-        foreach (var e in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None)) if (e != null && e.Health > 0f && e.State != EnemyBrain.Behaviour.Dead && r.Contains(e.transform.position)) enemies++;
-        foreach (var c in FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None)) if (c.NeedsWater && r.Contains(c.transform.position)) thirsty++;
-        foreach (var f in FindObjectsByType<EcoFactory>(FindObjectsSortMode.None)) if (r.Contains(f.transform.position)) { factories++; if (f.Filtered) filtered++; }
-        if (fires > 0) tasks.Add(("poi_fire", fires + " aktif yangın · vakumla söndür", -1f));
-        if (enemies > 0) tasks.Add(("poi_enemy", enemies + " çevresel tehdit bölgede", -1f));
-        if (factories > 0) tasks.Add(("poi_factory", "Fabrika filtresi " + filtered + " / " + factories, filtered / (float)factories));
-        foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
-            if (r.Contains(inlet.transform.position)) tasks.Add((inlet.Remediated ? "ui_check" : "poi_inlet", inlet.Remediated ? "Kirletici giriş kapatıldı" : "Kirletici giriş açık · [E] ile kapat", -1f));
-        if (thirsty > 0) tasks.Add(("seed", thirsty + " fidan sulanmayı bekliyor", -1f));
-        if (trash > 0) tasks.Add(("scrap", trash + " atık toplanabilir", -1f));
+        if (info != null && info.projectIndex >= 0 && projects != null && info.projectIndex < projects.All.Count && projects.All[info.projectIndex].done)
+            tasks.Add(("ui_check", "<b>" + projects.All[info.projectIndex].name + "</b>  <color=#" + EcoUI.Hex(EcoUI.Accent) + ">tamamlandı</color>\nBaşarı korunuyor", 1f, null));
         foreach (var spot in FindObjectsByType<EcoFishingSpot>(FindObjectsSortMode.None))
-            if (r.Contains(spot.transform.position)) { tasks.Add((r.waterPollution < 35f ? "fish" : "fish_dirty", "Balık nüfusu " + Mathf.FloorToInt(spot.population) + " / 12" + (spot.population <= 4f ? " · av kapalı" : ""), spot.population / 12f)); break; }
+            if (r.Contains(spot.transform.position)) { tasks.Add((r.waterPollution < 35f ? "fish" : "fish_dirty", "Balık nüfusu " + Mathf.FloorToInt(spot.population) + " / 12" + (spot.population <= 4f ? " · av kapalı" : ""), spot.population / 12f, null)); break; }
         var station = EcoGlacierStation.Current;
-        if (station != null && r.Contains(station.transform.position))
-            tasks.Add(("poi_station", station.Active ? "İstasyon etkin · karbon " + station.AverageCarbon.ToString("0.0") + " / 20" : "İzleme istasyonu kapalı · [E] ile etkinleştir", -1f));
-        if (tasks.Count == 0) tasks.Add(("ui_check", "Acil iş yok. Bölgeyi korumaya devam et.", -1f));
+        if (station != null && station.Active && r.Contains(station.transform.position))
+            tasks.Add(("poi_station", "İstasyon etkin · karbon " + station.AverageCarbon.ToString("0.0") + " / 20", -1f, null));
+        if (tasks.Count == 0) tasks.Add(("ui_check", "Açık görev yok. Bölgeyi korumaya devam et.", -1f, null));
 
         EcoUI.Layout(tasksHeader, new Vector2(16f, y), new Vector2(w - 32f, 16f));
         y -= 22f;
@@ -981,7 +1002,10 @@ public sealed class EcoWorldHUD : MonoBehaviour
         {
             bool used = i < tasks.Count;
             taskIcon[i].gameObject.SetActive(used); taskText[i].gameObject.SetActive(used); taskTrack[i].gameObject.SetActive(used && tasks[i].progress >= 0f);
+            taskQuest[i] = used ? tasks[i].quest : null;
+            taskHit[i].gameObject.SetActive(used && tasks[i].quest != null);
             if (!used) continue;
+            float rowTop = y;
             EcoUI.SetIcon(taskIcon[i], tasks[i].icon);
             EcoUI.LayoutIcon(taskIcon[i], new Vector2(16f, y), 22f);
             taskText[i].text = tasks[i].text;
@@ -996,7 +1020,139 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 y -= 10f;
             }
             y -= 4f;
+            if (tasks[i].quest != null)
+            {
+                EcoUI.Place(taskHit[i].rectTransform, new Vector2(10f, rowTop + 2f), new Vector2(w - 20f, rowTop - y));
+                taskHit[i].color = EcoQuestBoard.IsTracked(tasks[i].quest) ? new Color(EcoUI.Accent.r, EcoUI.Accent.g, EcoUI.Accent.b, 0.14f) : new Color(1f, 1f, 1f, 0f);
+                taskHit[i].transform.SetAsFirstSibling(); // behind the text, still catching the click
+            }
         }
+    }
+
+    private static string LevelTag(int level) =>
+        "<color=#" + EcoUI.Hex(LevelColor(level)) + "><b>" + EcoUI.Upper(EcoQuestBoard.LevelNames[Mathf.Clamp(level, 1, 3)]) + "</b></color>";
+    private static Color LevelColor(int level) => level <= 1 ? EcoUI.Accent : level == 2 ? EcoUI.Amber : EcoUI.Coral;
+
+    // ================================================================== quest board
+
+    private void BuildBoard()
+    {
+        boardRoot = EcoUI.Rect("Quest board", overlay.transform, Vector2.zero, Vector2.zero); EcoUI.Stretch(boardRoot);
+        var dim = EcoUI.Panel("Dim", boardRoot, Vector2.zero, Vector2.zero, new Color(0f, 0.02f, 0.03f, 0.72f));
+        dim.sprite = null; dim.type = Image.Type.Simple; EcoUI.Stretch(dim.rectTransform);
+        boardCard = EcoUI.Dress(EcoUI.Panel("Card", boardRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface)).rectTransform;
+        var icon = EcoUI.Icon("Icon", boardCard, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 32f); EcoUI.LayoutIcon(icon, new Vector2(18f, -14f), 32f);
+        var title = EcoUI.Label("Title", boardCard, "GÖREV PANOSU", 20, TextAnchor.MiddleLeft, EcoUI.Accent, true); EcoUI.Layout(title, new Vector2(58f, -16f), new Vector2(320f, 26f));
+        boardHint = EcoUI.Label("Hint", boardCard, "", 12, TextAnchor.MiddleLeft, EcoUI.Muted);
+        var close = EcoUI.IconButton("Close", boardCard, "ui_close", 30f, () => SetBoard(false), "Kapat " + EcoKeys.Tag(EcoKeys.Action.Quests) + " / [Esc]");
+        var cr = (RectTransform)close.transform; cr.anchorMin = cr.anchorMax = new Vector2(1, 1); cr.pivot = new Vector2(1, 1); cr.anchoredPosition = new Vector2(-12f, -12f);
+        var viewport = EcoUI.Panel("Viewport", boardCard, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0f));
+        boardViewport = viewport.rectTransform; viewport.gameObject.AddComponent<RectMask2D>();
+        boardContent = EcoUI.Rect("Content", boardViewport, new Vector2(0, 1), new Vector2(0, 1));
+        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+        scroll.viewport = boardViewport; scroll.content = boardContent; scroll.horizontal = false; scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 36f; scroll.inertia = false;
+        boardEmpty = EcoUI.Label("Empty", boardCard, "Şu an açık görev yok. Bölgeler temiz; korumaya devam et.", 15, TextAnchor.MiddleCenter, EcoUI.Muted);
+        boardRoot.gameObject.SetActive(false);
+    }
+
+    public void SetBoard(bool open)
+    {
+        if (open && MapOpen) SetMap(false);
+        if (open && helpOpen) SetHelp(false);
+        BoardOpen = open;
+        boardRoot.gameObject.SetActive(open);
+        EcoUIFlow.SetPanel(boardOwner, open);
+        if (open) { boardRefreshAt = 0f; boardContent.anchoredPosition = Vector2.zero; }
+        else EcoUI.HideTooltip(this);
+    }
+
+    private BoardRow Row(int index)
+    {
+        while (boardRows.Count <= index)
+        {
+            var row = new BoardRow();
+            row.bg = EcoUI.Panel("Quest", boardContent, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised, true, EcoUI.Rounded);
+            row.root = row.bg.rectTransform;
+            var button = row.bg.gameObject.AddComponent<Button>();
+            var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(0.9f, 0.96f, 0.86f); colors.pressedColor = new Color(0.8f, 0.86f, 0.78f);
+            button.colors = colors; button.targetGraphic = row.bg;
+            button.onClick.AddListener(() => { if (row.quest == null) return; EcoQuestBoard.Toggle(row.quest); boardRefreshAt = 0f; });
+            row.icon = EcoUI.Icon("Icon", row.root, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 32f);
+            row.chip = EcoUI.Panel("Level", row.root, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent, false, EcoUI.Rounded);
+            row.chipText = EcoUI.Label("Level text", row.chip.transform, "", 11, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
+            row.title = EcoUI.Label("Title", row.root, "", 15, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+            row.detail = EcoUI.Label("Detail", row.root, "", 12, TextAnchor.MiddleLeft, EcoUI.Muted);
+            row.action = EcoUI.Label("Action", row.root, "", 12, TextAnchor.MiddleRight, EcoUI.Accent, true);
+            row.fill = EcoUI.Meter("Progress", row.root, out row.track);
+            boardRows.Add(row);
+        }
+        return boardRows[index];
+    }
+
+    private Text Header(int index)
+    {
+        while (boardHeaders.Count <= index) boardHeaders.Add(EcoUI.Label("Region", boardContent, "", 13, TextAnchor.MiddleLeft, EcoUI.Accent, true));
+        return boardHeaders[index];
+    }
+
+    private void RefreshBoard()
+    {
+        if (!FindPlayer()) return;
+        var size = ((RectTransform)overlay.transform).rect.size;
+        float cw = Mathf.Min(800f, size.x - 32f), ch = Mathf.Min(660f, size.y - 48f);
+        boardCard.sizeDelta = new Vector2(cw, ch);
+        EcoUI.Place(boardViewport, new Vector2(16f, -74f), new Vector2(cw - 32f, ch - 90f));
+        float w = cw - 32f;
+        var tracked = EcoQuestBoard.Tracked(player.position);
+        boardHint.text = (tracked != null ? "Takipte: <b>" + tracked.title + "</b>  ·  " : "") + "Bir göreve tıkla, ok yol göstersin · tekrar tıkla: bırak  ·  "
+            + EcoKeys.Tag(EcoKeys.Action.Quests) + " / [Esc] kapat";
+        EcoUI.Layout(boardHint, new Vector2(58f, -44f), new Vector2(cw - 110f, 18f));
+
+        var quests = EcoQuestBoard.All(player.position);
+        var here = EcoRegion.At(player.position);
+        float y = 0f; int rows = 0, headers = 0; EcoRegion last = null;
+        foreach (var q in quests)
+        {
+            if (q.region != last)
+            {
+                last = q.region;
+                if (headers > 0) y -= 10f;
+                var header = Header(headers++); header.gameObject.SetActive(true);
+                int count = quests.Count(o => o.region == q.region);
+                header.text = EcoUI.Upper(q.region.regionName) + "   <color=#" + EcoUI.Hex(EcoUI.Muted) + ">" + count + " görev" + (q.region == here ? " · buradasın" : "") + "</color>";
+                EcoUI.Layout(header, new Vector2(4f, y), new Vector2(w - 8f, 22f));
+                y -= 26f;
+            }
+            var row = Row(rows++); row.quest = q; row.root.gameObject.SetActive(true);
+            bool on = EcoQuestBoard.IsTracked(q);
+            EcoUI.Place(row.root, new Vector2(0f, y), new Vector2(w, 56f));
+            row.bg.color = on ? EcoUI.Selected : EcoUI.SurfaceRaised;
+            EcoUI.SetIcon(row.icon, q.icon); EcoUI.LayoutIcon(row.icon, new Vector2(10f, -12f), 32f);
+            row.chip.color = LevelColor(q.level);
+            EcoUI.Place(row.chip.rectTransform, new Vector2(52f, -8f), new Vector2(54f, 18f));
+            row.chipText.text = EcoUI.Upper(EcoQuestBoard.LevelNames[Mathf.Clamp(q.level, 1, 3)]);
+            EcoUI.Layout(row.chipText, Vector2.zero, new Vector2(54f, 18f));
+            row.title.text = q.title; row.title.color = on ? EcoUI.PaperInk : EcoUI.Ink;
+            EcoUI.Layout(row.title, new Vector2(114f, -6f), new Vector2(w - 114f - 136f, 22f));
+            row.detail.text = q.detail; row.detail.color = on ? new Color(0.86f, 0.9f, 0.82f) : EcoUI.Muted;
+            EcoUI.Layout(row.detail, new Vector2(52f, -31f), new Vector2(w - 52f - 136f, 20f));
+            row.action.text = on ? "TAKİPTE · bırak" : "Takip et ›"; row.action.color = on ? EcoUI.PaperInk : EcoUI.Accent;
+            EcoUI.Layout(row.action, new Vector2(w - 130f, -10f), new Vector2(118f, 20f));
+            bool meter = q.progress >= 0f;
+            row.track.gameObject.SetActive(meter);
+            if (meter)
+            {
+                EcoUI.Place(row.track, new Vector2(w - 130f, -38f), new Vector2(118f, 5f));
+                EcoUI.SetMeter(row.fill, row.track, q.progress, q.progress >= 1f ? EcoUI.Accent : EcoUI.Amber);
+            }
+            y -= 62f;
+        }
+        for (int i = rows; i < boardRows.Count; i++) { boardRows[i].quest = null; boardRows[i].root.gameObject.SetActive(false); }
+        for (int i = headers; i < boardHeaders.Count; i++) boardHeaders[i].gameObject.SetActive(false);
+        boardContent.sizeDelta = new Vector2(w, -y + 8f);
+        boardEmpty.gameObject.SetActive(quests.Count == 0);
+        EcoUI.Layout(boardEmpty, new Vector2(16f, -ch * 0.5f + 20f), new Vector2(cw - 32f, 40f));
     }
 
     // ================================================================== layout

@@ -63,7 +63,7 @@ public static class WorldLabelLayout
             viewport = Rect.MinMaxRect(Mathf.Max(viewport.xMin, safe.xMin), Mathf.Max(viewport.yMin, safe.yMin),
                 Mathf.Min(viewport.xMax, safe.xMax), Mathf.Min(viewport.yMax, safe.yMax));
         float gap = 10f * Mathf.Clamp(camera.pixelHeight / 900f, 0.85f, 1.25f);
-        bool blocked = respectMenus && (EcoUIFlow.WorldBlocked || EcoUI.ForeignWindowOpen || EcoMarketUI.IsOpen || EcoWorldHUD.MapOpen);
+        bool blocked = respectMenus && (EcoUIFlow.WorldBlocked || EcoUI.ForeignWindowOpen || EcoMarketUI.IsOpen || EcoWorldHUD.OverlayOpen);
         foreach (var label in source)
         {
             if (label == null || !label.isActiveAndEnabled) continue;

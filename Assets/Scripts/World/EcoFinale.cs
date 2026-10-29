@@ -297,7 +297,7 @@ public sealed class EcoFinale : MonoBehaviour
 
     private void OnGUI()
     {
-        if (EcoUI.ForeignWindowOpen || EcoWorldHUD.MapOpen) { CardBottomPixels = 0f; return; }
+        if (EcoUI.ForeignWindowOpen || EcoWorldHUD.OverlayOpen) { CardBottomPixels = 0f; return; }
         EcoTheme.Begin();
         if (big == null)
         {

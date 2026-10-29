@@ -435,6 +435,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         return best;
     }
 
+    private int seenFinished;
     private void RefreshObjective()
     {
         var enemies = FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None); int alive = 0;
@@ -447,9 +448,21 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // Each step says what to do and with which key; the guide marker (EcoGuide) shows where.
         Vector3? goal = null; string goalName = "";
         var finale = EcoFinale.Current; var readiness = EcoProjects.Current;
+        // A quest the player picked on the quest board leads the card and the arrow until its job is done.
+        var tracked = EcoQuestBoard.Tracked(here);
+        if (EcoQuestBoard.FinishedCount != seenFinished)
+        {
+            seenFinished = EcoQuestBoard.FinishedCount;
+            weapons?.ShowFeedback("GÖREV TAMAMLANDI • " + EcoQuestBoard.LastFinished + " · " + EcoKeys.Tag(EcoKeys.Action.Quests) + " ile yenisini seç");
+        }
         // GDD §12: the endgame state outranks the early-game guidance.
         if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
         else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
+        else if (tracked != null)
+        {
+            text = tracked.title + " · " + tracked.detail;
+            goal = tracked.target; goalName = tracked.title;
+        }
         else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness)
         {
             text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
@@ -498,7 +511,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             // GDD v4 Ö3/Ö5: the open project is shown while crops grow (the first one is charged at the base station before
             // sunset) and no longer waits for harvested food; the step names the key, or the missing material and its source.
             else if (open >= 0) text = projects.Step(open, out goal, out goalName);
-            else if (weapons.Food > 0) text = "Ekosistemi koru";
+            else if (weapons.Food > 0) text = "Ekosistemi koru · " + EcoKeys.Tag(EcoKeys.Action.Quests) + " görev panosundan bir iş seç";
             else
             {
                 text = "Bitkin büyüyor · bu sırada atıkları [1] vakumla topla";
