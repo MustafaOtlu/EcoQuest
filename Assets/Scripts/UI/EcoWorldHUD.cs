@@ -60,6 +60,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     // Environment card
     private EcoUI.Card envCard;
+    private EcoQuestSidebar questSidebar;
     private readonly Image[] rowIcons = new Image[7], rowFills = new Image[7];
     private readonly RectTransform[] rowTracks = new RectTransform[7];
     private readonly Text[] rowNames = new Text[7], rowValues = new Text[7];
@@ -135,6 +136,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         // The world map and the controls sheet sit above every HUD card (their dim covers the HUD).
         overlay = EcoUI.CreateCanvas("EcoWorld Map", 30, out overlayScaler);
         BuildEnvironmentCard();
+        questSidebar = new EcoQuestSidebar(canvas.transform);
         BuildMiniMap();
         BuildBanner();
         BuildActions();
@@ -158,6 +160,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (helpOpen) EcoUIFlow.SetPanel(helpOwner, false);
         if (BoardOpen) EcoUIFlow.SetPanel(boardOwner, false);
         MapOpen = false; BoardOpen = false;
+        questSidebar?.Dispose();
         if (canvas != null) Destroy(canvas.gameObject);
         if (overlay != null) Destroy(overlay.gameObject);
     }
@@ -175,6 +178,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         if (Mathf.Abs(laidOutDockWidth - EcoQuestHUD.DockWidth) > 0.5f || Mathf.Abs(laidOutDockTop - EcoQuestHUD.DockTop) > 0.5f) dirty = true;
         if (dirty) ApplyLayout();
         HandleKeys();
+        questSidebar?.SetVisible(!foreign && !OverlayOpen && !helpOpen && EcoUI.Mode != EcoUI.HudMode.Hidden);
         AnimateIntro();
         UpdateModeToast();
         if (!FindPlayer()) return;
@@ -188,6 +192,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         }
         var region = EcoRegion.At(player.position);
         if (region != current) { current = region; if (current != null) ShowBanner(current); }
+        questSidebar?.Refresh(current, player.position);
         if (Time.unscaledTime >= refreshAt)
         {
             refreshAt = Time.unscaledTime + 0.1f;
@@ -1292,6 +1297,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
         int actionRows = Mathf.CeilToInt(count / (float)columns);
         EcoUI.Place(actions, new Vector2(margin, aboveBelt ? EcoQuestHUD.DockTop + 8f : margin + 4f),
             new Vector2((columns - 1) * 44f + 42f, (actionRows - 1) * 44f + 36f));
+
+        // Local quests follow the actual environment-card height, including its collapsed state.
+        float questsTop = -envCard.root.anchoredPosition.y + envCard.root.rect.height + 10f;
+        float actionsTop = actions.anchoredPosition.y + actions.rect.height;
+        questSidebar?.SetVisible(!hidden && !OverlayOpen && !helpOpen && !EcoUI.ForeignWindowOpen && !EcoMarketUI.IsOpen);
+        questSidebar?.Layout(questsTop, leftWidth, Mathf.Max(0f, height - questsTop - actionsTop - 12f),
+            width, height, EcoQuestHUD.DockTop);
 
         // Mode toast.
         EcoUI.Place(modeToastBg.rectTransform, new Vector2(0f, EcoQuestHUD.DockTop + 12f), new Vector2(380f, 46f));

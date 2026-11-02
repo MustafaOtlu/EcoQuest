@@ -85,6 +85,9 @@ public static class EcoKeys
         get { if (!loadedFire) { loadedFire = true; holdToggle = PlayerPrefs.GetInt("EcoQuest.fireToggle", 0) == 1; } return holdToggle; }
         set { loadedFire = true; holdToggle = value; latch = false; PlayerPrefs.SetInt("EcoQuest.fireToggle", value ? 1 : 0); PlayerPrefs.Save(); }
     }
+    /// <summary>Stops latched tool use without treating the same click as another toggle.</summary>
+    public static void CancelFire() { latch = false; fireFrame = Time.frameCount; }
+
     /// <summary>True while the tool button counts as held: physically held, or latched on in toggle mode.</summary>
     public static bool FireHeld(Mouse mouse)
     {

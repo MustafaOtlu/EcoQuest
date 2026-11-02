@@ -13,6 +13,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     public GameObject[] modelPrefabs = new GameObject[4];
     public Material effectMaterial;
     public bool FlashlightOn => flashlight != null && flashlight.IsOn;
+    public bool AutomaticCombatActive => combatRequested && ToolAreaTargeting.Alive(combatTarget) && CanOperate;
     public float maximumEnergy = 100f, maximumWater = 100f;
     [field: SerializeField] public Tool Selected { get; private set; }
     [field: SerializeField] public VacuumMode Mode { get; private set; }
@@ -115,6 +116,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     public void BeginCharging(EcoChargingStation station)
     {
         if (!CanOperate || station == null) return;
+        CancelAutomaticCombat();
         ChargingStation = station; ResetProcessing(); Notify("Şarj bağlantısı kuruldu. Ayrılmak için E veya silahı kullan.");
     }
     public void StopCharging()
@@ -137,6 +139,12 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     private Transform owner;
     private PlayerVitals vitals;
     private Camera view;
+    private readonly ToolAreaTargeting areaTargeting = new ToolAreaTargeting();
+    private ToolAreaIndicator areaIndicator;
+    private EnemyBrain combatTarget;
+    private bool combatRequested;
+    private bool suppressManualUntilRelease;
+    private const float AreaHalfAngle = 35f;
     private int aimFrame = -1;
     private Vector3 aimDirection = Vector3.forward;
     // Visual effects and swept projectile collision share the actual held tool's muzzle.
@@ -156,7 +164,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (aimFrame == Time.frameCount) return;
         aimFrame = Time.frameCount;
         Vector3 direction = owner != null ? owner.forward : Vector3.forward;
-        if (owner != null && EcoIsoCamera.TryCursorPoint(owner, out var point))
+        Vector3 point;
+        if (TryGetAutoCombatAim(out point) || (owner != null && EcoIsoCamera.TryCursorPoint(owner, out point)))
         {
             Vector3 delta = point - AimOrigin;
             if (delta.sqrMagnitude > 0.04f) direction = delta.normalized;
@@ -221,6 +230,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         var fx = new GameObject("Weapon particles"); fx.transform.SetParent(transform, false);
         streamEffects = fx.AddComponent<WeaponVisualEffects>();
+        areaIndicator = ToolAreaIndicator.Create(owner);
     }
     private void FitModel(Transform model, float length)
     {
@@ -244,6 +254,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public void SelectTool(int index)
     {
+        CancelAutomaticCombat();
         if (index == (int)Tool.Hands)
         {
             Selected = Tool.Hands; holder.Unequip(); ResetProcessing(); Changed?.Invoke(); return;
@@ -255,6 +266,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public void CycleMode()
     {
+        CancelAutomaticCombat();
         if (Selected == Tool.Vacuum) Mode = (VacuumMode)(((int)Mode + 1) % 3);
         if (Selected == Tool.SeedGun) MetalMode = !MetalMode;
         ResetProcessing(); Changed?.Invoke();
@@ -263,8 +275,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         bool locked = Application.isFocused && !PlayerController.Paused;
         var mouse = Mouse.current;
-        if (!locked || EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) { ResetProcessing(); return; }
-        if (Builder != null && Builder.IsBuilding) { ResetProcessing(); return; }
+        if (mouse == null || !mouse.leftButton.isPressed) suppressManualUntilRelease = false;
+        if (!locked || EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering))
+        { CancelAutomaticCombat(); suppressManualUntilRelease = mouse != null && mouse.leftButton.isPressed; ResetProcessing(); if (areaIndicator != null) areaIndicator.Hide(); return; }
+        if (Builder != null && Builder.IsBuilding)
+        { CancelAutomaticCombat(); suppressManualUntilRelease = mouse != null && mouse.leftButton.isPressed; ResetProcessing(); if (areaIndicator != null) areaIndicator.Hide(); return; }
         var keyboard = Keyboard.current;
         if (keyboard != null)
         {
@@ -287,9 +302,26 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         // Mouse wheel zooms the isometric camera (GDD §3); it no longer cycles tools.
         // A press/release within one input update is still a shot. Never retain clicks from menus or focus loss.
-        bool firing = mouse != null && (EcoKeys.FireHeld(mouse) || mouse.leftButton.wasPressedThisFrame) && !EcoIsoCamera.PointerOverUI();
+        bool overUI = EcoIsoCamera.PointerOverUI();
+        bool consumed = false;
+        if (mouse != null && mouse.rightButton.wasPressedThisFrame)
+        { CancelAutomaticCombat(); suppressManualUntilRelease = mouse.leftButton.isPressed; ResetProcessing(); consumed = true; }
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame && !mouse.rightButton.wasPressedThisFrame)
+        {
+            if (overUI) { CancelAutomaticCombat(); suppressManualUntilRelease = true; consumed = true; }
+            else
+            {
+                bool combatTool = Selected == Tool.Vacuum || Selected == Tool.Recycler || (Selected == Tool.SeedGun && MetalMode);
+                var enemy = combatTool ? areaTargeting.EnemyAtCursor(owner, view, mouse.position.ReadValue(), PlayerMetalProjectile.Range) : null;
+                if (combatRequested) CancelAutomaticCombat();
+                if (enemy != null) { consumed = true; BeginAutomaticCombat(enemy); suppressManualUntilRelease = true; }
+            }
+        }
+        bool firing = !overUI && mouse != null && (combatRequested || (!consumed && !suppressManualUntilRelease
+            && (EcoKeys.FireHeld(mouse) || mouse.leftButton.wasPressedThisFrame)));
         if (firing && (Selected != Tool.Flashlight || mouse.leftButton.wasPressedThisFrame)) Use(Time.deltaTime);
         else { processing = null; progress = 0f; if (streamEffects != null) streamEffects.Stop(false); }
+        UpdateAreaPreview(firing);
         Changed?.Invoke();
     }
     public void Use(float deltaTime)
@@ -298,6 +330,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Builder != null && Builder.IsBuilding) return;
         if (Selected == Tool.Hands) return;
         StopCharging();
+        if (combatRequested) { UseAutomaticCombat(deltaTime); return; }
         if (Selected == Tool.Flashlight)
         {
             if (flashlight != null)
@@ -329,6 +362,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (dirtyWater) { clog += deltaTime * 0.1f; if (clog >= 1f) jamUntil = float.PositiveInfinity; }
         }
         float range = Selected == Tool.Recycler ? 5f : (Mode == VacuumMode.Water ? 6f : 5f) + Upgrades.VacuumRangeBonus;
+        ToolAreaTargeting.ResourcePick areaPick;
+        if ((Selected == Tool.Recycler || (Selected == Tool.Vacuum && Mode == VacuumMode.Collect))
+            && !CursorPrefersOtherAction(range)
+            && areaTargeting.TryResource(owner, AimOrigin, AimDir, range, CurrentAreaAngle, processing, AllowedRecyclerRank, out areaPick))
+        {
+            ShowStream(areaPick.point, true, (AimOrigin - areaPick.point).normalized, deltaTime, areaPick.collider);
+            ProcessResource(areaPick.resource, deltaTime); return;
+        }
         bool found = Aim(range, out var hit, Selected == Tool.Vacuum && Mode == VacuumMode.Collect ? Upgrades.CollectionRadius : 0);
         // A spray is a cone, not a laser: if the ray meets nothing the spray acts on (ground, water surface, a wall), the water/anti-vacuum stream bends to the nearest
         // enemy this mode affects within range and 25° of the cursor direction.
@@ -393,25 +434,147 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         var resource = hit.collider.GetComponentInParent<RecyclableResource>();
         if (resource != null && (Selected == Tool.Recycler || (Selected == Tool.Vacuum && Mode == VacuumMode.Collect)))
-        {
-            if (resource.requiredRecyclerRank > 0 && (Selected != Tool.Recycler || Upgrades.Rank(EcoEquipmentUpgrades.Upgrade.HeavyRecycling) < resource.requiredRecyclerRank))
-            { ResetProcessing(); Notify("Büyük atık • Geri dönüşüm cihazında işleme kademesi " + resource.requiredRecyclerRank + " gerekiyor."); return; }
-            if (processing != resource) { processing = resource; progress = 0f; }
-            progress += deltaTime * (Selected == Tool.Recycler ? Upgrades.RecyclingSpeed : 1);
-            if (progress >= (Selected == Tool.Recycler ? resource.processingSeconds : 0.4f) && resource.TryClaim())
-            {
-                int recoveredMetal = Mathf.Max(0, resource.metal), recoveredPlastic = Mathf.Max(0, resource.plastic), recoveredOrganic = Mathf.Max(0, resource.organic);
-                Pulse(WeaponVisualEffects.Burst.Pop, resource.transform.position + Vector3.up * 0.2f);
-                EcoRegion.At(resource.transform.position)?.AddPollution(0, 0, -(recoveredMetal + recoveredPlastic) * 0.3f, 0);
-                if (Selected == Tool.Recycler) AddProcessedResources(recoveredMetal, recoveredPlastic, recoveredOrganic);
-                else { CollectedMetalScrap += recoveredMetal; CollectedPlasticScrap += recoveredPlastic; CollectedOrganicWaste += recoveredOrganic; }
-                Notify(Selected == Tool.Recycler
-                    ? "Geri dönüştürüldü • +" + recoveredMetal + " metal • +" + recoveredPlastic + " plastik • " + recoveredOrganic + " organik"
-                    : "Ham kaynak toplandı • R ile işle");
-                ResetProcessing(); Changed?.Invoke();
-            }
-        }
+            ProcessResource(resource, deltaTime);
         else { processing = null; progress = 0; }
+    }
+    private void ProcessResource(RecyclableResource resource, float deltaTime)
+    {
+        if (resource == null || resource.Claimed || !resource.isActiveAndEnabled) { ResetProcessing(); return; }
+        if (resource.requiredRecyclerRank > 0 && (Selected != Tool.Recycler || Upgrades.Rank(EcoEquipmentUpgrades.Upgrade.HeavyRecycling) < resource.requiredRecyclerRank))
+        { ResetProcessing(); Notify("Büyük atık • Geri dönüşüm cihazında işleme kademesi " + resource.requiredRecyclerRank + " gerekiyor."); return; }
+        if (processing != resource) { processing = resource; progress = 0f; }
+        progress += deltaTime * (Selected == Tool.Recycler ? Upgrades.RecyclingSpeed : 1);
+        if (progress >= (Selected == Tool.Recycler ? resource.processingSeconds : 0.4f) && resource.TryClaim())
+        {
+            int recoveredMetal = Mathf.Max(0, resource.metal), recoveredPlastic = Mathf.Max(0, resource.plastic), recoveredOrganic = Mathf.Max(0, resource.organic);
+            Pulse(WeaponVisualEffects.Burst.Pop, resource.transform.position + Vector3.up * 0.2f);
+            EcoRegion.At(resource.transform.position)?.AddPollution(0, 0, -(recoveredMetal + recoveredPlastic) * 0.3f, 0);
+            if (Selected == Tool.Recycler) AddProcessedResources(recoveredMetal, recoveredPlastic, recoveredOrganic);
+            else { CollectedMetalScrap += recoveredMetal; CollectedPlasticScrap += recoveredPlastic; CollectedOrganicWaste += recoveredOrganic; }
+            Notify(Selected == Tool.Recycler
+                ? "Geri dönüştürüldü • +" + recoveredMetal + " metal • +" + recoveredPlastic + " plastik • " + recoveredOrganic + " organik"
+                : "Ham kaynak toplandı • R ile işle");
+            ResetProcessing(); Changed?.Invoke();
+        }
+    }
+
+    private float CurrentAreaAngle => Mathf.Min(42f, AreaHalfAngle + (Upgrades != null ? Upgrades.CollectionRadius * 8f : 0f));
+    private int AllowedRecyclerRank => Selected == Tool.Recycler && Upgrades != null ? Upgrades.Rank(EcoEquipmentUpgrades.Upgrade.HeavyRecycling) : 0;
+    private float ToolReach => Selected == Tool.SeedGun ? PlayerMetalProjectile.Range : Selected == Tool.Recycler ? 5f
+        : (Mode == VacuumMode.Water ? 6f : 5f) + (Upgrades != null ? Upgrades.VacuumRangeBonus : 0f);
+
+    public bool TryGetAutoCombatAim(out Vector3 point)
+    {
+        point = default;
+        if (!AutomaticCombatActive) return false;
+        point = ToolAreaTargeting.EnemyPoint(combatTarget); return true;
+    }
+
+    private void CancelAutomaticCombat(string reason = null)
+    {
+        bool wasActive = combatRequested;
+        combatRequested = false; combatTarget = null; aimFrame = -1;
+        EcoKeys.CancelFire();
+        if (wasActive) ResetProcessing();
+        if (!string.IsNullOrEmpty(reason)) Notify(reason);
+    }
+
+    private void BeginAutomaticCombat(EnemyBrain enemy)
+    {
+        CancelAutomaticCombat();
+        if (!ToolAreaTargeting.Alive(enemy)) return;
+        if (Selected == Tool.Vacuum)
+        {
+            var suitable = ModeAgainst(enemy.species);
+            if (!suitable.HasValue) { Notify("Teneke için [2] tohum aracının demir top modunu kullan."); return; }
+            Mode = suitable.Value;
+        }
+        else if ((Selected == Tool.Recycler && DamageRate(Selected, Mode, enemy.species) <= 0)
+            || (Selected != Tool.Recycler && !(Selected == Tool.SeedGun && MetalMode)))
+        { Notify("Bu araç bu hedefe etkili değil. Vakum veya demir top modunu kullan."); return; }
+        combatTarget = enemy; combatRequested = true; aimFrame = -1;
+        string reason;
+        if (!ValidateAutomaticCombat(0f, out reason)) { CancelAutomaticCombat(reason); return; }
+        owner.GetComponent<PlayerController>()?.CancelWalkOrder();
+        ResetProcessing();
+        Notify("Otomatik saldırı • " + enemy.DisplayName + " • Sağ tıkla bırak");
+    }
+
+    private bool ValidateAutomaticCombat(float seconds, out string reason)
+    {
+        reason = "Hedef etkisiz hale geldi.";
+        if (!ToolAreaTargeting.Alive(combatTarget)) return false;
+        if (Selected == Tool.SeedGun && MetalMode && combatTarget.species == EnemyBrain.Species.Tin && combatTarget.IsStunned)
+        { reason = "Teneke sersemledi • Yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile küçük filtre tak"; return false; }
+        if (!(Selected == Tool.SeedGun && MetalMode) && DamageRate(Selected, Mode, combatTarget.species) <= 0)
+        { reason = "Bu araç bu hedefe etkili değil."; return false; }
+        Vector3 at = ToolAreaTargeting.EnemyPoint(combatTarget);
+        var body = combatTarget.GetComponent<CharacterController>();
+        Vector3 nearest = body != null && body.enabled ? body.bounds.ClosestPoint(owner.position + Vector3.up) : at;
+        if (Vector3.ProjectOnPlane(nearest - owner.position, Vector3.up).sqrMagnitude > ToolReach * ToolReach
+            || Mathf.Abs(at.y - owner.position.y) > 4f
+            || (Selected == Tool.SeedGun && Vector3.Distance(AimOrigin, at) > PlayerMetalProjectile.Range))
+        { reason = "Hedef menzil dışında • Yaklaş ve yeniden tıkla"; return false; }
+        if (!areaTargeting.HasClearPath(owner, AimOrigin, combatTarget.transform, at))
+        { reason = "Hedefin önünde engel var • Saldırı durdu"; return false; }
+        float cost = Selected == Tool.SeedGun ? 3f * Upgrades.SeedElectricity : ContinuousEnergyRate * seconds;
+        if (Energy <= 0 || Energy + 0.0001f < cost)
+        { reason = "Elektrik yetersiz • Şarj istasyonuna bağlan"; return false; }
+        if (Selected == Tool.SeedGun && MetalAmmo <= 0)
+        { reason = "Demir top bitti • Saldırı durdu"; return false; }
+        if (Time.time < jamUntil)
+        { reason = "Araç tıkandı • Saldırı durdu"; return false; }
+        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && (Water <= 0 || Water < 2f * seconds))
+        { reason = "Su bitti • Saldırı durdu"; return false; }
+        return true;
+    }
+
+    private float ContinuousEnergyRate => Selected == Tool.Recycler ? Upgrades.RecyclerElectricity
+        : (Mode == VacuumMode.Disperse ? 3f : Mode == VacuumMode.Water ? 1f : 2f) * Upgrades.VacuumElectricity;
+
+    private void UseAutomaticCombat(float seconds)
+    {
+        string reason;
+        if (!ValidateAutomaticCombat(seconds, out reason)) { CancelAutomaticCombat(reason); return; }
+        if (Selected == Tool.SeedGun) { FireSeedGun(); return; }
+        Energy -= ContinuousEnergyRate * seconds;
+        if (Selected == Tool.Vacuum && Mode == VacuumMode.Water)
+        {
+            Water = Mathf.Max(0, Water - 2f * seconds);
+            if (dirtyWater) { clog += seconds * 0.1f; if (clog >= 1f) jamUntil = float.PositiveInfinity; }
+        }
+        Vector3 at = ToolAreaTargeting.EnemyPoint(combatTarget);
+        ShowStream(at, true, (AimOrigin - at).normalized, seconds, combatTarget.GetComponent<Collider>());
+        processing = null; progress = 0f;
+        DamageEnemy(combatTarget, DamageRate(Selected, Mode, combatTarget.species) * seconds
+            * (Selected == Tool.Vacuum ? Upgrades.VacuumStrength : 1f));
+        HitFeedback(combatTarget, at, true);
+    }
+
+    private bool CursorPrefersOtherAction(float range)
+    {
+        RaycastHit hit;
+        if (!EcoIsoCamera.TryCursorHit(owner, out hit) || hit.collider == null
+            || Vector3.Distance(owner.position, hit.collider.bounds.ClosestPoint(owner.position)) > range + 0.5f) return false;
+        var c = hit.collider;
+        return c.GetComponentInParent<EnemyBrain>() != null || c.GetComponentInParent<EcoFire>() != null
+            || c.GetComponentInParent<PlantedSeed>() != null || c.GetComponentInParent<EcoFinaleFocus>() != null
+            || c.GetComponentInParent<EcoWaterNode>() != null || c.GetComponentInParent<WeaponWaterSource>() != null;
+    }
+
+    private void UpdateAreaPreview(bool active)
+    {
+        if (areaIndicator == null) return;
+        if (owner == null || Upgrades == null || (Selected != Tool.Vacuum && Selected != Tool.Recycler)
+            || Mouse.current == null || EcoIsoCamera.PointerOverUI()) { areaIndicator.Hide(); return; }
+        Vector3? target = AutomaticCombatActive ? (Vector3?)combatTarget.transform.position : null;
+        ToolAreaTargeting.ResourcePick pick;
+        if (!target.HasValue && (Selected == Tool.Recycler || Mode == VacuumMode.Collect) && !CursorPrefersOtherAction(ToolReach)
+            && areaTargeting.TryResource(owner, AimOrigin, AimDir, ToolReach, CurrentAreaAngle, processing, AllowedRecyclerRank, out pick))
+            target = pick.resource.transform.position;
+        Color tint = Selected == Tool.Recycler ? new Color(0.58f, 0.9f, 0.35f) : Mode == VacuumMode.Water
+            ? new Color(0.3f, 0.75f, 1f) : new Color(0.32f, 0.9f, 0.7f);
+        areaIndicator.Show(owner.position, AimDir, ToolReach, CurrentAreaAngle, tint, target, active);
     }
     public void RecycleInventory()
     {
@@ -554,7 +717,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     private void AutoSelectMode()
     {
         VacuumMode? wanted = null;
-        if (Aim(6f + Upgrades.VacuumRangeBonus, out var hit, Upgrades.CollectionRadius))
+        if (EcoIsoCamera.TryCursorHit(owner, out var hit)
+            && Vector3.Distance(owner.position, hit.collider.bounds.ClosestPoint(owner.position)) <= 6f + Upgrades.VacuumRangeBonus)
         {
             var c = hit.collider;
             var enemy = c.GetComponentInParent<EnemyBrain>();
@@ -566,13 +730,17 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             else if (c.GetComponentInParent<EcoWaterNode>() != null || (source != null && source.IsClean)) wanted = VacuumMode.Collect;
             else if (c.GetComponentInParent<RecyclableResource>() != null) wanted = VacuumMode.Collect;
         }
+        ToolAreaTargeting.ResourcePick areaPick;
+        if (wanted == null && areaTargeting.TryResource(owner, AimOrigin, AimDir, 5f + Upgrades.VacuumRangeBonus,
+            CurrentAreaAngle, processing, 0, out areaPick)) wanted = VacuumMode.Collect;
         if (wanted == null)
         {
             float best = 25f; Vector3 flat = new Vector3(AimDir.x, 0f, AimDir.z);
             foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
             {
                 var mode = enemy == null || enemy.State == EnemyBrain.Behaviour.Dead ? null : ModeAgainst(enemy.species);
-                if (mode == null) continue;
+                if (mode == null || !ToolAreaTargeting.Alive(enemy)
+                    || !areaTargeting.HasClearPath(owner, AimOrigin, enemy.transform, ToolAreaTargeting.EnemyPoint(enemy))) continue;
                 Vector3 to = enemy.transform.position - owner.position; to.y = 0f;
                 if (to.magnitude > 6f + Upgrades.VacuumRangeBonus) continue;
                 float angle = to.magnitude < 2.5f ? 0f : Vector3.Angle(flat, to);
@@ -619,7 +787,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         Vector3 flat = new Vector3(AimDir.x, 0f, AimDir.z);
         foreach (var enemy in FindObjectsByType<EnemyBrain>(FindObjectsSortMode.None))
         {
-            if (enemy == null || enemy.State == EnemyBrain.Behaviour.Dead || DamageRate(Selected, Mode, enemy.species) <= 0f) continue;
+            if (!ToolAreaTargeting.Alive(enemy) || DamageRate(Selected, Mode, enemy.species) <= 0f
+                || !areaTargeting.HasClearPath(owner, AimOrigin, enemy.transform, ToolAreaTargeting.EnemyPoint(enemy))) continue;
             Vector3 to = enemy.transform.position - owner.position; to.y = 0f;
             if (to.magnitude > range) continue;
             float angle = to.magnitude < 2.5f ? 0f : Vector3.Angle(flat, to); // point-blank: inside the spray whatever the cursor
@@ -699,6 +868,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     public void Interact()
     {
         if (EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
+        CancelAutomaticCombat();
         if (EcoFinale.Current != null && EcoFinale.Current.TryInteractAtTerminal(this)) return;
         if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
         if (EcoGlacierStation.Current != null && EcoGlacierStation.Current.TryInteract(this)) return;
@@ -882,7 +1052,13 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         Pulse(WeaponVisualEffects.Burst.Hit, at, tint);
     }
     private void ResetProcessing() { processing = null; progress = 0; if (streamEffects != null) streamEffects.Stop(); }
-    private void OnDisable() { if (flashlight != null) flashlight.Suspend(); ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this); }
+    private void OnDisable()
+    {
+        CancelAutomaticCombat();
+        if (areaIndicator != null) areaIndicator.Hide();
+        if (flashlight != null) flashlight.Suspend();
+        ResetProcessing(); StopCharging(); EcoMarketUI.CloseFor(this);
+    }
 
     [Serializable]
     private sealed class SessionData
@@ -933,6 +1109,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         try { data = JsonUtility.FromJson<SessionData>(json); }
         catch (ArgumentException) { return false; }
         if (data == null || !EcoRegion.Finite(data.energy) || !EcoRegion.Finite(data.water)) return false;
+        CancelAutomaticCombat();
         StopCharging();
         Progression.Restore(data.yep); Upgrades.Restore(data.upgrades);
         Energy = Mathf.Clamp(data.energy, 0f, maximumEnergy); Water = Mathf.Clamp(data.water, 0f, maximumWater);

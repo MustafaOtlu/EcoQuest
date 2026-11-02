@@ -49,6 +49,53 @@ public static class EcoQuestBoard
     /// <summary>Open quests of one region, easy first.</summary>
     public static List<Quest> For(EcoRegion region, Vector3 from) => region == null ? new List<Quest>() : All(from).Where(q => q.region == region).ToList();
 
+    /// <summary>Action instructions shared by the sidebar and quest board; reading them never changes progress or hints.</summary>
+    public static string HowTo(Quest quest)
+    {
+        if (quest == null || string.IsNullOrEmpty(quest.id)) return "Bir görev seç; yapılacak adımlar burada görünsün.";
+        string interact = EcoKeys.Tag(EcoKeys.Action.Interact), mode = EcoKeys.Tag(EcoKeys.Action.Mode);
+        string rotate = EcoKeys.Tag(EcoKeys.Action.Rotate);
+        int separator = quest.id.IndexOf(':');
+        string kind = separator < 0 ? quest.id : quest.id.Substring(0, separator);
+        switch (kind)
+        {
+            case "harvest":
+                return "1. İşaretlenen olgun bitkinin yanına yaklaş.\n2. " + interact + " ile hasat et; ürünü ve tohumları al.\n3. Bölgedeki diğer olgun ürünler için tekrarla.";
+            case "water":
+                return "1. Depoya temiz su doldur; kirli su bitkiye zarar verir.\n2. Susuz fidanın yanında " + interact + " ile sula.\n3. Alternatif: [1] vakumda " + mode + " ile Su modunu seç ve fidana tut.";
+            case "waste":
+                return "1. [1] ile vakumu seç ve atıklara yaklaş.\n2. Atıkları yarı saydam etki alanına al; sol tuşu basılı tut. Nesnenin kenarına tam tıklaman gerekmez.\n3. Toplanan ham atığı [3] geri dönüşüm aracında " + rotate + " ile işle.";
+            case "fire":
+                return "1. Temiz su deposunu doldur ve yangına yaklaş.\n2. [1] vakumda " + mode + " ile Su modunu seç.\n3. Alevlere sol tuşu basılı tut; yangın sönene kadar su uygula.";
+            case "threat":
+                return "1. Uygun aracı seç: vakum çoğu tehdide uygun modu kendisi seçer.\n2. Düşmana bir kez tıkla; otomatik saldırı sürer. Sağ tıkla bırak.\n3. Teneke için [2] aracında " + mode + " ile Demir top modunu seç.\n4. Teneke sersemleyince yaklaş ve " + interact + " ile küçük filtre tak; filtreyi marketten edin.";
+            case "inlet":
+                return "1. Onarım için 10 metal ve 5 plastik hazırla.\n2. İşaretlenen kirletici girişinin yanına git.\n3. " + interact + " ile girişi kapat. Mevcut kirli suyu temizlemek için arıtmayı sürdür.";
+            case "filter":
+                return "1. Marketten büyük hava filtresi edin.\n2. Filtresiz fabrikanın yanına yaklaş.\n3. " + interact + " ile filtre tak. Filtre hava kirliliğini azaltır; karbon için ayrıca temiz enerji dönüşümü gerekir.";
+            case "heavy":
+                return "1. Geri dönüşüm aracının işleme kademesini görevde belirtilen seviyeye yükselt.\n2. [3] ile geri dönüşüm aracını seç.\n3. Büyük atığı etki alanına al ve sol tuşu işlem bitene kadar basılı tut.";
+            case "station":
+                return "1. Buzuldaki izleme istasyonuna git.\n2. Yanında " + interact + " ile istasyonu etkinleştir.\n3. İstasyon ölçüm yapar; karbonu azaltmak için temiz enerji ve habitat projelerini sürdür.";
+            case "trees":
+                return "1. [2] aracını seç; Demir top açıksa " + mode + " ile tohum moduna dön.\n2. " + rotate + " ile Ağaç tohumunu seç; deponda yoksa marketten edin.\n3. Açık, uygun toprağa sol tıkla ekim yap; fidanlar arasında boşluk bırak.\n4. Temiz suyla sula ve büyürken bakımını sürdür.";
+            case "project":
+                int index;
+                var projects = EcoProjects.Current;
+                if (separator >= 0 && int.TryParse(quest.id.Substring(separator + 1), out index)
+                    && projects != null && index >= 0 && index < projects.All.Count)
+                {
+                    var project = projects.All[index];
+                    projects.Step(index, out _, out var location);
+                    return "1. " + (string.IsNullOrEmpty(location) ? "Projenin çalışma alanına git." : location + " noktasına git.")
+                        + "\n2. " + project.action + "\n3. Tamamlanma şartı: " + project.goal
+                        + "\n4. Koşulları kesintisiz 120 oyun saniyesi koru. " + EcoKeys.Tag(EcoKeys.Action.Journal) + " ile proje günlüğünü açabilirsin.";
+                }
+                break;
+        }
+        return "1. Görev işaretine doğru ilerle.\n2. Üstteki güncel görev adımını uygula.\n3. İş tamamlandığında görev listesi kendiliğinden güncellenir.";
+    }
+
     /// <summary>All open quests: the player's region first, then the nearest regions; inside a region easy → hard.</summary>
     public static List<Quest> All(Vector3 from)
     {

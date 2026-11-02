@@ -178,8 +178,13 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         float scale = Mathf.Max(.01f, player.transform.lossyScale.y);
         Vector3 forward = player.transform.forward;
         var mouse = UnityEngine.InputSystem.Mouse.current;
-        bool usingTool = Application.isPlaying && mouse != null && (EcoKeys.FireHeld(mouse) || (weapons != null && weapons.FlashlightOn));
-        if (usingTool && !EcoUIFlow.WorldBlocked && EcoIsoCamera.TryCursorPoint(player.transform, out var point))
+        Vector3 point = default;
+        bool worldAim = Application.isPlaying && Application.isFocused && mouse != null
+            && !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && !EcoIsoCamera.PointerOverUI();
+        bool autoAim = worldAim && !mouse.rightButton.wasPressedThisFrame && weapons != null
+            && weapons.TryGetAutoCombatAim(out point);
+        bool manualAim = worldAim && (EcoKeys.FireHeld(mouse) || (weapons != null && weapons.FlashlightOn));
+        if (autoAim || (manualAim && EcoIsoCamera.TryCursorPoint(player.transform, out point)))
         {
             Vector3 flat = Vector3.ProjectOnPlane(point - player.transform.position, Vector3.up);
             if (flat.sqrMagnitude > .04f)

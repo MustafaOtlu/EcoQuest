@@ -326,10 +326,13 @@ public sealed class EcoQuestHUD : MonoBehaviour
             : tool == PlayerWeaponSystem.Tool.SeedGun ? "  ·  " + (weapons.MetalMode ? "Demir top" : EcoCropCatalog.Get(weapons.SelectedSeed).Name + " · " + EcoCropCatalog.Get(weapons.SelectedSeed).Climate)
             : tool == PlayerWeaponSystem.Tool.Flashlight ? "  ·  " + (weapons.FlashlightOn ? "Açık" : "Kapalı") : "");
         EcoUI.SetIcon(modeIcon, tool == PlayerWeaponSystem.Tool.Vacuum ? modeIcons[(int)weapons.Mode] : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "ammo" : ToolIcons[(int)tool]);
-        instructions.text = tool == PlayerWeaponSystem.Tool.Hands ? EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim"
+        instructions.text = weapons.AutomaticCombatActive ? "[Sol tık] Hedef değiştir · [Sağ tık] Saldırıyı bırak"
+            : tool == PlayerWeaponSystem.Tool.Hands ? EcoKeys.Tag(EcoKeys.Action.Interact) + " Etkileşim"
             : tool == PlayerWeaponSystem.Tool.Flashlight ? "[Sol tık] Aç / kapat"
             : tool == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara"
-            : tool == PlayerWeaponSystem.Tool.Recycler ? "[Sol tık] Geri dönüştür  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele"
+            : tool == PlayerWeaponSystem.Tool.Recycler ? "Basılı tut: dönüştür · Tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele"
+            : tool == PlayerWeaponSystem.Tool.Vacuum ? "Basılı tut: alanı kullan · Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
+            : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
             : "[Sol tık] Kullan  ·  " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod" + (tool == PlayerWeaponSystem.Tool.SeedGun && !weapons.MetalMode ? "  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum" : "");
         context.text = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;

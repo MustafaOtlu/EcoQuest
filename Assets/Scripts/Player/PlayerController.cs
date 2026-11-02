@@ -142,12 +142,16 @@ public class PlayerController : MonoBehaviour
         if (vitals != null) speed *= vitals.MovementMultiplier;
         Vector3 movement = KeepOutOfWater(desired * speed);
 
-        // Facing: toward the cursor while a tool is held, otherwise toward the walking direction.
+        // A selected combat target keeps the body facing it after the mouse button is released.
+        // Movement remains camera-relative, so WASD can still dodge while using the tool.
         Vector3 aimPoint = default;
         // A lit flashlight follows the cursor while standing, so the beam goes where the player looks.
         bool lampAim = weapons != null && weapons.FlashlightOn && desired.sqrMagnitude < 0.01f;
-        bool aiming = hasControl && !buildBusy && mouse != null && (EcoKeys.FireHeld(mouse) || lampAim) && !EcoIsoCamera.PointerOverUI()
-            && EcoIsoCamera.TryCursorPoint(transform, out aimPoint);
+        bool worldAim = hasControl && !buildBusy && mouse != null && !EcoIsoCamera.PointerOverUI();
+        bool autoAim = worldAim && !mouse.rightButton.wasPressedThisFrame && weapons != null
+            && weapons.TryGetAutoCombatAim(out aimPoint);
+        bool aiming = autoAim || (worldAim && (EcoKeys.FireHeld(mouse) || lampAim)
+            && EcoIsoCamera.TryCursorPoint(transform, out aimPoint));
         Vector3 face = aiming ? Vector3.ProjectOnPlane(aimPoint - transform.position, Vector3.up) : desired;
         if (face.sqrMagnitude > 0.01f)
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(face.normalized), turnSpeed * Time.deltaTime);
