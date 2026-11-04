@@ -19,7 +19,7 @@ public sealed class EcoFactory : MonoBehaviour
         var region = EcoRegion.At(transform.position);
         // Air filters catch particulates; they do not remove the factory's carbon emissions.
         if (converted && (!TryGetComponent<EcoPowerNode>(out var power) || power.DeliveredPower < 1.99f)) return;
-        region?.AddPollution(airPerSecond * seconds * (filtered ? 0.2f : 1), 0, 0, carbonPerSecond * seconds * (converted ? 0.1f : 1));
+        region?.AddPollution(airPerSecond * seconds * (filtered ? 0.2f : 1), 0, 0, carbonPerSecond * seconds * (converted ? 0.1f : 1), EcoCarbonFootprint.Source.Industry);
     }
     public bool InstallFilter(PlayerWeaponSystem player)
     {

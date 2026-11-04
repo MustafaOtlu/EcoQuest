@@ -124,7 +124,7 @@ public sealed class PlantedSeed : MonoBehaviour
         }
         if (region != null && region.soilPollution >= 40) contaminated = true;
         float heat = region == null ? 1 : 1 + Mathf.Max(0, region.Temperature - 25) * 0.04f;
-        moisture = Mathf.Max(0f, moisture - seconds * EcoCropCatalog.Get(kind).WaterUse * heat);
+        moisture = Mathf.Max(0f, moisture - seconds * EcoCropCatalog.Get(kind).WaterUse * heat * EcoHomeSaving.MoistureUse);
         if (moisture >= 0.2f)
         {
             dryTime = 0f;

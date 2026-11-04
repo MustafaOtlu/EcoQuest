@@ -13,7 +13,7 @@ public sealed class EcoFire : MonoBehaviour
     {
         if (!isActiveAndEnabled || !Burning || !EcoRegion.Valid(seconds)) return;
         float burned = Mathf.Min(fuel, seconds * intensity); fuel -= burned;
-        EcoRegion.At(transform.position)?.AddPollution(burned * 0.25f, 0, burned * 0.08f, burned * 0.16f);
+        EcoRegion.At(transform.position)?.AddPollution(burned * 0.25f, 0, burned * 0.08f, burned * 0.16f, EcoCarbonFootprint.Source.Fire);
         var structures = new HashSet<EcoStructure>(); var crops = new HashSet<PlantedSeed>();
         var trees = new HashSet<EcoVegetation>();
         var players = new HashSet<PlayerVitals>();

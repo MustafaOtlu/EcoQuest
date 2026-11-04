@@ -25,7 +25,7 @@ public sealed class EcoVegetation : MonoBehaviour
     {
         if (health > 0 && EcoRegion.At(transform.position) is EcoRegion region)
         {
-            region.AddPollution(-0.003f * health * Time.deltaTime, -0.001f * health * Time.deltaTime, -0.002f * health * Time.deltaTime, -0.004f * health * Time.deltaTime);
+            region.AddPollution(-0.003f * health * Time.deltaTime, -0.001f * health * Time.deltaTime, -0.002f * health * Time.deltaTime, -0.004f * health * Time.deltaTime, EcoCarbonFootprint.Source.Trees);
             region.vegetation = Mathf.Min(1, region.vegetation + health * Time.deltaTime * 0.0001f);
         }
     }

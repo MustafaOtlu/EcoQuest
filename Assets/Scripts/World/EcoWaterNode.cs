@@ -11,6 +11,10 @@ public sealed class EcoWaterNode : MonoBehaviour
     [Min(0)] public float litresPerSecond = 4, electricityPerLitre = 2;
     public WeaponWaterSource source;
     public bool returnToLake;
+    [Tooltip("Tank leak (EcoHomeSaving): clean water drains away until repaired with [E].")]
+    public bool leaking;
+    public float leakedWater;
+    public const float LeakRate = 0.25f;
     public EcoRegion SourceRegion => source != null ? EcoRegion.At(source.transform.position) : EcoRegion.At(transform.position);
     public float LastProcessedClean { get; private set; }
     public float LastOutputRate { get; private set; }
@@ -29,6 +33,7 @@ public sealed class EcoWaterNode : MonoBehaviour
     {
         if (!Valid(seconds)) return;
         LastOutputRate = 0;
+        if (leaking && kind == Kind.Tank) leakedWater += Take(Fluid.Clean, LeakRate * seconds);
         if (returnToLake && kind == Kind.Purifier && cleanWater > 0)
         {
             float returned = Take(Fluid.Clean, Mathf.Min(cleanWater, litresPerSecond * seconds));
@@ -113,6 +118,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         var power = GetComponent<EcoPowerNode>();
         if (Operational && power != null && power.DeliveredPower > 0) state = kind == Kind.Purifier ? "Arıtılıyor" : "Su çekiliyor";
         return DisplayName + " • " + state + "\nTemiz " + cleanWater.ToString("0.0") + " / Kirli " + dirtyWater.ToString("0.0") + " • Kapasite " + capacity.ToString("0")
+            + (leaking ? "\nSIZINTI: −" + LeakRate.ToString("0.00") + " SB/sn boşa akıyor · " + leakedWater.ToString("0") + " SB kayıp · [E] tamir (1 metal)" : "")
             + (SlimeRemaining > 0f ? "\nSalgı: debi %" + (ThroughputMultiplier * 100f).ToString("0") + " • " + SlimeRemaining.ToString("0.0") + " sn" : "");
     }
 }

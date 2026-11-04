@@ -61,9 +61,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
     // Environment card
     private EcoUI.Card envCard;
     private EcoQuestSidebar questSidebar;
-    private readonly Image[] rowIcons = new Image[7], rowFills = new Image[7];
-    private readonly RectTransform[] rowTracks = new RectTransform[7];
-    private readonly Text[] rowNames = new Text[7], rowValues = new Text[7];
+    private readonly Image[] rowIcons = new Image[8], rowFills = new Image[8];
+    private readonly RectTransform[] rowTracks = new RectTransform[8];
+    private readonly Text[] rowNames = new Text[8], rowValues = new Text[8];
     private readonly float[] shown = new float[7], target = new float[7];
 
     // Mini map card
@@ -305,16 +305,23 @@ public sealed class EcoWorldHUD : MonoBehaviour
     {
         envCard = new EcoUI.Card("environment", canvas.transform, new Vector2(0, 1), new Vector2(0, 1), "region_city", "ÇEVRE",
             "Bulunduğun bölgenin göstergeleri. Kartı daralt / genişlet.");
-        for (int i = 0; i < 7; i++)
+        // Row 7: karbon ayak izi (EcoCarbonFootprint). Clicking it opens the breakdown.
+        for (int i = 0; i < 8; i++)
         {
-            string icon = i < 6 ? RowIcons[i] : "temperature";
+            string icon = i < 6 ? RowIcons[i] : i == 6 ? "temperature" : "carbon";
             rowIcons[i] = EcoUI.Icon("Row icon " + i, envCard.body, icon, new Vector2(0, 1), new Vector2(0, 1), 20f);
-            rowNames[i] = EcoUI.Label("Row name " + i, envCard.body, i < 6 ? RowNames[i] : "Sıcaklık", 14, TextAnchor.MiddleLeft, EcoUI.Muted);
+            rowNames[i] = EcoUI.Label("Row name " + i, envCard.body, i < 6 ? RowNames[i] : i == 6 ? "Sıcaklık" : "Ayak izi", 14, TextAnchor.MiddleLeft, EcoUI.Muted);
             rowValues[i] = EcoUI.Label("Row value " + i, envCard.body, "—", 14, TextAnchor.MiddleRight, EcoUI.Ink, true);
             rowFills[i] = EcoUI.Meter("Row meter " + i, envCard.body, out rowTracks[i]);
             var hit = EcoUI.Panel("Hit " + i, envCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
             hit.rectTransform.anchoredPosition = new Vector2(0, -4 - i * 29); hit.rectTransform.sizeDelta = new Vector2(300, 28);
-            EcoUI.AddTooltip(hit.gameObject, i < 6 ? RowTips[i] : "Sıcaklık: bölgenin tabanı + karbon ve hava kirliliği etkisi. Ekinlerin uygun aralığı vardır.");
+            EcoUI.AddTooltip(hit.gameObject, i < 6 ? RowTips[i] : i == 6 ? "Sıcaklık: bölgenin tabanı + karbon ve hava kirliliği etkisi. Ekinlerin uygun aralığı vardır."
+                : "Karbon ayak izi: yerleşimindeki kararların dünya karbonuna günlük katkısı (kaynaklar − yutaklar). Artı: karbon artıyor, eksi: azalıyor. Ayrıntı için tıkla.");
+            if (i == 7)
+            {
+                var footprintButton = hit.gameObject.AddComponent<Button>(); footprintButton.transition = Selectable.Transition.None;
+                footprintButton.onClick.AddListener(() => { if (EcoCarbonFootprint.Current != null) EcoCarbonFootprint.Current.Toggle(); });
+            }
         }
     }
 
@@ -337,6 +344,11 @@ public sealed class EcoWorldHUD : MonoBehaviour
             rowValues[i].text = !has ? "—" : (reading.Length > 0 ? "<size=" + 11 * EcoUI.RasterScale + "><color=#" + EcoUI.Hex(EcoUI.Muted) + ">" + reading + "</color></size>  " : "")
                 + Mathf.RoundToInt(shown[i]);
         }
+        // Karbon ayak izi: world-wide, so it is shown even outside a region. Bar: world carbon (low is good).
+        float footprint = EcoCarbonFootprint.NetPerDay, worldCarbon = EcoRegion.WorldCarbon();
+        rowValues[7].text = "<size=" + 11 * EcoUI.RasterScale + "><color=#" + EcoUI.Hex(EcoUI.Muted) + ">dünya " + Mathf.RoundToInt(worldCarbon) + "</color></size>  "
+            + "<color=#" + EcoUI.Hex(EcoUI.OnPaper(footprint > 0.05f ? EcoUI.Amber : EcoUI.GoodColor(1f))) + ">" + EcoCarbonFootprint.Signed(footprint) + "/gün</color>";
+        EcoUI.SetMeter(rowFills[7], rowTracks[7], worldCarbon / 100f, EcoUI.GoodColor(1f - worldCarbon / 100f));
         if (has)
         {
             var info = current.GetComponent<EcoRegionInfo>();
@@ -1195,7 +1207,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         laidOutDockWidth = EcoQuestHUD.DockWidth; laidOutDockTop = EcoQuestHUD.DockTop;
         envCard.SetVisible(!hidden);
         bool compactEnvironment = envCard.IsCollapsed || sade || narrow;
-        float envBody = sade ? 0f : 7 * 29f + 8f;
+        float envBody = sade ? 0f : 8 * 29f + 8f;
         envCard.Layout(new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 10f)), leftWidth, envBody, sade);
         // The two-line region badge keeps its paper too; floating light text was lost over snow and bright grass.
         envCard.background.enabled = true;
@@ -1220,11 +1232,11 @@ public sealed class EcoWorldHUD : MonoBehaviour
             envCard.rule.gameObject.SetActive(false);
             ((RectTransform)envCard.toggle.transform).anchoredPosition = new Vector2(-6f, -10f);
         }
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 8; i++)
         {
             float y = -6f - i * 29f;
             EcoUI.LayoutIcon(rowIcons[i], new Vector2(12f, y), 20f);
-            float valueWidth = i == 6 ? 132f : i <= 3 ? 112f : 44f; // rows 0–3 carry a real reading (AQI, mg/L, %, ppm)
+            float valueWidth = i >= 6 ? 132f : i <= 3 ? 112f : 44f; // rows 0–3 carry a real reading (AQI, mg/L, %, ppm)
             EcoUI.Layout(rowNames[i], new Vector2(38f, y), new Vector2(leftWidth - valueWidth - 58f, 18f));
             EcoUI.Layout(rowValues[i], new Vector2(leftWidth - valueWidth - 12f, y), new Vector2(valueWidth, 18f));
             EcoUI.Place(rowTracks[i], new Vector2(38f, y - 20f), new Vector2(leftWidth - 50f, 4f));

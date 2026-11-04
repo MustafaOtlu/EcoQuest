@@ -64,7 +64,7 @@ public sealed class EcoFinale : MonoBehaviour
         {
             nextSmog = Time.time + 60f; pressureFree = Time.time + 12f;
             foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None))
-            { float guard = 1f - 0.6f * region.vegetation; region.AddPollution(10f * guard, 8f * guard, 6f * guard, 5f * guard); }
+            { float guard = 1f - 0.6f * region.vegetation; region.AddPollution(10f * guard, 8f * guard, 6f * guard, 5f * guard, EcoCarbonFootprint.Source.Finale); }
             Say("Duman dalgası! Bölgelerde kirlilik arttı; bitki örtüsü etkiyi azaltır.", 6f);
         }
     }

@@ -80,7 +80,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         "EcoStructure", "EcoPowerNode", "EcoWaterNode", "EcoRecyclingFacility", "EcoFactory", "EcoRegion", "EcoWorldClock",
         "EcoHabitat", "EcoFire", "EcoVegetation", "EcoFishingSpot", "EcoEnemySpawnZone", "EnemyBrain", "RecyclableResource",
         "PlantedSeed", "PlayerVitals", "WeaponWaterSource", "EcoGlacierMelt", "EcoGlacierStation", "EcoPollutionInlet",
-        "EcoStory", "EcoDiscoveries", "EcoHydroPlant", "EcoChargingStation", "EcoFarm"
+        "EcoStory", "EcoDiscoveries", "EcoHydroPlant", "EcoChargingStation", "EcoFarm", "EcoHomeSaving", "EcoTransformationMoment"
     };
     private readonly Dictionary<string, GameObject> initialTemplates = new Dictionary<string, GameObject>();
     private readonly Queue<string> deferredSlots = new Queue<string>();

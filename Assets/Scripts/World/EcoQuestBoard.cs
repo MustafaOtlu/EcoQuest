@@ -110,6 +110,8 @@ public static class EcoQuestBoard
         var factories = Object.FindObjectsByType<EcoFactory>(FindObjectsSortMode.None);
         var station = EcoGlacierStation.Current;
         var projects = EcoProjects.Current;
+        var saving = EcoHomeSaving.Current;
+        var tanks = Object.FindObjectsByType<EcoWaterNode>(FindObjectsSortMode.None).Where(q => q != null && q.kind == EcoWaterNode.Kind.Tank && q.leaking).ToArray();
         string interact = EcoKeys.Tag(EcoKeys.Action.Interact);
 
         foreach (var region in regions)
@@ -161,6 +163,16 @@ public static class EcoQuestBoard
                 quests.Add(new Quest { id = "trees:" + key, level = 2, icon = "crop_tree", region = region, title = "Ağaç dik",
                     detail = "Bitki örtüsü %" + Mathf.RoundToInt(region.vegetation * 100f) + "/60 · [2] ağaç tohumu, açık toprağa",
                     target = region.transform.position, progress = region.vegetation / 0.6f });
+
+            // Demand side: the home meter's saving measures and leaking tanks (EcoHomeSaving).
+            if (saving != null && saving.Meter != null && !saving.AllDone && EcoRegion.At(saving.Meter.position) == region)
+                quests.Add(new Quest { id = "saving:home", level = saving.FreeMeasuresDone ? 2 : 1, icon = "electricity", region = region,
+                    title = saving.FreeMeasuresDone ? "Evde verimli donanım" : "Evde enerji tasarrufu",
+                    detail = "Ev sayacında " + interact + " · önlemler " + saving.DoneCount + "/4", target = saving.Meter.position, progress = saving.DoneCount / 4f });
+            var leaks = tanks.Where(Here).ToArray();
+            if (leaks.Length > 0)
+                quests.Add(new Quest { id = "leak:" + key, level = 1, icon = "water", region = region, title = "Sızdıran depoyu tamir et",
+                    detail = leaks.Length + " depo su kaybediyor · yanında " + interact + " (1 metal)", target = Nearest(leaks, from) });
 
             if (info != null && projects != null && info.projectIndex >= 0 && info.projectIndex < projects.All.Count && !projects.All[info.projectIndex].done)
             {

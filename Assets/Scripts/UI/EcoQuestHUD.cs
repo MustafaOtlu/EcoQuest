@@ -513,6 +513,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             }
             // GDD v4 Ö3/Ö5: the open project is shown while crops grow (the first one is charged at the base station before
             // sunset) and no longer waits for harvested food; the step names the key, or the missing material and its source.
+            else if (EcoHomeSaving.Current != null && EcoHomeSaving.Current.WantsObjective(out var savingText, out var savingGoal)) { text = savingText; goal = savingGoal; goalName = "Ev sayacı"; }
             else if (open >= 0) text = projects.Step(open, out goal, out goalName);
             else if (weapons.Food > 0) text = "Ekosistemi koru · " + EcoKeys.Tag(EcoKeys.Action.Quests) + " görev panosundan bir iş seç";
             else

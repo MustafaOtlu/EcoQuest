@@ -94,5 +94,6 @@ public sealed class EcoPowerNode : MonoBehaviour
         + " • Tüketim " + NetworkDemand.ToString("0.0") + " /sn • Depo "
         + NetworkStored.ToString("0") + "/" + NetworkCapacity.ToString("0")
         + (Operational ? "" : " • Devre dışı")
+        + (kind == Kind.Battery && EcoHomeSaving.Current != null && EcoHomeSaving.Current.Feeds(this) ? "\nEv yükü " + EcoHomeSaving.Current.Load.ToString("0.00") + " EB/sn (ev sayacında tasarruf)" : "")
         + (SmokeRemaining > 0f ? "\nDuman: verim %" + (EfficiencyMultiplier * 100f).ToString("0") + " • " + SmokeRemaining.ToString("0.0") + " sn" : "");
 }

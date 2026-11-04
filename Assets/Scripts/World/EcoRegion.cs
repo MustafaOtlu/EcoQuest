@@ -69,15 +69,18 @@ public sealed class EcoRegion : MonoBehaviour
         if (!Valid(seconds)) return;
         // Recovery remains gradual even after an emission source has been filtered.
         float recovery = Mathf.Lerp(0.015f, 0.06f, vegetation) * EcoSpecialization.Recovery;
-        AddPollution(-recovery * seconds, -recovery * 0.22f * seconds, -recovery * 0.12f * seconds, -recovery * 0.4f * seconds);
+        AddPollution(-recovery * seconds, -recovery * 0.22f * seconds, -recovery * 0.12f * seconds, -recovery * 0.4f * seconds, EcoCarbonFootprint.Source.Nature);
     }
-    public void AddPollution(float air, float water, float soil, float carbonAdded)
+    public void AddPollution(float air, float water, float soil, float carbonAdded, EcoCarbonFootprint.Source source = EcoCarbonFootprint.Source.None)
     {
         if (!Finite(air) || !Finite(water) || !Finite(soil) || !Finite(carbonAdded)) return;
         airPollution = Mathf.Clamp(airPollution + air, 0, 100);
         waterPollution = Mathf.Clamp(waterPollution + water, 0, 100);
         soilPollution = Mathf.Clamp(soilPollution + soil, 0, 100);
+        float before = carbon;
         carbon = Mathf.Clamp(carbon + carbonAdded, 0, 100);
+        // Karbon ayak izi: the ledger counts the change actually made, so a clean region cannot "absorb" below zero.
+        if (source != EcoCarbonFootprint.Source.None) EcoCarbonFootprint.Record(this, carbon - before, source);
     }
     // ---------------------------------------------------------------- real-world readings
     // The simulation keeps 0..100 indices; these map them onto familiar measurements so the map can show both. The

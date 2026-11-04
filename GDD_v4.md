@@ -7,7 +7,7 @@
 
 | Belge bilgisi | Değer |
 | --- | --- |
-| Güncelleme | 27 Ekim 2026 |
+| Güncelleme | 4 Kasım 2026 |
 | Proje / ekip | TÜBİTAK EcoQuest · Mustafa, Hanefi, Bilge |
 | Platform | Windows PC · klavye ve fare · tek oyuncu |
 | Motor / oyun sahnesi | Unity 6000.0.74f1 · `Assets/Scenes/EcoWorld.unity` (Build Settings'te ilk sahne) |
@@ -21,6 +21,7 @@
 1. **Deneyim (A–B):** Oyuncunun ne hissetmesi gerektiği, ilk oturum ve tempo. Bir özelliğin gerekip gerekmediği önce buna göre tartılır.
 2. **Sistemler (§1–§17):** Güncel kurallar. Numaralar v3 ile aynıdır; eski göndermeler geçerli kalır.
 3. **Yönetim (§18–§21):** Ölçüm planı, açık sorular, karar kaydı ve uygulama özeti.
+4. **Kuram ve araştırma (C–D):** Kuram–mekanik eşlemesi, etik kurul onaylı tasarım tabanlı araştırma döngüsü ve veri araçlarının uyumu.
 
 Etiketler:
 - **Karar:** Kullanıcının seçtiği yön. Ancak kullanıcı değiştirir.
@@ -45,6 +46,7 @@ Etiketler:
 | [4. Ana döngü](#dongu) | [12. Final ve serbest oyun](#final) | [18. Ölçüm ve playtest](#olcum) |
 | [5. Oyun hissi](#his) | | [19. Açık sorular](#acik) |
 | [6. Hikâye ve yönlendirme](#hikaye) | | [20. Karar kaydı](#kararlar) · [21. Uygulama özeti](#durum) |
+| [C. Kuramsal temel](#kuram) | [D. Araştırma döngüsü (TTA)](#tta) | |
 
 ---
 
@@ -100,7 +102,7 @@ Hiçbir sütuna doğrudan hizmet etmeyen özellik yoktur. En zayıf bağlı olan
 
 ### Oyuncu
 
-- **Hedef oyuncu (tasarım başlangıcı, onay bekliyor: §19 S9):** Temel PC kontrolüne aşina, 14 yaş üstü gençler ve yetişkinler. TÜBİTAK projesi bağlamında lise ve üniversite öğrencileri öncelikli. Çevre bilgisi ön koşul değildir.
+- **Hedef oyuncu (karar, 4 Kasım: §19 S9):** Temel PC kontrolüne aşina **18–25 yaş** genç bireyler; etik kurul onaylı çalışmanın hedef kitlesiyle aynıdır. Kullanıcı testi Dijital Oyun Tasarımı bölümü öğrencileriyle yapılır (§D). Çevre bilgisi ön koşul değildir. Oyun daha küçük yaşlar için tasarlanmış değildir; lise kullanımı ayrı bir değerlendirme ve etik onay gerektirir.
 - **Motivasyon profili (Yee):**
   - **Yüksek:** Keşif, İlerleme, Kişiselleştirme (yerleşimi kendi düzeninle kurmak).
   - **Orta:** Mekanikler (sistemi verimli işletmek).
@@ -192,6 +194,104 @@ Gece günün üçte biridir (5 dakika, S1 kararı).
 - Kartta oksijen 3,8 mg/L'den 7 mg/L'nin üstüne çıkar.
 
 İlk oturumda görülmez; ikinci ve üçüncü oturumun doruğudur. İlk oturumun imza adayı **ilk gece**dir: güneş batınca şarj istasyonunun bataryadan çalışmaya devam etmesi. Şu an akşam ışıkları ağdaki enerjiden bağımsız yanıyor (19:00'da), bu yüzden an görünmüyor. **Öneri [Karar içinde]:** Oyuncunun kurduğu şarj istasyonunun çalışma ışığı yalnız ağda enerji varken yansın; böylece batarya gece gözle görülür. İki aday da oyuncunun kendi kurduğu sisteme bağlıdır (Sütun 2 ve 3).
+
+---
+
+<a id="kuram"></a>
+## C. Kuramsal temel ve kuram–mekanik eşlemesi
+
+Etik kurul başvurusu oyunun **davranışçı temellere ve motivasyon kuramlarına** dayandığını söyler; Alan Uzmanı görüşmesinin 3. sorusu bunu sorar. Bu bölüm her ilkenin oyunda **hangi mekanikle** karşılandığını ve nerede gözlenebileceğini gösterir. Parantez içindeki adlar koddaki bileşenlerdir.
+
+### Davranışçı ilkeler
+
+| İlke (kaynak) | Oyundaki karşılığı | Nerede gözlenir |
+| --- | --- | --- |
+| **Etki yasası** (Thorndike, 1911): Hoş sonuç izleyen davranış güçlenir | Doğru modla isabette modun renginde patlama, sulanan bitkide yeşil filiz, proje bitişinde dönüşüm anı | Araç efektleri (`WeaponVisualEffects`), `EcoTransformationMoment` |
+| **Olumlu pekiştirme** (Skinner, 1953) | Tek seferlik YEP: proje 40, bakım anı 20, saha başarısı 20; uzmanlık hakkı; çocuğun repliği; “Tasarruflu ev” kartı | `EcoProgression`, `EcoStory`, `EcoHomeSaving` |
+| **Anında geri bildirim** | Yanlış modda gri “pıff” ve “Bu mod etkisiz. Su: Alev…” mesajı; kirli ürünün reddi ve nedeni; yerleştirme önizlemesindeki uyarı; ev sayacında “gece yükü 0,32 → 0,20 EB/sn” | `PlayerWeaponSystem`, `EcoRegion.PlacementWarning`, ev sayacı |
+| **Şekillendirme / ardışık yaklaşma** | Hedef kartı her an tek adım ve tuş söyler: çocukla konuş → ek → sula → şarj et → P1 → evde tasarruf → göl | `EcoQuestHUD.RefreshObjective`, yön oku (`EcoGuide`) |
+| **Doğal sonuç, ceza değil** | Ölüm yok, 5 sn toparlanma, envanter korunur. İsraf → batarya boşalır → jeneratör karbon salar; depo sızıntısı suyu boşa akıtır | `PlayerVitals`, `EcoHomeSaving`, `EcoWaterNode.leaking` |
+| **Pekiştirme tarifesi: sabit ve sonlu** | YEP yalnız bir kez verilir, toplam 360 ile sınırlıdır; tekrar hasat, ganimet ya da kur/sök YEP vermez. Değişken oranlı “kasma” ödülü bilerek yoktur | `EcoProgression.AwardOnce` |
+| **Davranışın sürdürülmesi** | Proje koşulu 120 sn korunmalıdır; koşul bozulursa sayaç sıfırlanır (kazanılmış ödül geri alınmaz) | `EcoProjects` doğrulama sayacı |
+
+**Tasarım notu:** Dışsal ödül iç motivasyonu zayıflatabilir (aşırı gerekçelendirme etkisi: Deci, 1971; Deci, Koestner ve Ryan, 1999). Bu yüzden YEP sonludur ve davranışı **kontrol eden** değil, yeterliliği **bildiren** bir ödüldür. Asıl ödül dünyanın gözle görülür biçimde değişmesidir (Sütun 3): göl rengi, ölçüler, canlılar, çocuk.
+
+### Motivasyon kuramları
+
+| Kuram (kaynak) | Bileşen | Oyundaki karşılığı |
+| --- | --- | --- |
+| **Öz-belirleme kuramı** (Ryan ve Deci, 2000) | Özerklik | Projelerin sırası serbest, bölgeler kilitsiz, görev panosundan iş seçimi, uzmanlık sırası |
+|  | Yeterlilik | Türe uygun müdahale, ölçülerin iyileşmesi, önce → sonra kartı, hedef kartı |
+|  | İlişkili olma | Mahalle çocuğu, üç bakım anı, çocuğun proje tepkileri |
+| **İçsel motivasyon** (Malone, 1981) | Meydan okuma | Nedeni bulmak, rezerv ve gece planı, final |
+|  | Merak | Bölge kartındaki gerçek ölçüler, tarama, gizli neden (giriş kanalı, filtre ≠ karbon) |
+|  | Fantezi | Gelecek nesil anlatısı, stilize iklim canavarı |
+| **ARCS** (Keller, 1987) | Dikkat | Dönüşüm anı, sızıntı ve gün batımı uyarıları |
+|  | İlgi / uygunluk | AQI, ppm, mg/L gibi gerçek ölçüler; LED, bekleme modu, damla sulama gibi günlük davranışlar |
+|  | Güven | Tek sonraki adım, ölüm yok, üç ipucu kademesi |
+|  | Doyum | YEP, öğrenme kartı, önce → sonra kartı |
+| **Akış** (Csikszentmihalyi, 1990) / **GameFlow** (Sweetser ve Wyeth, 2005) | Açık hedef, anında geri bildirim, zorluk–beceri dengesi | Hedef kartı, araçların kademeli tanıtımı. Risk: ilk saatteki tuş yükü (§19 S7) |
+| **MDA**, **Lazzaro**, **Yee** | Estetikler, duygu kaynakları, oyuncu motivasyonu | §A'da tanımlı |
+
+### Form temaları, mekanikler ve rubrikler
+
+Etik kurul formundaki temalar ile oyundaki kanıt ve ilgili rubrik boyutu:
+
+| Form teması | Mekanik | Oyundaki kanıt | Rubrik boyutu |
+| --- | --- | --- | --- |
+| Çevre temizliği | Vakumla atık toplama, kirletici girişi kapatma, fabrika filtresi | Zemin rengi, AQI, su kalitesi | R1 Çevre Temizliği |
+| Enerji tasarrufu | Ev sayacı: dört önlem | Gece yükü 0,32 → 0,07 EB/sn; jeneratör karbonu | R1 Enerji Tasarrufu |
+| Yenilenebilir enerji | Güneş, rüzgâr, batarya, hidro; P1 ve P5 | Gece paneli durur, batarya ve rüzgâr sürdürür | R1 Enerji Tasarrufu, R2 Görev Yapısı |
+| Su tasarrufu ve yönetimi | Pompa → arıtma → depo, damla sulama, depo sızıntısı | Oksijen mg/L, sulama 5 → 3 SB, kayıp SB | R1 Su Yönetimi |
+| Atık yönetimi | Toplama, geri dönüşüm tesisi, gübre | Malzeme ve toprak iyileşmesi | R1 Atık Yönetimi |
+| Karbon ayak izi | Ayak izi satırı ve penceresi, filtre ≠ karbon, temiz enerji dönüşümü, P6 | Kaynak ve yutak dökümü, dünya karbonu | R1 Doğa Koruma, R3 Konuya Uygunluk |
+| Doğa koruma | Ağaçlandırma, habitat, yangın söndürme | Kuş ve kelebek dönüşü, bitki örtüsü | R1 Doğa Koruma |
+
+**Bilinen zayıflık:** Atıkları türüne göre ayırma kararı oyuncuya bırakılmıyor; R1 Atık Yönetimi “görevler kendini tekrar ediyor” düzeyinde kalabilir.
+
+### Kaynakça
+
+- Csikszentmihalyi, M. (1990). *Flow: The psychology of optimal experience*. Harper & Row.
+- Deci, E. L. (1971). Effects of externally mediated rewards on intrinsic motivation. *Journal of Personality and Social Psychology, 18*(1), 105–115.
+- Deci, E. L., Koestner, R., & Ryan, R. M. (1999). A meta-analytic review of experiments examining the effects of extrinsic rewards on intrinsic motivation. *Psychological Bulletin, 125*(6), 627–668.
+- Hunicke, R., LeBlanc, M., & Zubek, R. (2004). MDA: A formal approach to game design and game research. *AAAI Workshop on Challenges in Game AI*.
+- Keller, J. M. (1987). Development and use of the ARCS model of instructional design. *Journal of Instructional Development, 10*(3), 2–10.
+- Lazzaro, N. (2004). *Why we play games: Four keys to more emotion without story*. XEODesign.
+- Malone, T. W. (1981). Toward a theory of intrinsically motivating instruction. *Cognitive Science, 5*(4), 333–369.
+- Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. *American Psychologist, 55*(1), 68–78.
+- Skinner, B. F. (1953). *Science and human behavior*. Macmillan.
+- Sweetser, P., & Wyeth, P. (2005). GameFlow: A model for evaluating player enjoyment in games. *Computers in Entertainment, 3*(3), 3.
+- Thorndike, E. L. (1911). *Animal intelligence*. Macmillan.
+- Wang, F., & Hannafin, M. J. (2005). Design-based research and technology-enhanced learning environments. *Educational Technology Research and Development, 53*(4), 5–23.
+- Yee, N. (2006). Motivations for play in online games. *CyberPsychology & Behavior, 9*(6), 772–775.
+
+<a id="tta"></a>
+## D. Tasarım tabanlı araştırma (TTA) döngüsü
+
+Etik kurul onaylı çalışma **tasarım tabanlı araştırma** yöntemini kullanır (Wang ve Hannafin, 2005): analiz → tasarım → geliştirme → uygulama → değerlendirme aşamaları yinelenen döngülerle ilerler. Oyunun içeriği ve mekanikleri her döngünün geri bildirimiyle revize edilir.
+
+**Tasarım başlangıcı:**
+
+| Döngü | Ne zaman | Katılımcı | Araç | Çıktı |
+| --- | --- | --- | --- | --- |
+| 0 · Ekip içi test | Uzman değerlendirmesinden önce | Ekip ve danışman | Oyun içi kayıt aracı yalnız teknik amaçla | Hata ve akış düzeltmeleri. **Araştırma verisi değildir** |
+| 1 · Uzman değerlendirmesi | Ekip içi testten sonra | 3 Dijital Oyun Tasarımı uzmanı + 1 Fen Bilgisi uzmanı (amaçlı örneklem) | Rubrik 1–3 ve Alan Uzmanı görüşme formu (10 soru) | Öncelikli revizyon listesi |
+| 2 · Kullanıcı testi | Döngü 1 revizyonlarından sonra | 10 Dijital Oyun Tasarımı öğrencisi (18–25 yaş) | Rubrik 4 ve Öğrenci görüşme formu (10 soru) | Oynanabilirlik ve farkındalık revizyonları |
+| 3 · Doğrulama (gerekirse) | Döngü 2 revizyonlarından sonra | Yeni katılımcı ya da araç gerekiyorsa önce etik kurula bildirilir | — | Son sürüm |
+
+**Uzman oturumunun hazırlığı:** Ana hikâye 3–5 saattir; bir uzman oturumunda bütün temalar görülemez. Uzmana güncel Windows sürümü, temaların hızlıca görülebildiği hazır kayıtlar ve tek sayfalık bir uzman kılavuzu verilir.
+
+**Revizyon kuralı (öneri):**
+- Rubrik ortalaması 4'ün (Uygun) altında kalan boyutlar revizyon önceliğine alınır.
+- Görüşme yanıtları içerik analiziyle temalara ayrılır.
+- Her revizyon §21 değişiklik günlüğüne “TTA Döngü n” etiketiyle yazılır.
+
+**Etik uyum (önemli):**
+- Onaylı formda veri aracı olarak yalnız **4 rubrik** ve **2 yarı yapılandırılmış görüşme formu** listelenir; form “literatürden hazır ölçek kullanılmadığını” açıkça belirtir.
+- §18'deki **GEQ** ve **PENS** hazır ölçeklerdir. Oyun içi ön ve son anket (`survey-v2`) ve playtest olay günlüğü (CSV) de formda yoktur.
+- Bu nedenle onaylı çalışmada (Döngü 1 ve 2) yalnız formdaki araçlar kullanılır. GEQ, PENS, oyun içi anket ve CSV günlüğü ya yalnız Döngü 0'da (araştırma verisi olmadan) kullanılır ya da kullanılmadan önce etik kurula değişiklik bildirilir. Karar danışmanındır (§19 S10).
+- Katılımcılar bilgilendirilmiş onam formu imzalar ve kodlarla anılır (etik formdaki gibi U1–U4 uzman, Ö1–Ö10 öğrenci; bu katılımcı kodları §19'daki Ö1–Ö6 önerileriyle karıştırılmamalıdır).
+
 
 ---
 
@@ -959,7 +1059,8 @@ Karar kullanıcınındır. Her soruda önerilen varsayılan yazılıdır.
 | S6 | Sınıf içi paylaşım (People Fun) | Tek oyunculu oyunda sosyal bağ yok | Bölgenin önce/sonra kartını tek tuşla görüntü olarak kaydetmek (F12); öğretmen için karşılaştırma |
 | S7 | Fener ne zaman tanıtılsın? Kalsın mı? | İlk saatte altı araç ve üç mod var (M6) | İlk gün batımında "[6] Fener" ipucuyla tanıt; kalıp kalmayacağı kullanıcı kararı (bekliyor) |
 | S8 | İmleç tamamen gizlensin mi? | Kullanıcıya sorulmuş, cevap bekleniyor | Şimdiki davranış: 1,5 sn hareketsizlikte gizlenir |
-| S9 | Hedef oyuncu yaşı ve bağlamı (okul mu, bireysel mi)? | Metin düzeyi, zorluk ve anket dili buna göre ayarlanır | 14 yaş üstü; lise ve üniversite öğrencileri öncelikli |
+| S9 | ~~Hedef oyuncu yaşı ve bağlamı?~~ | **Karar verildi (4 Kasım):** etik kurul onaylı formdaki hedef kitle, 18–25 yaş genç bireyler (§A, §D) | Uygulandı (belge) |
+| S10 | GEQ, PENS, oyun içi ön/son anket ve playtest CSV'si onaylı çalışmada kullanılacak mı? | Etik kurul formu yalnız 4 rubrik ve 2 görüşme formunu listeliyor; hazır ölçek kullanılmayacağını söylüyor (§D) | Onaylı çalışmada yalnız formdaki araçlar; ötekiler ya yalnız ekip içi testte ya da etik kurula değişiklik bildirimiyle. Karar danışmanın |
 
 ### Bekleyen öneriler
 
@@ -970,7 +1071,7 @@ Bunlar mevcut kararları bozmaz **[Karar içinde]**. Yine de kullanıcı onaylam
 | Ö1 | Başlangıç bataryası yarı dolu (125/250 EB; önceden 80) | B | İlk gece depolama görünür olsun · **uygulandı** |
 | Ö2 | Gün batımında tek satırlık ipucu ve "[6] Fener" tanıtımı | B, §11 | Gecenin nedenini söylemek; araçları teker teker tanıtmak · **uygulandı** (kayıt başına bir kez) |
 | Ö3 | Hedef zincirinde P1'i büyüme süresine taşımak; ok üsteki şarj istasyonunu göstersin | B, §6 | İlk büyük başarıyı ≤ 15. dakikaya çekmek · **uygulandı** |
-| Ö4 | Proje bitişinde 4–6 sn'lik dönüşüm anı | B, §5 | Proje bitişini doruk yapmak (Sütun 3) |
+| Ö4 | Proje bitişinde 4–6 sn'lik dönüşüm anı | B, §5 | Proje bitişini doruk yapmak (Sütun 3) · **uygulandı** (4 Kasım) |
 | Ö5 | Proje kartında tahmini malzeme; hedef kartı açık projeyi her zaman göstersin ve malzeme eksikken eksiği ve kaynağı söylesin | §6, §7 | P1 → P2 düzlüğünü kısaltmak · **uygulandı** (göl kıyısı kurulum alanı hâlâ öneri) |
 | Ö6 | Playtest için yerel olay günlüğü | §18 | Hipotezleri ölçebilmek · **uygulandı** |
 
@@ -1027,7 +1128,7 @@ Bir konuda birden çok kayıt varsa en sonuncusu geçerlidir. Ayrıntılı uygul
 | Gün ve gece ritmi, 07:00 başlangıç (S1) | Uygulandı, editörde ölçüldü | İlk gün batımı 9,3. dk, gece 5,0 dk, gün 900 sn |
 | Yarı dolu başlangıç bataryası, gün batımı ipucu, hedef zinciri, proje adımı ve malzeme tahmini (Ö1–Ö3, Ö5) | Uygulandı, Play Mode'da kodla denendi | Gerçek fareyle oynanmadı |
 | Playtest olay günlüğü (Ö6) | Uygulandı, Play Mode'da denendi | — |
-| Dönüşüm anı (Ö4), göl kıyısı kurulum alanı | Uygulanmadı (öneri) | — |
+| Dönüşüm anı (Ö4) | Uygulandı (4 Kasım), Play Mode'da denendi | Göl kıyısı kurulum alanı hâlâ öneri |
 | Gerçek oyuncularla playtest (§18) | Yapılmadı | Plan hazır |
 
 ### Değişiklik günlüğü (27 Ekim sonrası)
@@ -1042,3 +1143,9 @@ Bir konuda birden çok kayıt varsa en sonuncusu geçerlidir. Ayrıntılı uygul
 | 29 Ekim | **Görev panosu (§13, §15).** [G] tuşu ya da sol alttaki görev düğmesi panoyu açar. Pano dünyadaki bütün açık işleri bölgelere göre listeler; önce bulunduğun bölge, sonra en yakın bölgeler. Her bölgede görevler kolaydan zora sıralanır. **Kolay:** hasat, fidan sulama, atık toplama. **Orta:** yangın, tehdit, kirletici giriş, fabrika filtresi, büyük atık, izleme istasyonu, ağaç dikimi (Orman ve Rüzgâr Tepeleri'nde bitki örtüsü %60'ın altındaysa). **Zor:** bölgenin projesi ve o projenin şu anki adımı. Görevler canlı dünyadan okunur ve iş bitince kendiliğinden kapanır. Bir göreve tıklayınca takibe alınır: hedef kartı ve yön oku o göreve geçer, büyük haritada nabız gibi atan bir görev işareti çıkar; tekrar tıklayınca bırakılır. Görev bitince "GÖREV TAMAMLANDI" bildirimi gelir ve takip biter. **Harita:** bölge kartındaki "Görevler" listesi aynı panodan gelir, KOLAY/ORTA/ZOR etiketleriyle kolaydan zora sıralanır; satıra tıklayınca görev takibe alınır. Pano ya da harita açıkken dünyadaki yön işareti ve yüzen kartlar gizlenir. Tuş atamalarına "Görev panosu" eklendi | Play Mode'da kodla ve ekran görüntüleriyle denendi: 19 görev, 10 bölge; takip, harita satırına tıklama, bitince takibin bitmesi doğrulandı. Gerçek fareyle oynanmadı |
 | 29 Ekim | **Pencere açıkken dünya etiketleri gizlenir.** Pazar (Eko Market) açıkken hedef etiketi ("Fabrika Gölü 53 m" gibi), yön oku ve proje ipucu kartı pencerenin üstüne çiziliyordu; pazar ortak pencere sisteminden açılmadığı için "pencere açık" sayılmıyordu. Tüm pencereleri (menüler, pazar, harita, görev panosu) kapsayan tek bir kontrol eklendi; hedef işareti, yüzen dünya kartları ve proje ipucu bunu kullanır | Play Mode'da pazar açıkken 81 m'lik hedefle ekran görüntüsü alındı: etiket görünmedi |
 | 29 Ekim | **Harita bölge bölge temizlendi.** Buzul Dağı, Orman, Rüzgâr Tepeleri ve göl kıyılarında kaya diye saçılmış 23 uçurum/köprü parçası (çimenli toprak küpler, taş köprü plakaları) gerçek kayalarla değişti; kaya seçimi artık bu parçaları almaz. Fabrikalar'da Depo C'nin duvarına gömülü ev kaldırıldı. Şehir'de göbekli kavşağın her kolundaki çift yaya geçidi teke indi; parklardaki 6 bank rastgele açı yerine yola bakıyor. Güneş Ovası'nda güneş tarlalarına girip çimende biten iki kısa patika kaldırıldı; Üs Patikası 5 m uzayıp üssün hurda sırasına kadar gidiyor. Eski Atölye'deki kare kirli su plakası taş kenarlı yuvarlak bir gölete dönüştü. Rüzgâr Tepeleri'nden şehre giden elektrik hattı iki ucunda da boşlukta bitiyordu; batı ucu bir ara direkle en yakın türbine, doğu ucu şehrin ilk evine bağlandı | Her bölge yukarıdan ve oyun açısından önce/sonra görüntülendi; Play Mode'da konsol temiz. Göl kıyısındaki basamaklı kum halkası (zemin ızgarası) ve kavşaklardaki küçük şerit artıkları bu turda ele alınmadı |
+| 3 Kasım | **Tasarruf: talep tarafı (etik kurul formu: enerji ve su tasarrufu).** Şehirdeki ev artık üsteki mahalle bataryasından gerçek yük çeker: buzdolabı 0,04, bekleme modu 0,04, 19:00–06:00 aydınlatma 0,24 EB/sn (gece toplam 0,32). Evin önündeki **Ev sayacı**nda [E] ile dört tek seferlik önlem: boş odaların ışığını kapat (ücretsiz, aydınlatma −%50), bekleme modunu kapat (ücretsiz, −0,04), LED'e geç (4M+2P, aydınlatma −%75), damla sulama (6M+6P; tam sulama 5 → 3 SB, toprak nemi %25 daha yavaş düşer). Tüm önlemlerle gece yükü 0,07 EB/sn; bir gecede 96 → 21 EB. Batarya boşalırsa evin pencereleri kararır; "ışığı kapat" önlemiyle üst kat penceresi gece sönük kalır. Panel kazanılan EB ve SB'yi sayar; dört önlem bitince "Tasarruflu ev" öğrenme kartı ve çocuk repliği. **Depo sızıntısı:** 2. günden itibaren günde en çok bir oyuncu deposu (≥10 SB) %35 olasılıkla sızdırır (−0,25 SB/sn); yanında [E] ile 1 metale tamir. **Bağlantılar:** hedef kartı P1'den sonra 16:00'dan itibaren ücretsiz önlemleri söyler; görev panosunda "Evde enerji tasarrufu" (kolay), "Evde verimli donanım" (orta), "Sızdıran depoyu tamir et" (kolay); batarya kartında "Ev yükü" satırı; kayıt `EcoHomeSaving` ve `EcoWaterNode.leaking`. YEP ekonomisi (360) değişmedi | Play Mode'da kodla denendi: yük 0,32 → 0,07, malzeme düşümü, batarya çekişi, kesinti, sızıntı ve tamir, görev panosu, panel ve dünya etiketi ekran görüntüsüyle. Kayıt/yükleme turu ve gerçek fareyle oyun denenmedi |
+| 4 Kasım | **Karbon ayak izi (etik kurul formu: karbon ayak izi).** `EcoCarbonFootprint` defteri, dünya karbonunu değiştiren her kaynağın ve yutağın bölgesine **gerçekten** yaptığı değişikliği (sınırlamadan sonra) bölgenin harita payıyla ağırlıklandırıp sayar: sanayi (fabrikalar), yangınlar, evin yedek jeneratörü, final (iklim canavarı); yutaklar: ağaçlar, bitki örtüsü ve doğal toparlanma. Birim dünya karbon puanıdır (buzul istasyonu ve P6 ile aynı ölçek), ton CO₂ değildir. **HUD:** çevre kartına 8. satır "Ayak izi": dünya karbonu ve şu anki gidiş (±puan/gün, ~10 sn yumuşatma); bölge dışında da görünür. **Pencere** (satıra tıkla, Esc ile kapanır): dünya karbonu ve CO₂ ppm karşılığı, P6 hedefine (≤20) uzaklık, gidiş, bugün/dün neti, kaynak ve yutak çubukları, en büyük kaynağın ve onu azaltan müdahalenin ipucu (ör. filtre karbonu azaltmaz, dönüşüm %90 azaltır). **Tasarrufla bağ:** ev bataryadan karşılanamayan yükü artık yedek dizel jeneratörden alır; eksik her EB Şehir'e 0,03 karbon ve 0,02 hava kirliliği ekler (pencereler artık kararmaz). Önlemsiz bir gecede Şehir'e ≈ +2,9, dört önlemle ≈ +0,6 karbon. Defter kaydedilmez, yüklemeden sonra ~10 sn'de dolar | Play Mode'da kodla ve ekran görüntüleriyle denendi: kaynak/yutak oranları, en büyük kaynak ipucu, HUD satırı, jeneratör karbonu (30 sn: önlemsiz +0,29, önlemli +0,06). Gerçek fareyle tıklama denenmedi |
+| 4 Kasım | **Dönüşüm anı (Ö4, §B).** Ana proje 120 sn doğrulamayı bitirince ≈5,5 sn'lik an oynar (`EcoTransformationMoment`): kamera projenin yerine kayar ve 8,5'e uzaklaşır (P1 şarj istasyonu, P5 ev sayacı, P6 buzul istasyonu, diğerleri bölge merkezi); yerden 40 ışık kıvılcımı yükselir, 12 kuş (göl, orman, buzul) ya da kelebek dışarı uçar; dört notalı yükselen motif çalar; alt üçte birde kart **önce → sonra** gerçek ölçüyü gösterir (P1 şarj edilen EB, P2 çözünmüş oksijen mg/L ve su kalitesi, P3 bitki örtüsü % ve kuş/kelebek, P4 AQI ve sınıfı, P5 batarya rezervi, P6 dünya karbonu ve CO₂ ppm) ve çocuk tek cümleyle tepki verir. "Önce" değerleri yeni oyunun başında bir kez alınır ve kaydedilir (yeni oyunda: oksijen 3,8, orman %34, AQI 169, dünya karbonu 18). Dünya ortak panel saatiyle yavaşlar (×0,1), oyuncu girdisi bekler; herhangi bir tuş ya da tıklama 0,4 sn sonra geçer. Final sırasında, duraklatmada ya da başka bir pencere açıkken kamera oynamaz, yalnız kart görünür. Öğrenme kartı ve +40 YEP aynen sürer | Play Mode'da P2 ve P4 için ekran görüntüleriyle denendi: kamera hedefi ve yakınlaştırma geri dönüyor, efektler temizleniyor, zaman ölçeği 1'e dönüyor. Gerçek proje bitişiyle ve gerçek fareyle denenmedi |
+| 4 Kasım | **Kuramsal temel (C) ve TTA döngüsü (D) eklendi.** C: davranışçı ilkeler (etki yasası, olumlu pekiştirme, anında geri bildirim, şekillendirme, doğal sonuç, sabit/sonlu pekiştirme, sürdürme), motivasyon kuramları (öz-belirleme, Malone, ARCS, akış/GameFlow) ve form temaları ↔ mekanik ↔ rubrik tablosu, APA kaynakçası; aşırı gerekçelendirme riskine karşı tasarım notu. D: Döngü 0 (ekip içi, araştırma verisi değil), 1 (3 DOT + 1 Fen uzmanı, Rubrik 1–3 ve uzman görüşmesi), 2 (10 öğrenci, Rubrik 4 ve öğrenci görüşmesi), 3 (gerekirse); revizyon kuralı. **Etik uyum bulgusu:** §18'deki GEQ ve PENS hazır ölçek; oyun içi anket ve CSV günlüğü etik formda yok → §19 S10 açık soru. İçindekiler, okuma rehberi ve belge tarihi güncellendi | Belge |
+| 4 Kasım | **Uzman demo senaryoları (TTA Döngü 1, §D).** Ana menüye "Uzman demo senaryoları" düğmesi (`EcoExpertDemo`). Dört senaryo yeni dünyayı hazır bir noktaya getirir, kayıt dosyası yazmaz: 1 Başlangıç (07:00); 2 Akşam: evde tasarruf (P1 bitmiş, 17:30, ev sayacının yanında, +30M+20P); 3 Göl ve sanayi (P1 bitmiş, 2. gün 09:00, kirletici girişin yanında, +150M+150P, +2 büyük filtre, bütün bölgeler keşfedilmiş); 4 Orman ve final hazırlığı (P1–P3 bitmiş, göl suyu ≤22, orman örtüsü ≥%66 ve habitat ≥%55, girişler kapalı, istasyon etkin, terminal 70 EB/40 SB, araç dolu, ≥15 demir top; buzul terminalinin yanında). "Dönüşüm anlarını izle" altı projenin anını art arda önizler; önizlemede kart başlığı "ÖNİZLEME" olur ve değişmeyen ölçü "şu an X" diye yazılır (sahte değişim gösterilmez). P1 kartı projenin saydığı şarjı da kullanır. Uzmanlar için tek sayfalık kılavuz Claude Docs'ta: "EcoQuest · Uzman Değerlendirme Kılavuzu" | Play Mode'da senaryo 2, 3 ve 4 ile önizleme dizisi kodla ve ekran görüntüleriyle denendi: P1–P3 bitişi, 120 YEP, %50 hazırlık, terminalin üç şartı yeşil. Gerçek fareyle tıklama denenmedi |
+| 4 Kasım | **Belge tutarlılığı ve Windows sürümü.** Hedef oyuncu etik kurul formuyla aynı yapıldı: 18–25 yaş (§A; S9 kapandı). `Documentation/DevelopmentRoadmap.md`: 9–14. aşamalar §21'e göre işaretlendi, 15. aşama sürüyor; ayrıntının §21'de tutulduğu yazıldı. `Builds/Win64` yeniden alındı (61 sn, 0 hata, 251 MB); `Assembly-CSharp.dll` ev tasarrufu, ayak izi, dönüşüm anı ve uzman demo sistemlerini içeriyor. `EcoQuest_BurstDebugInformation_DoNotShip` klasörü dağıtılmaz | Derleme uyarıları önceden vardı: arazi ağacı prototiplerinin gölgelendirici uyarıları ve kullanılmayan bir alan. Sürüm bu oturumda çalıştırılıp oynanmadı |

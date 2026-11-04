@@ -54,6 +54,10 @@ public sealed class EcoProjects : MonoBehaviour
         Current = this;
         if (GetComponent<EcoDiscoveries>() == null) gameObject.AddComponent<EcoDiscoveries>();
         if (GetComponent<EcoStory>() == null) gameObject.AddComponent<EcoStory>();
+        if (GetComponent<EcoHomeSaving>() == null) gameObject.AddComponent<EcoHomeSaving>();
+        if (GetComponent<EcoCarbonFootprint>() == null) gameObject.AddComponent<EcoCarbonFootprint>();
+        if (GetComponent<EcoTransformationMoment>() == null) gameObject.AddComponent<EcoTransformationMoment>();
+        if (GetComponent<EcoExpertDemo>() == null) gameObject.AddComponent<EcoExpertDemo>();
         if (FindFirstObjectByType<EcoGameMenu>() == null) gameObject.AddComponent<EcoGameMenu>();
         Add("Mahalleye ilk enerji", "Üretim, kablo ve şarj",
             "Üretici–batarya–şarj aynı ağda; toplam 10 EB gerçek şarj ve güncel besleme.",

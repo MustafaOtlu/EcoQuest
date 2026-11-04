@@ -770,10 +770,11 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         int watered = 0;
         foreach (var plant in thirsty)
         {
-            // Same rate as the spray: 5 SB of water for a full root zone.
-            float need = Mathf.Min(1f - plant.moisture, Water / 5f);
+            // Same rate as the spray: 5 SB of water for a full root zone (3 SB with drip irrigation, EcoHomeSaving).
+            float perFull = EcoHomeSaving.WaterPerFullWatering;
+            float need = Mathf.Min(1f - plant.moisture, Water / perFull);
             if (need <= 0.01f) break;
-            plant.WaterPlant(need, true); Water -= need * 5f; watered++;
+            plant.WaterPlant(need, true); Water -= need * perFull; watered++; EcoHomeSaving.CountWaterSaved(need);
             Pulse(WeaponVisualEffects.Burst.Grow, plant.transform.position);
         }
         Notify(watered + " bitki sulandı • Depoda " + Mathf.FloorToInt(Water) + " SB su" + (watered < thirsty.Count ? " • Su yetmedi" : ""));
@@ -871,6 +872,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         CancelAutomaticCombat();
         if (EcoFinale.Current != null && EcoFinale.Current.TryInteractAtTerminal(this)) return;
         if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
+        if (EcoHomeSaving.Current != null && EcoHomeSaving.Current.TryInteract(this)) return;
         if (EcoGlacierStation.Current != null && EcoGlacierStation.Current.TryInteract(this)) return;
         if (EcoPollutionInlet.TryInteract(this)) return;
         // GDD §11: the 4 s stun window is for closing in, not for pixel aiming; E fits the filter on a stunned Tin nearby.
@@ -898,6 +900,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         var waterStore = hit.collider.GetComponentInParent<EcoWaterNode>();
         if (waterStore != null)
         {
+            if (waterStore.leaking && EcoHomeSaving.TryRepair(waterStore, this)) return;
             float filled = waterStore.FillWeapon(this);
             if (filled > 0) Notify(filled.ToString("0") + " temiz su dolduruldu.");
             else if (Water >= maximumWater) Notify("Silahın su deposu dolu.");
@@ -955,6 +958,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         // Things used by standing next to them get a prompt even when the cursor points elsewhere.
         string near = EcoStory.Current != null ? EcoStory.Current.Prompt(this) : "";
+        if (near.Length == 0 && EcoHomeSaving.Current != null) near = EcoHomeSaving.Current.Prompt(this);
         if (near.Length > 0) return near;
         var shop = NearbyMarket();
         if (shop != null) return shop.Describe();

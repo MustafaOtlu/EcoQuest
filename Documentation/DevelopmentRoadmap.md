@@ -21,13 +21,13 @@ Kaynak: GDD ECO.docx ve 24–25 Eylül 2026 tarihli kullanıcı kararları. Hede
 6. [x] Market, demir top satın alma, tohum/filtre alışverişi, YEP ile araç geliştirmeleri ve dengeli maliyetler.
 7. [x] Bölgesel hava/su/toprak durumu, karbon etkisi, sıcaklık, yangın, yanlış kurulumun sonuçları; fabrikalar ve filtreleri.
 8. [x] İklime bağlı farklı ürünler, sulama, gübre, zararlılar, ağaçlandırma, kuş/kelebek dönüşü ve balıkçılık.
-9. [ ] Düşmanların çevre/yapı hedefleri, yol bulma, doğma kuralları, tenekeye filtre ve iklim canavarı.
-10. [ ] Ev/çocuk bakımı, beslenme/temiz su, hikâye görevleri, bölge açılışları ve tamamlanma akışı.
-11. [ ] Konum, envanter, enerji, yapılar/hatlar, üretim/depolar, bitkiler, çevre, YEP, düşman ve görev/bakım durumunun tam kaydı.
-12. [ ] Silah/çarpma/çevre/tesis sesleri, vuruş ve etkisiz kalma tepkileri, tıkanma/düşük şarj geri bildirimi.
-13. [ ] İnşa, market, envanter, YEP, üretim ve bölge ekranları; ana menü, duraklatma, kayıt yükleme, ayarlar ve öğretici.
-14. [ ] Mekanikler tamamlanınca şehir, sanayi, güneşli/rüzgârlı alan, iki göl, buzul, yollar ve iyi/kötü alan yerleşimi.
-15. [ ] En son çoklu düşman/yapı/bitki yükü, kapsamlı optimizasyon, uçtan uca oyun, çözünürlükler ve bağımsız Windows çıktısı.
+9. [x] Düşmanların çevre/yapı hedefleri, yol bulma, doğma kuralları, tenekeye filtre ve iklim canavarı.
+10. [x] Ev/çocuk bakımı, beslenme/temiz su, hikâye görevleri, bölge açılışları ve tamamlanma akışı.
+11. [x] Konum, envanter, enerji, yapılar/hatlar, üretim/depolar, bitkiler, çevre, YEP, düşman ve görev/bakım durumunun tam kaydı.
+12. [x] Silah/çarpma/çevre/tesis sesleri, vuruş ve etkisiz kalma tepkileri, tıkanma/düşük şarj geri bildirimi.
+13. [x] İnşa, market, envanter, YEP, üretim ve bölge ekranları; ana menü, duraklatma, kayıt yükleme, ayarlar ve öğretici.
+14. [x] Mekanikler tamamlanınca şehir, sanayi, güneşli/rüzgârlı alan, iki göl, buzul, yollar ve iyi/kötü alan yerleşimi.
+15. [~] En son çoklu düşman/yapı/bitki yükü, kapsamlı optimizasyon, uçtan uca oyun, çözünürlükler ve bağımsız Windows çıktısı.
 
 Baraj GDD'de ayrıntılı bir sistem değil, yanlış kurulum örneğidir; ayrı bir genişletme olarak tutulur.
 
@@ -44,3 +44,5 @@ Baraj GDD'de ayrıntılı bir sistem değil, yanlış kurulum örneğidir; ayrı
 - 2 Ekim: 9. aşamanın rota ve Teneke filtresi bölümü doğrulandı. NavigationCheck 7 kontrolle U biçimli engelden çıkış/oyuncuya erişme, yeni yapı/sökme ve kara rotalarından suyu dışlama kontrollerini geçti. Yüksek kare hızlarında küçük hareket adımlarının kaybolması giderildi. TinFilterCheck 17, WeaponRuntimeCheck 39 kontrolle yeniden geçti. Yeni Low Poly Water paketinin URP uyarlaması ayrıca 14 render/animasyon kontrolünden geçti. Ayrıntılar: EnemySystem.md ve LowPolyWaterCompatibility.md.
 - 18 Ekim: Yeni masaüstü klonundaki gerçek MainScene üzerinde gökyüzü/bulut/yağmur, sis ve 500 birim çizim sınırı, çevreye bağlı sınırlı düşman doğması ve çevre/yapı saldırıları bağlandı. HUD yenilendi, oyuncu silahlarındaki çubuk akışlar parçacıklara dönüştü ve yeni ekilen bitki/ağaçlar hemen görünür hale geldi. Taşınmış oyuncuya göre başlangıç düşman konumları/navigasyon ve yinelenen saat/enerji/su servisleri düzeltildi. Arkadaşın harita ve çarpıştırıcı çalışmaları korunur. Ayrıntılar: AtmosphereAndPresentation.md.
 - Sıradaki: 9. aşamanın iklim canavarı. Bu aşama bütünüyle tamamlanmadı. Tam dünya kaydı ve sonraki aşamalar henüz tamamlanmadı. Harita ekip tarafından geliştiriliyor; kapsamlı son testler planın sonunda kalıyor.
+- 4 Kasım: Durum güncellendi. 9–14. aşamalar GDD v4 §21 "Uygulama özeti"ne göre uygulandı ve Play Mode'da denendi (iklim canavarı ve final, ev/çocuk bakımı ve hikâye, tam kayıt, kodla üretilen sesler, menüler ve ekranlar, harita yerleşimi). Ayrıntı ve tarihli test notları artık GDD v4 §21 değişiklik günlüğündedir; bu dosya özet olarak tutulur. Aynı gün eklenenler: ev tasarrufu ve depo sızıntısı, karbon ayak izi, dönüşüm anı (Ö4), uzman demo senaryoları.
+- Açık kalanlar (15. aşama): gerçek oyuncularla uçtan uca oyun (TTA Döngü 0, GDD §D), farklı çözünürlükler, yoğun düşman/yapı/bitki yükünde performans. Bağımsız Windows çıktısı 4 Kasım'da yenilendi. Genel arayüz şablonu ve ses paketi kullanıcıdan bekleniyor.
