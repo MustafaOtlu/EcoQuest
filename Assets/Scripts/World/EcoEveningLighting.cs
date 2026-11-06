@@ -7,14 +7,16 @@ using UnityEngine;
 public sealed class EcoEveningLighting : MonoBehaviour
 {
     public EcoWorldClock clock;
-    [Range(0f, 24f)] public float switchOnHour = 19f, switchOffHour = 6f; // sunset is 20:00 (EcoWorldClock)
+    [Range(0f, 24f)] public float switchOnHour = 19f, switchOffHour = 9f; // sunset is 20:00 (EcoWorldClock)
     [Range(1, 24)] public int maximumNearbyLights = 12;
     [Min(10f)] public float nearbyDistance = 45f;
+    private const int MaximumShadowedStreetLamps = 2;
 
     private sealed class Fixture
     {
         public Light light;
         public float intensity, distance;
+        public bool streetLamp;
     }
     private sealed class Surface
     {
@@ -30,6 +32,7 @@ public sealed class EcoEveningLighting : MonoBehaviour
     private readonly List<GameObject> generated = new List<GameObject>();
     private readonly List<Material> materials = new List<Material>();
     private readonly Dictionary<Mesh, Mesh> houseMeshes = new Dictionary<Mesh, Mesh>();
+    private readonly Dictionary<Mesh, (Mesh glass, Vector3 centre)> lampGlass = new Dictionary<Mesh, (Mesh, Vector3)>();
     private readonly HashSet<int> seen = new HashSet<int>();
     private Material glow;
     private bool initialized, explicitScope;
@@ -123,14 +126,24 @@ public sealed class EcoEveningLighting : MonoBehaviour
                 }
                 nearby.Add(fixture);
             }
-            nearby.Sort((a, b) => a.distance.CompareTo(b.distance));
+            nearby.Sort((a, b) =>
+            {
+                int priority = b.streetLamp.CompareTo(a.streetLamp);
+                return priority != 0 ? priority : a.distance.CompareTo(b.distance);
+            });
         }
+        int shadowedStreetLamps = 0;
         for (int i = 0; i < nearby.Count; i++)
         {
             var fixture = nearby[i];
             if (fixture.light == null) continue;
             fixture.light.intensity = fixture.intensity * level;
             fixture.light.enabled = on && i < maximumNearbyLights;
+            if (!fixture.streetLamp) continue;
+            bool castsShadow = fixture.light.enabled && shadowedStreetLamps < MaximumShadowedStreetLamps;
+            if (castsShadow) shadowedStreetLamps++;
+            var shadows = castsShadow ? LightShadows.Soft : LightShadows.None;
+            if (fixture.light.shadows != shadows) fixture.light.shadows = shadows;
         }
     }
 
@@ -265,28 +278,52 @@ public sealed class EcoEveningLighting : MonoBehaviour
         if (renderer.name == "Lamp head") AddWindowSurface(renderer, false);
         else if (filter != null && filter.sharedMesh != null && filter.sharedMesh.isReadable)
         {
-            var mesh = filter.sharedMesh; var vertices = mesh.vertices; var triangles = mesh.triangles;
-            var selected = new List<int>(); Vector3 weighted = Vector3.zero; float area = 0f;
-            for (int i = 0; i < triangles.Length; i += 3)
+            var mesh = filter.sharedMesh;
+            if (!lampGlass.TryGetValue(mesh, out var lens))
             {
-                Vector3 a = vertices[triangles[i]], b = vertices[triangles[i + 1]], c = vertices[triangles[i + 2]];
-                Vector3 cross = Vector3.Cross(b - a, c - a); Vector3 center = (a + b + c) / 3f;
-                if (center.y < mesh.bounds.max.y - mesh.bounds.size.y * 0.14f || cross.normalized.y > -0.55f) continue;
-                selected.Add(triangles[i]); selected.Add(triangles[i + 1]); selected.Add(triangles[i + 2]);
-                float weight = cross.magnitude; weighted += center * weight; area += weight;
+                lens = BuildLampGlass(mesh);
+                lampGlass.Add(mesh, lens);
             }
-            if (area > 0.0001f)
+            if (lens.glass != null)
             {
-                var lit = new Mesh { name = "Eco evening lamp glass", hideFlags = HideFlags.DontSave };
-                lit.vertices = vertices; lit.triangles = selected.ToArray(); lit.RecalculateNormals(); lit.RecalculateBounds();
-                houseMeshes[lit] = lit;
-                AddGlowMesh(filter.transform, lit); head = filter.transform.TransformPoint(weighted / area) - Vector3.up * 0.04f;
+                AddGlowMesh(filter.transform, lens.glass);
+                head = filter.transform.TransformPoint(lens.centre) - Vector3.up * 0.04f;
             }
         }
-        AddLight(renderer.transform, head, true, 15f, 9f);
+        AddLight(renderer.transform, head, true, 15f, 9f, streetLamp: true);
     }
 
-    private void AddLight(Transform parent, Vector3 worldPosition, bool spot, float intensity, float range)
+    private static (Mesh glass, Vector3 centre) BuildLampGlass(Mesh mesh)
+    {
+        var vertices = mesh.vertices;
+        var triangles = mesh.triangles;
+        var selected = new List<int>();
+        var weightedCentre = Vector3.zero;
+        float area = 0f;
+        float lensStart = mesh.bounds.max.y - mesh.bounds.size.y * 0.14f;
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            Vector3 a = vertices[triangles[i]], b = vertices[triangles[i + 1]], c = vertices[triangles[i + 2]];
+            Vector3 cross = Vector3.Cross(b - a, c - a);
+            Vector3 centre = (a + b + c) / 3f;
+            if (centre.y < lensStart || cross.normalized.y > -0.55f) continue;
+            selected.Add(triangles[i]);
+            selected.Add(triangles[i + 1]);
+            selected.Add(triangles[i + 2]);
+            float weight = cross.magnitude;
+            weightedCentre += centre * weight;
+            area += weight;
+        }
+        if (area <= 0.0001f) return (null, Vector3.zero);
+        var glass = new Mesh { name = "Eco evening lamp glass", hideFlags = HideFlags.DontSave };
+        glass.vertices = vertices;
+        glass.triangles = selected.ToArray();
+        glass.RecalculateNormals();
+        glass.RecalculateBounds();
+        return (glass, weightedCentre / area);
+    }
+
+    private void AddLight(Transform parent, Vector3 worldPosition, bool spot, float intensity, float range, bool streetLamp = false)
     {
         var go = new GameObject(spot ? "Eco evening street light" : "Eco evening window light", typeof(Light));
         go.transform.SetParent(parent, true); go.transform.position = worldPosition;
@@ -295,7 +332,7 @@ public sealed class EcoEveningLighting : MonoBehaviour
         light.color = Warm; light.range = range; light.intensity = intensity; light.shadows = LightShadows.None;
         light.renderMode = LightRenderMode.ForcePixel; light.spotAngle = 100f; light.innerSpotAngle = 55f;
         light.enabled = false;
-        fixtures.Add(new Fixture { light = light, intensity = intensity }); generated.Add(go);
+        fixtures.Add(new Fixture { light = light, intensity = intensity, streetLamp = streetLamp }); generated.Add(go);
     }
 
     // Only the registered modern-house asset uses this profile. Copy its actual glass triangles,
@@ -380,5 +417,6 @@ public sealed class EcoEveningLighting : MonoBehaviour
         foreach (var material in materials) Release(material);
         var released = new HashSet<Mesh>();
         foreach (var mesh in houseMeshes.Values) if (mesh != null && released.Add(mesh)) Release(mesh);
+        foreach (var lens in lampGlass.Values) if (lens.glass != null) Release(lens.glass);
     }
 }

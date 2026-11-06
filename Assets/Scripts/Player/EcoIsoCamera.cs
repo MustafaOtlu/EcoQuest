@@ -37,6 +37,7 @@ public sealed class EcoIsoCamera : MonoBehaviour
     }
     private readonly Dictionary<Renderer, Fade> fades = new Dictionary<Renderer, Fade>();
     private readonly List<Renderer> done = new List<Renderer>();
+    private List<MeshRenderer[]> roofedBuildings;
     private const float FadedAlpha = 0.22f;
 
     private void Awake()
@@ -56,10 +57,14 @@ public sealed class EcoIsoCamera : MonoBehaviour
         if (cam != null && cam.orthographic) cam.orthographicSize = distance;
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         foreach (var fade in fades.Values) Restore(fade);
         fades.Clear();
+    }
+
+    private void OnDestroy()
+    {
         if (Current == this) Current = null;
     }
 
@@ -107,18 +112,23 @@ public sealed class EcoIsoCamera : MonoBehaviour
     private void UpdateOcclusion()
     {
         foreach (var fade in fades.Values) fade.seen = false;
-        Vector3 from = transform.position;
         Vector3 to = target.position + Vector3.up * 1.0f;
-        Vector3 direction = to - from;
-        float length = direction.magnitude - 0.4f;
+        Ray sight = cam.ViewportPointToRay(cam.WorldToViewportPoint(to));
+        float length = Vector3.Dot(to - sight.origin, sight.direction) - 0.4f;
+        TouchRoofedBuildings(sight, length, target.position + Vector3.up * 1.5f);
         if (length > 0.5f)
         {
-            var hits = Physics.SphereCastAll(from, 0.45f, direction / (length + 0.4f), length, ~(1 << 2), QueryTriggerInteraction.Ignore);
+            var hits = Physics.SphereCastAll(sight, 0.45f, length, ~(1 << 2), QueryTriggerInteraction.Ignore);
             foreach (var hit in hits)
             {
-                if (EcoGround.IsGround(hit.collider) || hit.transform.IsChildOf(target)) continue;
+                if (EcoGround.IsGround(hit.collider) || hit.transform == target || hit.transform.IsChildOf(target)) continue;
                 var renderer = hit.collider.GetComponent<Renderer>();
-                if (renderer != null) Touch(renderer);
+                if (renderer != null)
+                {
+                    Touch(renderer);
+                    var glass = renderer.transform.Find("Eco evening glass");
+                    if (glass != null && glass.TryGetComponent<MeshRenderer>(out var panes)) Touch(panes, true);
+                }
                 else foreach (var child in hit.collider.GetComponentsInChildren<Renderer>()) Touch(child);
             }
         }
@@ -126,13 +136,13 @@ public sealed class EcoIsoCamera : MonoBehaviour
         foreach (var pair in fades)
         {
             var fade = pair.Value;
-            if (fade.renderer == null) { done.Add(pair.Key); continue; }
+            if (fade.renderer == null) { Restore(fade); done.Add(pair.Key); continue; }
             float goal = fade.seen ? FadedAlpha : 1f;
             fade.alpha = Mathf.MoveTowards(fade.alpha, goal, 4f * Time.unscaledDeltaTime);
             for (int i = 0; i < fade.clones.Length; i++)
             {
                 var clone = fade.clones[i];
-                if (clone == null) continue;
+                if (clone == null || clone == fade.original[i]) continue;
                 Color color = fade.original[i].HasProperty("_BaseColor") ? fade.original[i].GetColor("_BaseColor") : Color.white;
                 color.a *= fade.alpha;
                 clone.SetColor("_BaseColor", color);
@@ -142,10 +152,50 @@ public sealed class EcoIsoCamera : MonoBehaviour
         foreach (var key in done) fades.Remove(key);
     }
 
-    private void Touch(Renderer renderer)
+    private void TouchRoofedBuildings(Ray sight, float length, Vector3 head)
+    {
+        if (roofedBuildings == null)
+        {
+            roofedBuildings = new List<MeshRenderer[]>();
+            var owners = new HashSet<Transform>();
+            foreach (var root in gameObject.scene.GetRootGameObjects())
+            foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                var parent = renderer.transform.parent;
+                if (renderer.name == "Roof" && parent != null && owners.Add(parent))
+                    roofedBuildings.Add(parent.GetComponentsInChildren<MeshRenderer>(true));
+            }
+        }
+
+        Ray headSight = cam.ViewportPointToRay(cam.WorldToViewportPoint(head));
+        float headLength = Vector3.Dot(head - headSight.origin, headSight.direction);
+        foreach (var building in roofedBuildings)
+        {
+            foreach (var renderer in building)
+            {
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (!BlocksView(renderer, sight, length) && !BlocksView(renderer, headSight, headLength)) continue;
+                // Roofs and canopies often extend beyond the wall collider. Fade the whole building together.
+                foreach (var part in building)
+                    if (part != null && part.gameObject.activeInHierarchy) Touch(part, true);
+                break;
+            }
+        }
+    }
+
+    private static bool BlocksView(MeshRenderer renderer, Ray sight, float length)
+    {
+        if (!renderer.bounds.IntersectRay(sight, out float entry) || entry >= length) return false;
+        var worldToLocal = renderer.worldToLocalMatrix;
+        var localDirection = worldToLocal.MultiplyVector(sight.direction);
+        var localSight = new Ray(worldToLocal.MultiplyPoint3x4(sight.origin), localDirection);
+        return renderer.localBounds.IntersectRay(localSight, out entry) && entry < length * localDirection.magnitude;
+    }
+
+    private void Touch(Renderer renderer, bool includeThinParts = false)
     {
         if (renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer) return;
-        if (renderer.bounds.size.y < 1.6f) return; // low props never hide the character
+        if (!includeThinParts && renderer.bounds.size.y < 1.6f) return;
         if (!fades.TryGetValue(renderer, out var fade))
         {
             var shared = renderer.sharedMaterials;
@@ -154,10 +204,12 @@ public sealed class EcoIsoCamera : MonoBehaviour
             for (int i = 0; i < shared.Length; i++)
             {
                 var source = shared[i];
-                if (source == null || source.shader == null || !source.HasProperty("_BaseColor")) { clones[i] = source; continue; }
-                var clone = new Material(source) { name = source.name + " (fade)" };
+                if (source == null || !source.HasProperty("_BaseColor") || !source.HasProperty("_Surface")) { clones[i] = source; continue; }
+                var clone = new Material(source) { name = source.name + " (fade)", hideFlags = HideFlags.DontSave };
                 clone.SetFloat("_Surface", 1f); clone.SetFloat("_Blend", 0f); clone.SetFloat("_ZWrite", 0f);
                 clone.SetFloat("_SrcBlend", 5f); clone.SetFloat("_DstBlend", 10f);
+                clone.DisableKeyword("_ALPHAPREMULTIPLY_ON"); clone.DisableKeyword("_ALPHAMODULATE_ON");
+                clone.DisableKeyword("_EMISSION");
                 clone.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); clone.renderQueue = 3000;
                 clone.SetOverrideTag("RenderType", "Transparent");
                 clones[i] = clone; usable = true;
@@ -175,7 +227,11 @@ public sealed class EcoIsoCamera : MonoBehaviour
         if (fade.renderer != null) fade.renderer.sharedMaterials = fade.original;
         if (fade.clones == null) return;
         for (int i = 0; i < fade.clones.Length; i++)
-            if (fade.clones[i] != null && fade.clones[i] != fade.original[i]) Destroy(fade.clones[i]);
+        {
+            var clone = fade.clones[i];
+            if (clone == null || clone == fade.original[i]) continue;
+            if (Application.isPlaying) Destroy(clone); else DestroyImmediate(clone);
+        }
     }
 
     // ------------------------------------------------------------------ cursor helpers

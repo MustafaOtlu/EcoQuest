@@ -17,7 +17,7 @@ public sealed class EcoPowerCable : MonoBehaviour
     private void LateUpdate()
     {
         if (wire == null) return;
-        wire.enabled = a != null && b != null && connected;
+        wire.enabled = connected && a != null && b != null && a.gameObject.activeInHierarchy && b.gameObject.activeInHierarchy;
         if (!wire.enabled) return;
         wire.useWorldSpace = true; wire.positionCount = 4;
         wire.SetPosition(0, a.SocketPosition);

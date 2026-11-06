@@ -24,12 +24,15 @@ public static class BuildEcoWorldMap
     private const string TargetScene = "Assets/Scenes/EcoWorld.unity";
     private const string Folder = "Assets/EcoWorld/";
     private const string ResFolder = "Assets/Resources/EcoWorld/";
+    private const string NatureKitFolder = "Assets/3d_nature_nature_kit_nature_stylized_lowpoly_modular_cc0_kenney_0055";
+    internal const string NatureTreeFolder = NatureKitFolder + "/Models/FBX format";
     // Playable edge length in metres. Every position below is authored for 150 m and multiplied by L.
     private const float Size = 150f;
     private const float L = Size / 150f;
     private const float Border = 25.5f;   // hills/forest outside the walls, visual only
     private const float Cell = 1.5f;      // ground mesh resolution
     private const float Pave = 1.6f;      // pavement width beside urban streets
+    private const float LakeApproachPavementLength = 32f;
     private const int ChunkCells = 34;
     private const float Ground0 = 22f;
     private const float WaterY = 20.6f;
@@ -377,6 +380,8 @@ public static class BuildEcoWorldMap
 
             Progress("Eski dekor ayıklanıyor", 0.06f);
             HarvestAndClean(scene);
+            var daylight = GameObject.Find("Daylight")?.GetComponent<Light>();
+            if (daylight != null) daylight.shadows = LightShadows.Soft;
             CleanGeneratedAssets();
 
             worldRoot = new GameObject("EcoWorld").transform;
@@ -841,7 +846,7 @@ public static class BuildEcoWorldMap
 
     // ---------------------------------------------------------------- heights & road field
 
-    private static void ComputeHeights()
+    private static void PrepareRoadField()
     {
         N = Mathf.RoundToInt((Size + 2f * Border) / Cell);
         Origin = -Border;
@@ -856,6 +861,11 @@ public static class BuildEcoWorldMap
         for (int pass = 0; pass < 4; pass++) roadField = Blur(roadField, 3);
 
         foreach (var road in Roads) SampleRoad(road);
+    }
+
+    private static void ComputeHeights()
+    {
+        PrepareRoadField();
         MarkJunctions();
 
         // Cut roads and stream beds into the ground.
@@ -1253,9 +1263,262 @@ public static class BuildEcoWorldMap
             if (road.kind == RoadKind.Trail) trails++; else paved++;
         }
         int junctions = BuildJunctions(roadMat);
+        CompleteUrbanPavements(Groups["Roads"], roadMat);
         if (island) BuildRoundaboutIsland();
         report.AppendLine("Kavşak: " + junctions + " birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi");
         report.AppendLine("Yollar: " + paved + " asfalt yol (bordür, kaldırım, şerit, yaya geçidi), " + trails + " toprak patika, 2 dere; ızgara yok");
+    }
+
+    [MenuItem("EcoQuest/Complete urban pavements in place")]
+    public static void CompleteUrbanPavements()
+    {
+        var scene = SceneManager.GetActiveScene();
+        var world = scene.GetRootGameObjects().FirstOrDefault(go => go.name == "EcoWorld");
+        var roads = world != null ? world.transform.Find("Roads") : null;
+        var material = AssetDatabase.LoadAssetAtPath<Material>(Folder + "Materials/EcoRoad.mat");
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != TargetScene || roads == null || material == null)
+            throw new System.InvalidOperationException("EcoWorld sahnesini düzenleme modunda aç.");
+
+        DefineRoads();
+        PrepareRoadField();
+        CompleteUrbanPavements(roads, material);
+        EditorSceneManager.MarkSceneDirty(scene);
+        Physics.SyncTransforms();
+    }
+
+    private static void CompleteUrbanPavements(Transform roads, Material material)
+    {
+        const string groupName = "Kaldırımlar";
+        var group = roads.Find(groupName);
+        var occupied = new List<PavementFootprint>();
+        var existing = new MeshBuilder();
+        var fill = new MeshBuilder();
+
+        // Read the live mesh footprints. Junction asphalt and existing corners take precedence over a new strip.
+        // The old Markings mesh mixes paint and pavement, so copy only pavement faces into a walkable collider.
+        foreach (var filter in roads.GetComponentsInChildren<MeshFilter>())
+        {
+            if (group != null && filter.transform.IsChildOf(group)) continue;
+            if (!filter.TryGetComponent<MeshRenderer>(out var renderer) || !renderer.enabled || filter.sharedMesh == null) continue;
+            var ground = filter.GetComponent<EcoGround>();
+            bool asphalt = ground != null && ground.surface == EcoGround.Surface.Road;
+            bool corner = ground != null && ground.surface == EcoGround.Surface.Plaza;
+            bool markings = filter.name == "Markings";
+            if (!asphalt && !corner && !markings) continue;
+            var mesh = filter.sharedMesh;
+            var positions = mesh.vertices;
+            var colors = mesh.colors32;
+            var indices = mesh.triangles;
+            var matrix = roads.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+            for (int i = 0; i < indices.Length; i += 3)
+            {
+                int a = indices[i], b = indices[i + 1], c = indices[i + 2];
+                bool HasColor(Color32 color) => colors.Length == positions.Length &&
+                    MatchesRoadColor(colors[a], color) && MatchesRoadColor(colors[b], color) && MatchesRoadColor(colors[c], color);
+                if (markings && !HasColor(Pavement) || asphalt && HasColor(Gravel)) continue;
+                var p = matrix.MultiplyPoint3x4(positions[a]);
+                var q = matrix.MultiplyPoint3x4(positions[b]);
+                var r = matrix.MultiplyPoint3x4(positions[c]);
+                AddPavementFootprint(occupied, p, q, r);
+                if (markings) AddPavementFace(existing, new[] { p, q, r });
+            }
+        }
+
+        foreach (var road in Roads)
+        {
+            if (!road.Urban && road.kind != RoadKind.Country) continue;
+            var route = roads.Find(road.name);
+            if (route == null || route.Find("Surface") == null) continue;
+            float limit = road.Urban ? float.PositiveInfinity : LakeApproachPavementLength;
+            float halfWidth = road.Width * 0.5f;
+            var matrix = roads.worldToLocalMatrix * route.localToWorldMatrix;
+            for (int i = 0; i + 1 < road.pos.Count && road.dist[i] < limit; i++)
+            {
+                float t = Mathf.InverseLerp(road.dist[i], road.dist[i + 1], limit);
+                Vector2 start = road.pos[i], end = Vector2.Lerp(road.pos[i], road.pos[i + 1], t);
+                if (Outside(end.x, end.y) > -0.5f) continue;
+                Vector2 firstNormal = Perp(road.tan[i]);
+                Vector2 lastNormal = Perp(Vector2.Lerp(road.tan[i], road.tan[i + 1], t).normalized);
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    if (road.kind == RoadKind.Ring && side > 0) continue;
+                    Vector3 At(Vector2 point) => matrix.MultiplyPoint3x4(RoadPoint(point, 0.17f));
+                    var strip = new List<Vector3>
+                    {
+                        At(start + firstNormal * side * halfWidth),
+                        At(end + lastNormal * side * halfWidth),
+                        At(end + lastNormal * side * (halfWidth + Pave)),
+                        At(start + firstNormal * side * (halfWidth + Pave))
+                    };
+                    var bounds = PavementBounds(strip);
+                    var pieces = new List<List<Vector3>> { strip };
+                    foreach (var footprint in occupied)
+                    {
+                        if (pieces.Count == 0) break;
+                        if (bounds.Overlaps(footprint.bounds)) SubtractPavementFootprint(pieces, footprint);
+                    }
+                    foreach (var piece in pieces)
+                    {
+                        AddPavementFace(fill, piece);
+                        var inward = strip[0] + strip[1] - strip[2] - strip[3];
+                        inward.y = 0f;
+                        for (int j = 0; j < piece.Count; j++)
+                        {
+                            Vector3 a = piece[j], b = piece[(j + 1) % piece.Count];
+                            if (Mathf.Abs(PavementSide(strip[0], strip[1], a)) > 0.0001f
+                                || Mathf.Abs(PavementSide(strip[0], strip[1], b)) > 0.0001f
+                                || (a - b).sqrMagnitude < 0.0001f) continue;
+                            Vector3 drop = Vector3.up * 0.12f;
+                            fill.Quad(a - drop, b - drop, a, b, Kerb, inward);
+                        }
+                        for (int j = 1; j + 1 < piece.Count; j++) AddPavementFootprint(occupied, piece[0], piece[j], piece[j + 1]);
+                    }
+                }
+            }
+        }
+
+        if (group == null) group = Group(groupName, roads);
+        SetPavementMesh(group, "Tamamlanan kaldırımlar", "UrbanPavementFill", fill, material);
+        SetPavementMesh(group, "Mevcut kaldırım zemini", "UrbanPavementCollision", existing, null);
+    }
+
+    private sealed class PavementFootprint
+    {
+        public Vector3[] points;
+        public Rect bounds;
+    }
+
+    private static bool MatchesRoadColor(Color32 stored, Color32 expected)
+        => Mathf.Abs(stored.r - expected.r) <= 1 && Mathf.Abs(stored.g - expected.g) <= 1
+            && Mathf.Abs(stored.b - expected.b) <= 1;
+
+    private static float PavementSide(Vector3 a, Vector3 b, Vector3 point)
+        => (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x);
+
+    private static Rect PavementBounds(IReadOnlyList<Vector3> points)
+    {
+        float left = points[0].x, right = left, bottom = points[0].z, top = bottom;
+        foreach (var point in points)
+        {
+            left = Mathf.Min(left, point.x);
+            right = Mathf.Max(right, point.x);
+            bottom = Mathf.Min(bottom, point.z);
+            top = Mathf.Max(top, point.z);
+        }
+        return Rect.MinMaxRect(left, bottom, right, top);
+    }
+
+    private static void AddPavementFootprint(List<PavementFootprint> footprints, Vector3 a, Vector3 b, Vector3 c)
+    {
+        float winding = PavementSide(a, b, c);
+        if (Mathf.Abs(winding) < 0.0001f) return;
+        var points = winding > 0f ? new[] { a, b, c } : new[] { a, c, b };
+        footprints.Add(new PavementFootprint { points = points, bounds = PavementBounds(points) });
+    }
+
+    private static List<Vector3> ClipPavement(List<Vector3> polygon, Vector3 a, Vector3 b, float sign)
+    {
+        var clipped = new List<Vector3>(polygon.Count + 1);
+        Vector3 previous = polygon[polygon.Count - 1];
+        float previousSide = PavementSide(a, b, previous) * sign;
+        foreach (var point in polygon)
+        {
+            float side = PavementSide(a, b, point) * sign;
+            if ((previousSide < 0f) != (side < 0f))
+                clipped.Add(Vector3.LerpUnclamped(previous, point, previousSide / (previousSide - side)));
+            if (side >= 0f) clipped.Add(point);
+            previous = point;
+            previousSide = side;
+        }
+        return clipped;
+    }
+
+    // A triangle removes only the overlapping part of a strip, so a junction cannot erase the opposite sidewalk.
+    private static void SubtractPavementFootprint(List<List<Vector3>> pieces, PavementFootprint footprint)
+    {
+        for (int i = pieces.Count - 1; i >= 0; i--)
+        {
+            var inside = pieces[i];
+            if (!PavementBounds(inside).Overlaps(footprint.bounds)) continue;
+            var outside = new List<List<Vector3>>(3);
+            for (int edge = 0; edge < 3 && inside.Count >= 3; edge++)
+            {
+                Vector3 a = footprint.points[edge], b = footprint.points[(edge + 1) % 3];
+                var rest = ClipPavement(inside, a, b, -1f);
+                if (rest.Count >= 3) outside.Add(rest);
+                inside = ClipPavement(inside, a, b, 1f);
+            }
+            if (inside.Count < 3) continue;
+            float area = 0f;
+            for (int j = 1; j + 1 < inside.Count; j++) area += PavementSide(inside[0], inside[j], inside[j + 1]);
+            if (Mathf.Abs(area) < 0.0001f) continue;
+            pieces.RemoveAt(i);
+            pieces.AddRange(outside);
+        }
+    }
+
+    private static void AddPavementFace(MeshBuilder builder, IReadOnlyList<Vector3> face)
+    {
+        for (int i = 1; i + 1 < face.Count; i++)
+        {
+            float winding = PavementSide(face[0], face[i], face[i + 1]);
+            if (Mathf.Abs(winding) < 0.0001f) continue;
+            int index = builder.v.Count;
+            builder.v.Add(face[0]);
+            builder.v.Add(face[i]);
+            builder.v.Add(face[i + 1]);
+            builder.c.Add(Pavement);
+            builder.c.Add(Pavement);
+            builder.c.Add(Pavement);
+            builder.t.Add(index);
+            builder.t.Add(index + (winding > 0f ? 2 : 1));
+            builder.t.Add(index + (winding > 0f ? 1 : 2));
+        }
+    }
+
+    private static void SetPavementMesh(Transform parent, string name, string meshName, MeshBuilder builder, Material material)
+    {
+        var child = parent.Find(name);
+        if (builder.t.Count == 0)
+        {
+            if (child != null) child.gameObject.SetActive(false);
+            return;
+        }
+        var generated = builder.ToMesh(meshName);
+        string path = Folder + "Meshes/" + meshName + ".asset";
+        var asset = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+        if (asset == null)
+        {
+            asset = generated;
+            AssetDatabase.CreateAsset(asset, path);
+        }
+        else
+        {
+            EditorUtility.CopySerialized(generated, asset);
+            Object.DestroyImmediate(generated);
+            EditorUtility.SetDirty(asset);
+        }
+        if (child == null)
+        {
+            child = Group(name, parent);
+            child.gameObject.AddComponent<EcoGround>().surface = EcoGround.Surface.Plaza;
+            child.gameObject.AddComponent<MeshCollider>();
+            if (material != null)
+            {
+                child.gameObject.AddComponent<MeshFilter>();
+                child.gameObject.AddComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            child.gameObject.isStatic = true;
+        }
+        child.gameObject.SetActive(true);
+        var collider = child.GetComponent<MeshCollider>();
+        collider.sharedMesh = null;
+        collider.sharedMesh = asset;
+        if (material != null)
+        {
+            child.GetComponent<MeshFilter>().sharedMesh = asset;
+            child.GetComponent<MeshRenderer>().sharedMaterial = material;
+        }
     }
 
     private sealed class Crossing { public RoadDef road; public int k, dir; public Vector2 start, along, across; public float halfWidth; }
@@ -1763,9 +2026,16 @@ public static class BuildEcoWorldMap
 
     private static string[] KenneyFolders() => new[]
     {
-        "Assets/3d_nature_nature_kit_nature_stylized_lowpoly_modular_cc0_kenney_0055",
+        NatureKitFolder,
         "Assets/3d_nature_mini_forest_kit_nature_stylized_lowpoly_modular_cc0_kenney_0031",
     };
+
+    private static ModelSet BuildLeafyTrees(bool street = false)
+    {
+        var excluded = new List<string> { "palm", "pine", "plateau", "fall", "blocks", "detailed" };
+        if (street) excluded.AddRange(new[] { "cone", "tall" });
+        return BuildSet(new[] { "tree_" }, excluded.ToArray(), NatureTreeFolder);
+    }
 
     // Instantiates a model/prefab standing on `pos`, scaled uniformly to fit the given limits, then rotated by yaw about its own centre.
     private static GameObject SpawnModel(GameObject model, Transform parent, Vector3 pos, float yaw, float targetHeight,
@@ -1947,27 +2217,8 @@ public static class BuildEcoWorldMap
             }
         report.AppendLine("Şehir: " + infill + " iç parsel evi (en yakın sokağa bakar)");
 
-        // Street lamps on the pavement, staggered, never inside a junction.
-        int lamps = 0;
-        foreach (var road in Roads.Where(r => r.Urban))
-        {
-            int side = 1;
-            for (float along = 5f; along < road.dist[road.dist.Count - 1] - 2f; along += 13f)
-            {
-                int k = road.dist.FindIndex(d => d >= along);
-                if (k < 0 || road.nearJunction[k]) continue;
-                Vector2 n = new Vector2(-road.tan[k].y, road.tan[k].x);
-                if (road.kind == RoadKind.Ring) side = -1;
-                Vector2 p = road.pos[k] + n * side * (road.Width * 0.5f + 0.7f);
-                if (!cityRect.Contains(p)) continue;
-                PlaceLamp(root, lamp, p, Mathf.Atan2(-n.x * side, -n.y * side) * Mathf.Rad2Deg); lamps++;
-                if (road.kind != RoadKind.Ring) side = -side;
-            }
-        }
-        report.AppendLine("Şehir: " + lamps + " sokak lambası");
-
-        // Street trees on the outer edge of the avenue and boulevard pavements, between the lamps.
-        var streetTrees = BuildSet(new[] { "tree" }, new[] { "palm", "pine", "plateau", "stump", "log", "cone", "tent", "house", "fall", "dead", "tall" }, KenneyFolders());
+        // Street trees stand on the outer edge of the avenue and boulevard pavements.
+        var streetTrees = BuildLeafyTrees(street: true);
         int planted = 0;
         if (streetTrees.Any)
             foreach (var road in Roads.Where(r => r.kind == RoadKind.Avenue || r.name.Contains("Bulvar")))
@@ -2019,6 +2270,8 @@ public static class BuildEcoWorldMap
             KeepOut.Add(new Rect(c.x - 1.2f, c.y - 1.2f, 2.4f, 2.4f));
             benches++;
         }
+        int lamps = AddCityStreetLamps(root, Groups["Roads"], lamp);
+        report.AppendLine("Şehir: " + lamps + " sokak lambası");
     }
 
     // The child's home: a warm-coloured two-storey house with a garden fence (kept procedural so it is recognisable).
@@ -2109,9 +2362,95 @@ public static class BuildEcoWorldMap
         return root.gameObject;
     }
 
-    private static void PlaceLamp(Transform parent, GameObject lampModel, Vector2 p, float yaw)
+    [MenuItem("EcoQuest/World/Complete city street lighting")]
+    public static void CompleteCityStreetLighting()
     {
-        var pos = new Vector3(p.x, SampleGrid(roadField, p.x, p.y) + 0.15f, p.y);
+        var world = GameObject.Find("EcoWorld");
+        if (EditorApplication.isPlayingOrWillChangePlaymode || SceneManager.GetActiveScene().path != TargetScene || world == null)
+            throw new System.InvalidOperationException("Open EcoWorld in Edit Mode.");
+
+        var city = world.transform.Find("City");
+        var roads = world.transform.Find("Roads");
+        if (city == null || roads == null) throw new System.InvalidOperationException("The city and roads groups are required.");
+
+        report = new StringBuilder();
+        DefineRegions();
+        DefineRoads();
+        foreach (var road in Roads) SampleRoad(road);
+        MarkJunctions();
+        CollectCrossings();
+
+        var original = city.Cast<Transform>().FirstOrDefault(t => IsStreetLamp(t) && PrefabUtility.IsPartOfPrefabInstance(t));
+        var model = original != null ? PrefabUtility.GetCorrespondingObjectFromSource(original.gameObject) : FindZiplerModel("lamba");
+        int added = AddCityStreetLamps(city, roads, model);
+        EditorSceneManager.MarkSceneDirty(world.scene);
+        Debug.Log("EcoWorld: " + added + " street lamps added.");
+    }
+
+    private static bool IsStreetLamp(Transform item)
+        => item.name == "Street lamp" || item.name.IndexOf("street+lamp", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || item.name.IndexOf("street lamp 3d", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static int AddCityStreetLamps(Transform city, Transform roads, GameObject model)
+    {
+        const float spacing = 7.5f;
+        const float minimumGap = 4.5f;
+        var cityDef = Def(EcoRegionInfo.Kind.City);
+        var district = new Rect(cityDef.center - cityDef.size * 0.5f, cityDef.size);
+        var litArea = Rect.MinMaxRect(district.xMin, 31f * L, district.xMax, district.yMax);
+        var positions = city.Cast<Transform>().Where(IsStreetLamp)
+            .Select(t => new Vector2(t.position.x, t.position.z)).ToList();
+        var trees = city.Cast<Transform>().Where(t => t.name == "Street tree")
+            .Select(t => new Vector2(t.position.x, t.position.z)).ToArray();
+        var pavements = roads.GetComponentsInChildren<EcoGround>()
+            .Where(g => g.surface == EcoGround.Surface.Plaza)
+            .SelectMany(g => g.GetComponents<Collider>()).Where(c => c.enabled).ToList();
+        Physics.SyncTransforms();
+
+        int added = 0;
+        foreach (var road in Roads.Where(r => r.Urban || r.kind == RoadKind.Country))
+        {
+            float end = road.dist[road.dist.Count - 1];
+            if (road.kind == RoadKind.Country) end = Mathf.Min(end, LakeApproachPavementLength);
+            bool ring = road.kind == RoadKind.Ring;
+            float preferredSide = ring ? -1f : 1f;
+            for (float along = 3.5f; along < end - 1.5f; along += spacing)
+            {
+                int index = road.dist.FindIndex(d => d >= along);
+                if (index < 0 || road.junction[index] || OnCrossing(road.pos[index])) continue;
+                Vector2 normal = new Vector2(-road.tan[index].y, road.tan[index].x);
+                Vector2 offset = normal * (road.Width * 0.5f + 0.72f);
+                Vector2 outer = road.pos[index] - offset;
+                Vector2 opposite = road.pos[index] + offset;
+                if (positions.Any(p => (p - outer).sqrMagnitude < minimumGap * minimumGap
+                    || (!ring && (p - opposite).sqrMagnitude < minimumGap * minimumGap))) continue;
+
+                for (int attempt = 0; attempt < (ring ? 1 : 2); attempt++)
+                {
+                    float side = attempt == 0 ? preferredSide : -preferredSide;
+                    Vector2 point = side < 0f ? outer : opposite;
+                    if (!litArea.Contains(point) || trees.Any(p => (p - point).sqrMagnitude < 1.4f * 1.4f)) continue;
+
+                    var position = new Vector3(point.x, Ground0, point.y);
+                    if (!RaycastGround(pavements, position, out float sidewalkHeight)) continue;
+                    position.y = sidewalkHeight + 0.01f;
+                    var obstacles = Physics.OverlapBox(position + Vector3.up * 1.7f,
+                        new Vector3(0.26f, 1.65f, 0.26f), Quaternion.identity, ~(1 << 2), QueryTriggerInteraction.Ignore);
+                    if (obstacles.Any(c => !EcoGround.IsGround(c))) continue;
+
+                    PlaceLamp(city, model, position, Mathf.Atan2(-normal.x * side, -normal.y * side) * Mathf.Rad2Deg);
+                    positions.Add(point);
+                    if (!ring) preferredSide = -side;
+                    added++;
+                    break;
+                }
+            }
+        }
+        return added;
+    }
+
+    private static void PlaceLamp(Transform parent, GameObject lampModel, Vector3 pos, float yaw)
+    {
         if (lampModel != null && SpawnModel(lampModel, parent, pos, yaw, 3.8f, 0f, 0f, false, false) != null) return;
         var lamp = Group("Street lamp", parent); lamp.position = pos; lamp.rotation = Quaternion.Euler(0f, yaw, 0f); lamp.localScale = Vector3.one * 0.72f;
         var metal = Mat("LampMetal", new Color(0.18f, 0.2f, 0.22f), 0.4f, 0.6f);
@@ -2386,8 +2725,9 @@ public static class BuildEcoWorldMap
         var anchor = new GameObject("Marker"); anchor.transform.SetParent(field, false);
         anchor.transform.position = new Vector3(area.center.x, GroundY(area.center.x, area.center.y), area.center.y);
         EcoMapMarker.Add(anchor, "poi_solar", title, "Eski panel dizisi. Kendi güneş panelini [B] ile çayıra kurabilirsin.", EcoMapMarker.Category.Energy);
-        KeepOut.Add(area);
-        report.AppendLine(title + ": " + placed + " öğe");
+        // Retain the authored panel IDs so an older save can still resolve its cable endpoints.
+        field.gameObject.SetActive(false);
+        report.AppendLine(title + ": eski kayıtlar için devre dışı (" + placed + " panel)");
     }
 
     // ---------------------------------------------------------------- glacier
@@ -2489,9 +2829,9 @@ public static class BuildEcoWorldMap
     private static void BuildVegetation()
     {
         var root = Groups["Vegetation"];
-        var leafy = BuildSet(new[] { "tree" }, new[] { "palm", "pine", "plateau", "stump", "log", "cone", "tent", "house", "fall", "dead" }, KenneyFolders());
-        var pines = BuildSet(new[] { "pine", "cone" }, new[] { "log", "stump", "fall" }, KenneyFolders());
-        var dead = BuildSet(new[] { "dead", "stump" }, new[] { "tile", "log" }, KenneyFolders());
+        var leafy = BuildLeafyTrees();
+        var pines = BuildSet(new[] { "tree_pine" }, new[] { "fall" }, NatureTreeFolder);
+        var dead = BuildSet(new[] { "stump" }, new[] { "tile", "log" }, NatureTreeFolder);
         // Cliff and bridge tiles also carry "rock"/"stone" in their names; on their own they read as grass cubes and slabs.
         var rocks = BuildSet(new[] { "rock", "stone" }, new[] { "stepping", "path", "crystal", "tile", "cliff", "bridge" }, KenneyFolders());
         var plants = BuildSet(new[] { "bush", "flower", "plant", "mushroom" }, new[] { "tile", "pot" }, KenneyFolders());
@@ -2784,10 +3124,16 @@ public static class BuildEcoWorldMap
 
     private static void RestyleNatureMaterials()
     {
+        int count = ApplyNaturePalette(worldRoot.GetComponentsInChildren<Renderer>(true));
+        report.AppendLine("Doğa paleti: " + count + " renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı");
+    }
+
+    internal static int ApplyNaturePalette(IEnumerable<Renderer> renderers)
+    {
         var urp = Shader.Find("Universal Render Pipeline/Lit");
         var cache = new Dictionary<string, Material>();
         int count = 0;
-        foreach (var renderer in worldRoot.GetComponentsInChildren<Renderer>(true))
+        foreach (var renderer in renderers)
         {
             if (renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer) continue;
             var shared = renderer.sharedMaterials; bool changed = false;
@@ -2813,7 +3159,7 @@ public static class BuildEcoWorldMap
             }
             if (changed) { renderer.sharedMaterials = shared; count++; }
         }
-        report.AppendLine("Doğa paleti: " + count + " renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı");
+        return count;
     }
 
     private static void BuildSigns()

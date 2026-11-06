@@ -24,7 +24,8 @@ public static class BuildEcoArt
         Model("Workbench", "Survival", "workbench", 0.85f, survival, true);
         Model("Fence", "Survival", "fence", 0.7f, survival, true);
         Model("Signpost", "Survival", "signpost-single", 1.15f, survival, true);
-        Model("Tree", "Survival", "tree", 3.4f, survival, false);
+        var treeModel = AssetDatabase.LoadAssetAtPath<GameObject>(BuildEcoWorldMap.NatureTreeFolder + "/tree_pineDefaultA.fbx");
+        BuildModel("Tree", treeModel, 3.4f, null, false);
         Model("Rock", "Survival", "rock-a", 0.45f, survival, true);
         Model("Grass", "Survival", "grass", 0.23f, survival, false);
         Model("GrassPatch", "Survival", "patch-grass", 0.12f, survival, false);
@@ -115,10 +116,16 @@ public static class BuildEcoArt
         string path="Assets/ThirdParty/Kenney/"+pack+"/Models/"+file+".fbx";
         var importer=(ModelImporter)AssetImporter.GetAtPath(path);
         importer.importAnimation=false;importer.materialImportMode=ModelImporterMaterialImportMode.None;importer.SaveAndReimport();
+        BuildModel(name, AssetDatabase.LoadAssetAtPath<GameObject>(path), height, mat, collide);
+    }
+    private static void BuildModel(string name, GameObject modelAsset, float height, Material mat, bool collide)
+    {
         var root=new GameObject(name);
-        var model=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path));
+        var model=(GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
         model.transform.SetParent(root.transform,false);
-        foreach(var renderer in model.GetComponentsInChildren<Renderer>())
+        var renderers = model.GetComponentsInChildren<Renderer>();
+        if (mat == null) BuildEcoWorldMap.ApplyNaturePalette(renderers);
+        else foreach (var renderer in renderers)
         { var mats=new Material[renderer.sharedMaterials.Length]; for(int i=0;i<mats.Length;i++)mats[i]=mat; renderer.sharedMaterials=mats; }
         var bounds=WorldBounds(root);float scale=height/Mathf.Max(0.001f,bounds.size.y);
         model.transform.localScale*=scale;
