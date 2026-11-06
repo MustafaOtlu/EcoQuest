@@ -8,6 +8,7 @@ using UnityEngine;
 public static class EcoQuestBoard
 {
     public static readonly string[] LevelNames = { "", "Kolay", "Orta", "Zor" };
+    private const string EnergyTutorialId = "tutorial:energy";
 
     public sealed class Quest
     {
@@ -47,7 +48,27 @@ public static class EcoQuestBoard
     }
 
     /// <summary>Open quests of one region, easy first.</summary>
-    public static List<Quest> For(EcoRegion region, Vector3 from) => region == null ? new List<Quest>() : All(from).Where(q => q.region == region).ToList();
+    public static List<Quest> For(EcoRegion region, Vector3 from)
+    {
+        if (region == null)
+        {
+            var tutorial = EnergyTutorial(from);
+            return tutorial != null ? new List<Quest> { tutorial } : new List<Quest>();
+        }
+        return All(from).Where(q => q.id == EnergyTutorialId || q.region == region).ToList();
+    }
+
+    private static Quest EnergyTutorial(Vector3 from)
+    {
+        var tutorial = EcoEnergyTutorial.Current;
+        if (tutorial == null || !tutorial.Active) return null;
+        return new Quest
+        {
+            id = EnergyTutorialId, title = "Başlangıç: Kendi enerjini kur", level = 1, icon = "electricity",
+            detail = tutorial.StepText, target = tutorial.Target, progress = tutorial.Progress,
+            region = EcoRegion.At(tutorial.Target ?? from) ?? EcoRegion.At(from)
+        };
+    }
 
     /// <summary>Action instructions shared by the sidebar and quest board; reading them never changes progress or hints.</summary>
     public static string HowTo(Quest quest)
@@ -59,6 +80,9 @@ public static class EcoQuestBoard
         string kind = separator < 0 ? quest.id : quest.id.Substring(0, separator);
         switch (kind)
         {
+            case "tutorial":
+                return EcoEnergyTutorial.Current != null ? EcoEnergyTutorial.Current.Instructions
+                    : "İnşa menüsünden güneş paneli, batarya ve şarj istasyonu kur. Paneli bataryaya, bataryayı istasyona kabloyla bağla ve kendi istasyonundan ilk şarjını al.";
             case "harvest":
                 return "1. İşaretlenen olgun bitkinin yanına yaklaş.\n2. " + interact + " ile hasat et; ürünü ve tohumları al.\n3. Bölgedeki diğer olgun ürünler için tekrarla.";
             case "water":
@@ -96,10 +120,12 @@ public static class EcoQuestBoard
         return "1. Görev işaretine doğru ilerle.\n2. Üstteki güncel görev adımını uygula.\n3. İş tamamlandığında görev listesi kendiliğinden güncellenir.";
     }
 
-    /// <summary>All open quests: the player's region first, then the nearest regions; inside a region easy → hard.</summary>
+    /// <summary>The starter tutorial, then open quests by the player's region and distance; easy → hard.</summary>
     public static List<Quest> All(Vector3 from)
     {
         var quests = new List<Quest>();
+        var tutorial = EnergyTutorial(from);
+        if (tutorial != null) quests.Add(tutorial);
         var regions = Object.FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID).Where(r => r != null).ToArray();
         if (regions.Length == 0) return quests;
         var waste = Object.FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None);
@@ -188,8 +214,9 @@ public static class EcoQuestBoard
         }
 
         var home = EcoRegion.At(from);
-        return quests.OrderBy(q => q.region == home ? 0 : 1)
-            .ThenBy(q => (q.region.transform.position - from).sqrMagnitude)
+        return quests.OrderBy(q => q.id == EnergyTutorialId ? 0 : 1)
+            .ThenBy(q => q.region == home ? 0 : 1)
+            .ThenBy(q => ((q.region != null ? q.region.transform.position : q.target ?? from) - from).sqrMagnitude)
             .ThenBy(q => q.level).ToList();
     }
 

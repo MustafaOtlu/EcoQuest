@@ -27,7 +27,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private static readonly string[] ToolIcons = { "tool_vacuum", "tool_seed", "tool_recycle", "tool_scanner", "tool_hand", "tool_flashlight" };
     private static readonly string[] ToolTips =
     {
-        "Vakum [1]: neye tutarsan ona göre çalışır; atık toplar, suyu çeker, yangını söndürür, bitkiyi sular, dumanı/asidi dağıtır. Boşlukta [Q] mod.",
+        "Vakum [1]: atık toplar, su çeker, yangını söndürür ve bitkiyi sular. [Q] ile Su modunu seçip taşıdığın suyu gölete veya su deposuna aktar. Gölet yağmurda yavaşça dolar.",
         "Tohum aracı [2]: toprağa tohum eker; demir top modunda Teneke'yi sersemletir. [Q] mod, [R] tohum türü.",
         "Geri dönüşüm [3]: atığı yerinde işler, [R] ile gübre uygular.",
         "Tarayıcı [4]: neden, kalite ve bağlantı bilgisini gösterir; hasar vermez.",
@@ -331,7 +331,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             : tool == PlayerWeaponSystem.Tool.Flashlight ? "[Sol tık] Aç / kapat"
             : tool == PlayerWeaponSystem.Tool.Scanner ? "[Sol tık] Tara"
             : tool == PlayerWeaponSystem.Tool.Recycler ? "Basılı tut: dönüştür · Tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele"
-            : tool == PlayerWeaponSystem.Tool.Vacuum ? "Basılı tut: alanı kullan · Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
+            : tool == PlayerWeaponSystem.Tool.Vacuum ? (weapons.Mode == PlayerWeaponSystem.VacuumMode.Water
+                ? "Basılı tut: sula / su aktar · " : "Basılı tut: topla / su çek · ") + "Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
             : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
             : "[Sol tık] Kullan  ·  " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod" + (tool == PlayerWeaponSystem.Tool.SeedGun && !weapons.MetalMode ? "  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum" : "");
         context.text = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
@@ -451,7 +452,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // Each step says what to do and with which key; the guide marker (EcoGuide) shows where.
         Vector3? goal = null; string goalName = "";
         var finale = EcoFinale.Current; var readiness = EcoProjects.Current;
-        // A quest the player picked on the quest board leads the card and the arrow until its job is done.
+        var tutorial = EcoEnergyTutorial.Current;
+        // A picked quest leads the card after the initial construction lesson has been learned.
         var tracked = EcoQuestBoard.Tracked(here);
         if (EcoQuestBoard.FinishedCount != seenFinished)
         {
@@ -461,6 +463,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
         // GDD §12: the endgame state outranks the early-game guidance.
         if (finale != null && finale.Won) text = "Final kazanıldı · serbest oyun: siparişler ve çevre";
         else if (finale != null && finale.Fighting) text = "Finali tamamla · Faz " + (finale.Phase + 1) + "/3";
+        else if (tutorial != null && tutorial.Active)
+        {
+            text = tutorial.StepText;
+            goal = tutorial.Target; goalName = tutorial.TargetName;
+        }
         else if (tracked != null)
         {
             text = tracked.title + " · " + tracked.detail;

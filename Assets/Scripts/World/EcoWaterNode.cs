@@ -34,9 +34,12 @@ public sealed class EcoWaterNode : MonoBehaviour
         if (!Valid(seconds)) return;
         LastOutputRate = 0;
         if (leaking && kind == Kind.Tank) leakedWater += Take(Fluid.Clean, LeakRate * seconds);
-        if (returnToLake && kind == Kind.Purifier && cleanWater > 0)
+        if (returnToLake && kind == Kind.Purifier && cleanWater > 0 && Operational)
         {
-            float returned = Take(Fluid.Clean, Mathf.Min(cleanWater, litresPerSecond * seconds));
+            float available = Mathf.Min(cleanWater, litresPerSecond * seconds);
+            // A full finite pond leaves the clean batch in the purifier instead of deleting it.
+            float accepted = source != null && source.finiteVolume ? source.Deposit(available, true) : available;
+            float returned = Take(Fluid.Clean, accepted);
             SourceRegion?.AddPollution(0, -returned / 20f, 0, 0);
         }
         SlimeRemaining = Mathf.Max(0f, SlimeRemaining - seconds);
@@ -90,7 +93,7 @@ public sealed class EcoWaterNode : MonoBehaviour
         if (source == null || !source.isActiveAndEnabled) return 0;
         var sourceCollider = source.GetComponentInChildren<Collider>();
         if (Vector3.Distance(transform.position, sourceCollider != null ? sourceCollider.bounds.ClosestPoint(transform.position) : source.transform.position) > 3f) return 0;
-        return (float)System.Math.Min(float.MaxValue, System.Math.Min(Space, rateLimit) * electricityPerLitre);
+        return (float)System.Math.Min(float.MaxValue, System.Math.Min(source.Volume, System.Math.Min(Space, rateLimit)) * electricityPerLitre);
     }
     public float DeliverElectricity(float amount, float seconds)
     {
@@ -98,7 +101,15 @@ public sealed class EcoWaterNode : MonoBehaviour
         float accepted = Mathf.Min(amount, RequestElectricity(seconds));
         if (accepted <= 0) return 0;
         float litres = Mathf.Min(kind == Kind.Purifier ? dirtyWater : Space, accepted / electricityPerLitre);
-        if (kind == Kind.Intake) return Add(source.IsClean ? Fluid.Clean : Fluid.Dirty, litres) * electricityPerLitre;
+        if (kind == Kind.Intake)
+        {
+            bool clean = source.IsClean;
+            float extracted = source.Withdraw(litres);
+            float stored = Add(clean ? Fluid.Clean : Fluid.Dirty, extracted);
+            if (stored < extracted) source.Deposit(extracted - stored, clean);
+            LastOutputRate = seconds > 0f ? stored / seconds : 0f;
+            return stored * electricityPerLitre;
+        }
         dirtyWater = Mathf.Max(0, dirtyWater - litres); cleanWater += litres;
         LastProcessedClean += litres; LastOutputRate = seconds > 0 ? litres / seconds : 0;
         return Mathf.Min(accepted, litres * electricityPerLitre);

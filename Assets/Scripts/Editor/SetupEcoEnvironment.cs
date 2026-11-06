@@ -40,7 +40,7 @@ public static class SetupEcoEnvironment
         filter.SetActive(false);
         Label(factory.transform, "FABRİKA\n[E] Büyük filtre tak", new Vector3(0, 3.8f, -2.1f));
         var water = Shape(ecology.transform, "Natural polluted water", new Vector3(32, 0.03f, 2), new Vector3(4, 0.05f, 4), Mat("Water", new Color(0.24f, 0.38f, 0.28f)));
-        water.AddComponent<BoxCollider>(); var source = water.AddComponent<WeaponWaterSource>(); source.useRegionalQuality = true;
+        water.AddComponent<BoxCollider>(); var source = water.AddComponent<WeaponWaterSource>(); source.useRegionalQuality = true; source.cleanWater = false;
         source.statusLabel = Label(ecology.transform, "KİRLİ SU\nArıtmadan kullanma", new Vector3(32, 1.2f, 2));
         var burning = new GameObject("Brush fire"); burning.transform.SetParent(ecology.transform, false); burning.transform.localPosition = new Vector3(22, 0.3f, -3);
         var fire = burning.AddComponent<EcoFire>(); fire.fuel = 300; fire.flames = Particles(burning.transform, Vector3.zero, true);

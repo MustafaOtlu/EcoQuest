@@ -80,7 +80,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         "EcoStructure", "EcoPowerNode", "EcoWaterNode", "EcoRecyclingFacility", "EcoFactory", "EcoRegion", "EcoWorldClock",
         "EcoHabitat", "EcoFire", "EcoVegetation", "EcoFishingSpot", "EcoEnemySpawnZone", "EnemyBrain", "RecyclableResource",
         "PlantedSeed", "PlayerVitals", "WeaponWaterSource", "EcoGlacierMelt", "EcoGlacierStation", "EcoPollutionInlet",
-        "EcoStory", "EcoDiscoveries", "EcoHydroPlant", "EcoChargingStation", "EcoFarm", "EcoHomeSaving", "EcoTransformationMoment"
+        "EcoStory", "EcoDiscoveries", "EcoHydroPlant", "EcoChargingStation", "EcoFarm", "EcoHomeSaving", "EcoTransformationMoment", "EcoEnergyTutorial"
     };
     private readonly Dictionary<string, GameObject> initialTemplates = new Dictionary<string, GameObject>();
     private readonly Queue<string> deferredSlots = new Queue<string>();
@@ -389,6 +389,8 @@ public sealed class EcoWorldSave : MonoBehaviour
             }
             foreach (var entity in data.entities)
                 if (!string.IsNullOrEmpty(entity.parent) && map.TryGetValue(entity.id, out var child) && map.TryGetValue(entity.parent, out var parent)) child.transform.SetParent(parent.transform, true);
+            // Source volume belongs to the save, while bowl geometry belongs to the current map.
+            foreach (var basin in FindObjectsByType<EcoPondBasin>(FindObjectsInactive.Include, FindObjectsSortMode.None)) basin.RefreshVisual();
             foreach (var link in data.links ?? Array.Empty<Link>()) RestoreLink(link, map);
             foreach (var water in FindObjectsByType<EcoWaterNode>(FindObjectsSortMode.None)) if (water.kind == EcoWaterNode.Kind.Intake) water.FindSource();
             RestoreProgress(data); RestoreMarket(data.market);
@@ -397,6 +399,12 @@ public sealed class EcoWorldSave : MonoBehaviour
             RestoreHooks(data.globalHooks, null);
             var player = FindFirstObjectByType<PlayerController>();
             if (player != null) { player.Teleport(data.player); player.transform.rotation = data.playerRotation; }
+            var lesson = EcoEnergyTutorial.Current;
+            if (lesson != null)
+            {
+                bool savedLesson = (data.entities ?? Array.Empty<Entity>()).Any(e => (e.components ?? Array.Empty<EcoSaveIdentity.State>()).Any(s => s.type == typeof(EcoEnergyTutorial).FullName));
+                lesson.RestoreAfterLoad(savedLesson, data.projectDone != null && data.projectDone.Length > 0 && data.projectDone[0]);
+            }
             EcoNavigation.MarkDirty();
         }
         catch (Exception error) { failure = error.Message; }

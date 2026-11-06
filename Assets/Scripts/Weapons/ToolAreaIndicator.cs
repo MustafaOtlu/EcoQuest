@@ -10,6 +10,7 @@ public sealed class ToolAreaIndicator : MonoBehaviour
     private Mesh fill, edge, ring;
     private MeshRenderer fillRenderer, edgeRenderer, ringRenderer;
     private Material fillMaterial, edgeMaterial;
+    private Shader overlayShader;
     private readonly Vector3[] fillPoints = new Vector3[Segments + 2];
     private readonly Vector3[] edgePoints = new Vector3[(Segments + 1) * 2 + 8];
     private readonly Vector3[] ringPoints = new Vector3[RingSegments * 2];
@@ -28,8 +29,9 @@ public sealed class ToolAreaIndicator : MonoBehaviour
 
     private void Build()
     {
-        var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-        fillMaterial = Transparent(shader); edgeMaterial = Transparent(shader);
+        overlayShader = Resources.Load<Shader>("EcoUI/ToolAreaOverlay");
+        if (overlayShader == null) { Debug.LogError("Tool area overlay shader is missing.", this); return; }
+        fillMaterial = Transparent(overlayShader, 4000); edgeMaterial = Transparent(overlayShader, 4001);
         var fan = new int[Segments * 3];
         for (int i = 0; i < Segments; i++) { fan[i * 3] = 0; fan[i * 3 + 1] = i + 1; fan[i * 3 + 2] = i + 2; }
         var outline = new int[Segments * 6 + 12];
@@ -47,6 +49,14 @@ public sealed class ToolAreaIndicator : MonoBehaviour
     public void Show(Vector3 at, Vector3 forward, float range, float halfAngle, Color tint, Vector3? targetPoint, bool active)
     {
         if (fill == null) Build();
+        if (fill == null) return;
+        // Also upgrade an existing Play Mode preview after a script/domain reload.
+        if (overlayShader == null) overlayShader = Resources.Load<Shader>("EcoUI/ToolAreaOverlay");
+        if (overlayShader != null)
+        {
+            ApplyOverlay(fillMaterial, overlayShader, 4000);
+            ApplyOverlay(edgeMaterial, overlayShader, 4001);
+        }
         origin = at; direction = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
         if (direction.sqrMagnitude < 0.01f) direction = Vector3.forward;
         range = Mathf.Max(0.1f, range); halfAngle = Mathf.Clamp(halfAngle, 1f, 85f);
@@ -113,14 +123,18 @@ public sealed class ToolAreaIndicator : MonoBehaviour
         var go = new GameObject(label, typeof(MeshFilter), typeof(MeshRenderer)); go.layer = 2; go.transform.SetParent(transform, false);
         var mesh = new Mesh { name = label }; mesh.MarkDynamic(); mesh.vertices = points; mesh.triangles = triangles;
         go.GetComponent<MeshFilter>().sharedMesh = mesh; renderer = go.GetComponent<MeshRenderer>(); renderer.sharedMaterial = material;
-        renderer.shadowCastingMode = ShadowCastingMode.Off; renderer.receiveShadows = false; return mesh;
+        renderer.shadowCastingMode = ShadowCastingMode.Off; renderer.receiveShadows = false;
+        renderer.allowOcclusionWhenDynamic = false; return mesh;
     }
-    private static Material Transparent(Shader shader)
+    private static Material Transparent(Shader shader, int queue)
     {
-        var material = new Material(shader) { name = "Tool area preview", renderQueue = 3000 };
-        material.SetOverrideTag("RenderType", "Transparent"); material.SetFloat("_Surface", 1); material.SetFloat("_Blend", 0);
-        material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-        material.SetFloat("_ZWrite", 0); material.SetFloat("_Cull", (float)CullMode.Off); material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); return material;
+        return new Material(shader) { name = "Tool area overlay", renderQueue = queue };
+    }
+    private static void ApplyOverlay(Material material, Shader shader, int queue)
+    {
+        if (material == null) return;
+        if (material.shader != shader) material.shader = shader;
+        if (material.renderQueue != queue) material.renderQueue = queue;
     }
     private static void Paint(Material material, Color tint, float alpha)
     { tint.a = alpha; material.color = tint; if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", tint); }

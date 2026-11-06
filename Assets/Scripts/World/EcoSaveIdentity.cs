@@ -67,7 +67,7 @@ public sealed class EcoSaveIdentity : MonoBehaviour
         { "EcoGlacierStation", new[] { "Active" } },
         { "EcoGlacierMelt", new[] { "meltNow", "meltTarget" } },
         { "EcoFinale", new[] { "terminalEnergy", "terminalWater" } },
-        { "WeaponWaterSource", new[] { "localPollution" } },
+        { "WeaponWaterSource", new[] { "localPollution", "storedWater", "containsTransferredDirtyWater" } },
         { "EcoProjects", new[] { "wasBurning", "charged", "chargedEnergy", "ChargedEnergy" } },
         { "EcoChargingStation", new[] { "TotalDeliveredEnergy" } },
         { "EcoStory", new[] { "completed", "cleanHarvest", "replanted", "cleanFish", "intro", "finalConversation", "requestedHint" } },
@@ -79,6 +79,7 @@ public sealed class EcoSaveIdentity : MonoBehaviour
     private static readonly Dictionary<string, string[]> DesignFields = new Dictionary<string, string[]>
     {
         { "EcoRegion", new[] { "regionName", "key", "size", "priority", "baseTemperature", "sensitiveHabitat", "groundVisual" } },
+        { "WeaponWaterSource", new[] { "finiteVolume", "capacity", "rainFillPerSecond", "shoreRadius" } },
     };
     private static bool IsDesignField(Type type, string field) => DesignFields.TryGetValue(type.Name, out var names) && Array.IndexOf(names, field) >= 0;
     private static readonly HashSet<string> RelativeTimes = new HashSet<string>
@@ -102,6 +103,13 @@ public sealed class EcoSaveIdentity : MonoBehaviour
     internal static void Apply(Component component, State state)
     {
         var type = component.GetType();
+        // Legacy saves predate finite ponds. Start them full instead of retaining the previously loaded
+        // playthrough's depleted level; the current map still owns capacity and shoreline configuration.
+        if (component is WeaponWaterSource && !Array.Exists(state.fields ?? Array.Empty<Value>(), value => value.name == "storedWater"))
+        {
+            type.GetField("storedWater", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(component, -1f);
+            type.GetField("containsTransferredDirtyWater", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(component, false);
+        }
         foreach (var value in state.fields ?? Array.Empty<Value>())
         {
             var field = type.GetField(value.name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);

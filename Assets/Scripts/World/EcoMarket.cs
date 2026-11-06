@@ -2,6 +2,21 @@ using UnityEngine;
 
 public sealed class EcoMarket : MonoBehaviour
 {
+    private void Awake()
+    {
+        // Older scenes/saves have a separate box and floating caption on the original tiny workbench.
+        // The replacement prefab supplies its own produce display and physical 3D sign.
+        if (transform.Find("MarketStall") == null && transform.Find("Market stall") == null) return;
+        var oldBox = transform.Find("OpenBox");
+        if (oldBox != null) oldBox.gameObject.SetActive(false);
+        if (transform.parent != null)
+            foreach (var label in transform.parent.GetComponentsInChildren<WorldSpaceLabel>(true))
+            {
+                var text = label.GetComponentInChildren<UnityEngine.UI.Text>(true);
+                if (text != null && text.text.StartsWith("MARKET")) label.gameObject.SetActive(false);
+            }
+    }
+
     public enum Offer { IronAmmo, Seeds, SmallFilter, LargeFilter, SellProduce, SellSeeds, CarrotSeeds, TomatoSeeds, TreeSeeds, SellFish }
     public static readonly string[] Titles = { "5 demir top", "5 lahana tohumu", "Küçük hava filtresi", "Büyük hava filtresi", "1 seçili ürün sat", "5 seçili tohum sat", "5 havuç tohumu", "5 domates tohumu", "5 ağaç tohumu", "1 temiz balık sat" };
     public static readonly string[] Details = { "Demir sapan için 5 adet mühimmat", "8–28 °C • Hasat: 2 ürün", "Sersemleyen Teneke için", "Filtresiz fabrikalar için", "Tohum türüne göre temiz ürün takası", "+1 plastik • R ile tohum türü seç", "5–22 °C • Hasat: 3 ürün", "18–34 °C • Hasat: 4 ürün", "Açık toprağa dik; kalıcı habitat", "+4 metal ve +2 plastik" };

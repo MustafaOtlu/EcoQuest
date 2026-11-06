@@ -52,6 +52,7 @@ public sealed class EcoProjects : MonoBehaviour
     private void Awake()
     {
         Current = this;
+        if (GetComponent<EcoEnergyTutorial>() == null) gameObject.AddComponent<EcoEnergyTutorial>();
         if (GetComponent<EcoDiscoveries>() == null) gameObject.AddComponent<EcoDiscoveries>();
         if (GetComponent<EcoStory>() == null) gameObject.AddComponent<EcoStory>();
         if (GetComponent<EcoHomeSaving>() == null) gameObject.AddComponent<EcoHomeSaving>();
@@ -60,10 +61,10 @@ public sealed class EcoProjects : MonoBehaviour
         if (GetComponent<EcoExpertDemo>() == null) gameObject.AddComponent<EcoExpertDemo>();
         if (FindFirstObjectByType<EcoGameMenu>() == null) gameObject.AddComponent<EcoGameMenu>();
         Add("Mahalleye ilk enerji", "Üretim, kablo ve şarj",
-            "Üretici–batarya–şarj aynı ağda; toplam 10 EB gerçek şarj ve güncel besleme.",
+            "Kendi güneş panelini, bataryanı ve şarj istasyonunu kur; iki kabloyu bağla, 10 EB şarj al ve ağı çalışır tut.",
             "Araç elektriği kısıtlı; hazırlık için yerel bir şebeke gerekiyor.",
             "Üretim, depolama ve tüketim ayrı parçalardır.",
-            "Güneş/rüzgâr üreticisini batarya ve şarj istasyonuna kabloyla bağla.",
+            "Başlangıç görevindeki sırayı izle: güneş paneli → batarya → kablo → şarj istasyonu → kablo → 10 EB şarj.",
             "Panel üretir, batarya fazlayı saklar, kablo taşır. Güneşsiz zamanda üretim ve depo aynı şey değildir.", EnergyCheck);
         Add("Gölü canlandır", "Kaynak müdahalesi ve arıtma",
             "Fabrika Gölü'nün girişi kapalı, kendi pompa–arıtma–deposu çalışıyor; su kalitesi en az 70.",
@@ -137,6 +138,12 @@ public sealed class EcoProjects : MonoBehaviour
     }
     private void ObserveCharge()
     {
+        var lesson = EcoEnergyTutorial.Current;
+        if (lesson != null && lesson.initialized && projects.Count > 0 && !projects[0].done)
+        {
+            ChargedEnergy = Mathf.Clamp(lesson.chargedEnergy, 0f, 10f);
+            return;
+        }
         foreach (var station in FindObjectsByType<EcoChargingStation>(FindObjectsSortMode.None))
         {
             int id = station.GetInstanceID(); chargeObserved.TryGetValue(id, out float observed);
@@ -154,9 +161,16 @@ public sealed class EcoProjects : MonoBehaviour
 
     private bool EnergyCheck(out string status)
     {
+        var lesson = EcoEnergyTutorial.Current;
+        if (lesson != null && lesson.Active)
+        {
+            status = lesson.StepText;
+            return false;
+        }
         foreach (var charger in power)
         {
             if (!charger.Operational || charger.kind != EcoPowerNode.Kind.Charger) continue;
+            if (lesson != null && lesson.initialized && !projects[0].done && !lesson.MatchesNetwork(charger)) continue;
             var circuit = EcoPowerGrid.ComponentOf(charger).ToArray();
             bool producer = circuit.Any(Generator), battery = circuit.Any(n => n.kind == EcoPowerNode.Kind.Battery);
             float rate = charger.TryGetComponent<EcoChargingStation>(out var station) ? station.chargeRate : 4f;
@@ -271,14 +285,15 @@ public sealed class EcoProjects : MonoBehaviour
         return metal ? entry.Metal : entry.Plastic;
     }
 
-    // A charger on a working network with a producer and a battery: the start base already has one, so the first
-    // project is "charge 10 EB here", not "build a grid".
+    // The first project uses the learner's own circuit, so a prebuilt world network cannot skip construction.
     private EcoPowerNode ReadyCharger(Vector3 from)
     {
         EcoPowerNode best = null; float bestDistance = float.MaxValue;
         foreach (var charger in power)
         {
             if (charger == null || !charger.Operational || charger.kind != EcoPowerNode.Kind.Charger) continue;
+            var lesson = EcoEnergyTutorial.Current;
+            if (lesson != null && lesson.initialized && !projects[0].done && !lesson.MatchesNetwork(charger)) continue;
             var circuit = EcoPowerGrid.ComponentOf(charger).ToArray();
             if (!circuit.Any(Generator) || !circuit.Any(n => n.kind == EcoPowerNode.Kind.Battery)) continue;
             float d = (charger.transform.position - from).sqrMagnitude;
@@ -298,7 +313,17 @@ public sealed class EcoProjects : MonoBehaviour
         switch (index)
         {
             case 0:
-                if (ReadyCharger(Vector3.zero) == null) { Need("solar"); Need("battery"); Need("charger"); metal += 8; plastic += 8; }
+                var lesson = EcoEnergyTutorial.Current;
+                if (lesson != null && lesson.initialized)
+                {
+                    bool HasOwn(string id) => power.Any(n => n != null && n.Operational && n.TryGetComponent<EcoStructure>(out var s) && s.playerBuilt && s.buildingId == id);
+                    if (!HasOwn("solar")) Need("solar");
+                    if (!HasOwn("battery")) Need("battery");
+                    if (!HasOwn("charger")) Need("charger");
+                    int cableAllowance = lesson.stage <= 3 ? 10 : lesson.stage <= 5 ? 5 : 0;
+                    metal += cableAllowance; plastic += cableAllowance;
+                }
+                else if (ReadyCharger(Vector3.zero) == null) { Need("solar"); Need("battery"); Need("charger"); metal += 10; plastic += 10; }
                 break;
             case 1:
             {
@@ -354,6 +379,7 @@ public sealed class EcoProjects : MonoBehaviour
         string verifying = project.name + " · doğrulanıyor " + project.held.ToString("0") + "/120 sn";
         if (index == 0)
         {
+            if (EcoEnergyTutorial.Current != null && EcoEnergyTutorial.Current.Active) return EcoEnergyTutorial.Current.StepText;
             if (Charged) return project.met ? verifying : "İlk enerji · ağ beslemesi kesildi; şarj istasyonunun ağına üretici ve batarya bağla";
             if (player != null && player.Energy > player.maximumEnergy - 1f)
                 return "İlk enerji · aracın dolu; biraz kullan, sonra şarj istasyonunda " + EcoKeys.Tag(EcoKeys.Action.Interact) + " (" + ChargedEnergy.ToString("0") + "/10 EB)";
@@ -388,6 +414,8 @@ public sealed class EcoProjects : MonoBehaviour
         {
             case 0:
             {
+                var lesson = EcoEnergyTutorial.Current;
+                if (lesson != null && lesson.Active) return (lesson.Target, lesson.TargetName);
                 var charger = ReadyCharger(player != null ? player.transform.position : Vector3.zero);
                 if (charger != null) return (charger.transform.position, "Şarj istasyonu");
                 var r = Region("Güneş"); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası");

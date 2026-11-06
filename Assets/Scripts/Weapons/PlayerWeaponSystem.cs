@@ -113,6 +113,15 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Water < 0.001f) dirtyWater = false;
         dirtyWater |= !clean; Water += received; Changed?.Invoke(); return received;
     }
+    public float TransferWaterTo(WeaponWaterSource destination, float amount)
+    {
+        if (!CanOperate || destination == null || !destination.finiteVolume || !EcoRegion.Valid(amount)) return 0f;
+        float accepted = destination.Deposit(Mathf.Min(Water, amount), !HasDirtyWater);
+        if (accepted <= 0f) return 0f;
+        Water = Mathf.Max(0f, Water - accepted);
+        if (Water <= 0.001f) { Water = 0f; dirtyWater = false; }
+        Changed?.Invoke(); return accepted;
+    }
     public void BeginCharging(EcoChargingStation station)
     {
         if (!CanOperate || station == null) return;
@@ -354,6 +363,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (Selected == Tool.Vacuum) AutoSelectMode();
         float cost = (Selected == Tool.Recycler ? 1f * Upgrades.RecyclerElectricity : (Mode == VacuumMode.Disperse ? 3f : Mode == VacuumMode.Water ? 1f : 2f) * Upgrades.VacuumElectricity) * deltaTime;
         if (Energy < cost || Time.time < jamUntil) { ResetProcessing(); Notify(Time.time < jamUntil ? "Silah tıkandı, kısa süre bekle." : "Elektrik yetersiz. Şarj istasyonuna bağlan."); return; }
+        // A transfer moves the accepted volume once; it must precede the ordinary 2 SB/s watering drain.
+        if (Selected == Tool.Vacuum && TryUseWaterBody(deltaTime, cost)) return;
         if (Selected == Tool.Vacuum && Mode == VacuumMode.Water && Water < 2f * deltaTime) { Notify("Su bitti. Vakumu göle ya da su deposuna tut, kendiliğinden dolar."); return; }
         Energy -= cost;
         if (Selected == Tool.Vacuum && Mode == VacuumMode.Water)
@@ -430,12 +441,53 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (source != null && Selected == Tool.Vacuum && Mode == VacuumMode.Collect)
         {
             processing = null; progress = 0f;
-            ReceiveWater(35 * deltaTime, source.IsClean); return;
+            source.FillWeapon(this, 35 * deltaTime); return;
         }
         var resource = hit.collider.GetComponentInParent<RecyclableResource>();
         if (resource != null && (Selected == Tool.Recycler || (Selected == Tool.Vacuum && Mode == VacuumMode.Collect)))
             ProcessResource(resource, deltaTime);
         else { processing = null; progress = 0; }
+    }
+    private bool TryUseWaterBody(float seconds, float electricityCost)
+    {
+        if (Mode == VacuumMode.Disperse || !Aim(ToolReach, out var hit)) return false;
+        var source = hit.collider.GetComponentInParent<WeaponWaterSource>();
+        var node = hit.collider.GetComponentInParent<EcoWaterNode>();
+        bool pouring = Mode == VacuumMode.Water;
+        if (source == null && node == null) return false;
+        if (pouring && source != null && !source.finiteVolume) return false;
+        if (pouring && node != null && node.kind != EcoWaterNode.Kind.Tank) return false;
+        processing = null; progress = 0f;
+        float moved;
+        if (!pouring)
+            moved = source != null ? source.FillWeapon(this, 35f * seconds) : node.FillWeapon(this, true, 35f * seconds);
+        else if (source != null)
+            moved = TransferWaterTo(source, 35f * seconds);
+        else
+        {
+            moved = node.Add(HasDirtyWater ? EcoWaterNode.Fluid.Dirty : EcoWaterNode.Fluid.Clean, Mathf.Min(Water, 35f * seconds));
+            Water = Mathf.Max(0f, Water - moved);
+            if (Water <= 0.001f) { Water = 0f; dirtyWater = false; }
+        }
+        if (moved <= 0f)
+        {
+            ResetProcessing();
+            Notify(pouring ? (Water <= 0f ? "Taşıdığın su bitti." : "Hedef su deposu/gölet dolu.")
+                : Water >= maximumWater - 0.001f ? "Su depon dolu • Su moduyla başka gölete aktarabilirsin."
+                : source != null && source.finiteVolume ? "Gölet boş • Su taşı veya yağmurla dolmasını bekle." : "Kaynakta alınabilecek su yok.");
+            return true;
+        }
+        Energy = Mathf.Max(0f, Energy - electricityCost);
+        Vector3 point = hit.point;
+        var basin = source != null ? source.GetComponent<EcoPondBasin>() : null;
+        if (basin != null)
+        {
+            Vector3 flat = Vector3.ProjectOnPlane(point - source.transform.position, Vector3.up);
+            flat = Vector3.ClampMagnitude(flat, Mathf.Max(0.05f, basin.SurfaceRadius * 0.9f));
+            point = source.transform.position + flat; point.y = basin.SurfaceHeight;
+        }
+        ShowStream(point, true, (AimOrigin - point).normalized, seconds, hit.collider);
+        Changed?.Invoke(); return true;
     }
     private void ProcessResource(RecyclableResource resource, float deltaTime)
     {
@@ -727,7 +779,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (enemy != null) wanted = ModeAgainst(enemy.species);
             else if (c.GetComponentInParent<EcoFire>() != null) wanted = VacuumMode.Water;
             else if (plant != null) wanted = plant.IsMature || plant.IsWithered ? (VacuumMode?)null : VacuumMode.Water;
-            else if (c.GetComponentInParent<EcoWaterNode>() != null || (source != null && source.IsClean)) wanted = VacuumMode.Collect;
+            else if (source != null) wanted = source.finiteVolume && Mode == VacuumMode.Water ? VacuumMode.Water : VacuumMode.Collect;
+            else if (c.GetComponentInParent<EcoWaterNode>() is EcoWaterNode node)
+                wanted = node.kind == EcoWaterNode.Kind.Tank && Mode == VacuumMode.Water ? VacuumMode.Water : VacuumMode.Collect;
             else if (c.GetComponentInParent<RecyclableResource>() != null) wanted = VacuumMode.Collect;
         }
         ToolAreaTargeting.ResourcePick areaPick;
@@ -989,7 +1043,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
                     ? (Vector3.Distance(plant.transform.position, transform.position) <= 3.5f ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Sula (depodan)" : "\nSulamak için yaklaş") : "")
                 + (hit.distance <= 3f && plant.IsWithered && Selected == Tool.Recycler ? "\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Gübreye dönüştür" : "")
                 + (hit.distance <= 3f && !plant.IsWithered && !plant.IsMature && Selected == Tool.Recycler && Compost > 0 ? "\n" + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Gübrele" : "");
-        if (hit.collider.GetComponentInParent<WeaponWaterSource>() != null) return "Su kaynağı • Vakumla nişan al, depo kendiliğinden dolar";
+        if (hit.collider.GetComponentInParent<WeaponWaterSource>() is WeaponWaterSource water) return water.Describe();
         var waste = hit.collider.GetComponentInParent<RecyclableResource>();
         if (waste != null) return waste.requiredRecyclerRank > 0 ? "Büyük atık • Geri dönüşüm işleme kademesi " + waste.requiredRecyclerRank : "Atık • Vakumla topla veya geri dönüştür";
         var tree = hit.collider.GetComponentInParent<EcoVegetation>();
@@ -1022,7 +1076,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             var recycling = hit.collider.GetComponentInParent<EcoRecyclingFacility>();
             var farm = hit.collider.GetComponentInParent<EcoFarm>();
             LastScan = recycling != null ? recycling.Describe() : farm != null ? farm.Describe() : waterStore != null ? waterStore.Describe() : power != null ? power.Describe() : plant != null ? ContextHint() : enemy != null ? enemy.DisplayName + " | Can: " + Mathf.CeilToInt(enemy.Health) + " | " + enemy.StateName
-                : water != null ? (water.IsClean ? "Temiz su" : "Kirli su")
+                : water != null ? water.Describe()
                 : scrap != null ? "Geri dönüştürülebilir: " + scrap.metal + " metal, " + scrap.plastic + " plastik, " + scrap.organic + " organik"
                 : EcoRegion.At(hit.point)?.Describe() ?? hit.collider.name;
             if (hit.collider.GetComponentInParent<EcoFactory>() is EcoFactory factory) LastScan = factory.Describe();
