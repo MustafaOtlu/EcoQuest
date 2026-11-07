@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Tone = EcoHudStyle.Tone;
 
 // A map caption stays attached to its location, but its type stays readable at any camera zoom.
 [DefaultExecutionOrder(500)]
@@ -12,7 +13,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
     [SerializeField] private Transform signboard;
 
     private const int LayoutFontSize = 36;
-    private const float Padding = 16f;
+    private const float Padding = 12f;
     private Camera view;
     private Canvas canvas;
     private RectTransform rect;
@@ -27,7 +28,8 @@ public sealed class WorldSpaceLabel : MonoBehaviour
     private Quaternion boardRotation;
     private float boardDepth;
     private CanvasGroup visibility;
-    private Image connector;
+    private Image connector, plate;
+    private float night = -1f;
     private Vector3 sourceScreen;
     private float captionPixels;
 
@@ -63,6 +65,16 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         if (camera == null || camera.pixelHeight < 1 || camera.pixelWidth < 1) return;
         if (captions == null && !PrepareCaption()) return;
 
+        float targetTone = EcoHudStyle.NightTarget(EcoWorldClock.Current);
+        float nextTone = night < 0f ? targetTone : Mathf.MoveTowards(night, targetTone, Time.unscaledDeltaTime * 0.75f);
+        if (nextTone != night)
+        {
+            night = nextTone;
+            plate.color = EcoHudStyle.ColorFor(Tone.Surface, night);
+            connector.color = EcoHudStyle.ColorFor(Tone.Muted, night) * new Color(1f, 1f, 1f, 0.55f);
+            foreach (var caption in captions) if (caption != null) caption.color = EcoHudStyle.ColorFor(Tone.Text, night);
+        }
+
         canvas.worldCamera = camera;
         Vector3 anchor = transform.parent != null
             ? transform.parent.TransformPoint(anchorLocalPosition) : anchorLocalPosition;
@@ -82,7 +94,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         sourceScreen = screen;
         if (screen.z <= camera.nearClipPlane) { SetVisible(false); return; }
         SetVisible(true);
-        float pixels = (IsPlantHint ? 18f : IsPhysicalSign ? fontPixels : Mathf.Min(fontPixels, 20f))
+        float pixels = (IsPlantHint ? 16f : IsPhysicalSign ? Mathf.Min(fontPixels, 19f) : Mathf.Min(fontPixels, 17f))
             * Mathf.Clamp(camera.pixelHeight / 900f, 0.85f, 1.25f);
         captionPixels = pixels;
         float unitsPerPixel = camera.orthographic
@@ -176,7 +188,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
     private void AlignSignboard(Camera camera)
     {
         if (alignedBoard == null) return;
-        // Fit the backing inside the paper frame, including after zoom/layout or viewport edge clamping.
+        // Fit the backing inside the caption, including after zoom/layout or viewport edge clamping.
         Vector3 size = new Vector3(rect.rect.width * Mathf.Abs(transform.lossyScale.x) * 0.96f,
             rect.rect.height * Mathf.Abs(transform.lossyScale.y) * 0.96f, boardDepth);
         Vector3 parentScale = alignedBoard.parent != null ? alignedBoard.parent.lossyScale : Vector3.one;
@@ -233,7 +245,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         var readableMaterial = Resources.Load<Material>("EcoUI/WorldCaption");
 
         var plateTransform = transform.Find("Plate");
-        var plate = plateTransform != null ? plateTransform.GetComponent<Image>() : null;
+        plate = plateTransform != null ? plateTransform.GetComponent<Image>() : null;
         if (plate == null)
         {
             var background = new GameObject("Plate", typeof(RectTransform), typeof(Image));
@@ -246,7 +258,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         plateRect.anchorMin = Vector2.zero;
         plateRect.anchorMax = Vector2.one;
         plateRect.offsetMin = plateRect.offsetMax = Vector2.zero;
-        plate.sprite = EcoUI.PaperSprite;
+        plate.sprite = EcoUI.Rounded;
         plate.type = Image.Type.Sliced;
         plate.color = Color.white;
         plate.raycastTarget = false;
@@ -257,7 +269,6 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         lineObject.transform.SetParent(transform, false);
         lineObject.transform.SetAsFirstSibling();
         connector = lineObject.GetComponent<Image>();
-        connector.color = new Color(EcoUI.Ink.r, EcoUI.Ink.g, EcoUI.Ink.b, 0.65f);
         connector.raycastTarget = false;
         connector.enabled = false;
         connector.rectTransform.anchorMin = connector.rectTransform.anchorMax = connector.rectTransform.pivot = new Vector2(0.5f, 0.5f);
@@ -267,7 +278,6 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         {
             if (caption.font == null) caption.font = EcoUI.Font;
             caption.fontSize = LayoutFontSize;
-            caption.color = EcoUI.Ink;
             caption.resizeTextForBestFit = false;
             caption.alignment = TextAnchor.MiddleCenter;
             caption.horizontalOverflow = HorizontalWrapMode.Wrap;

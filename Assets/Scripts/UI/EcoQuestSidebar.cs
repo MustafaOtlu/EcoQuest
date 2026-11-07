@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Tone = EcoHudStyle.Tone;
 
 // Local jobs remain part of the HUD; reading an instruction never opens a modal or pauses the world.
 public sealed class EcoQuestSidebar
 {
     private const float Margin = 16f, RowHeight = 48f;
+    private readonly EcoHudStyle hudStyle;
     private readonly EcoUI.Card card;
     private readonly RectTransform viewport, content, details, detailViewport, detailContent;
     private readonly ScrollRect listScroll, detailScroll;
@@ -30,10 +32,12 @@ public sealed class EcoQuestSidebar
     public RectTransform Root => card.root;
     public RectTransform DetailsRoot => details;
 
-    public EcoQuestSidebar(Transform parent)
+    internal EcoQuestSidebar(Transform parent, EcoHudStyle hudStyle)
     {
-        card = new EcoUI.Card("local_quests", parent, new Vector2(0, 1), new Vector2(0, 1), "poi_quest", "GÖREVLER",
+        this.hudStyle = hudStyle;
+        card = new EcoUI.Card("local_quests", parent, new Vector2(0, 1), new Vector2(0, 1), "poi_quest", "Görevler",
             "Bu bölgedeki görevler. Bir göreve tıkla, nasıl yapılacağını oku.");
+        hudStyle.Card(card);
         card.toggle.onClick.AddListener(() => { if (card.IsCollapsed) selectedId = ""; Relayout(); });
         var list = EcoUI.Panel("Task viewport", card.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
         viewport = list.rectTransform;
@@ -42,13 +46,17 @@ public sealed class EcoQuestSidebar
         listScroll = Scroller(viewport, content);
         empty = EcoUI.Label("No local tasks", card.body, "Bu bölgede açık görev yok.", 13, TextAnchor.MiddleCenter, EcoUI.Muted);
 
-        details = EcoUI.Dress(EcoUI.Panel("Task instructions", parent, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface)).rectTransform;
+        hudStyle.Tint(empty, Tone.Muted);
+        details = hudStyle.Surface(EcoUI.Panel("Task instructions", parent, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface)).rectTransform;
         var layer = details.gameObject.AddComponent<Canvas>(); layer.overrideSorting = true; layer.sortingOrder = 26;
         details.gameObject.AddComponent<GraphicRaycaster>();
         detailIcon = EcoUI.Icon("Task icon", details, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 26);
         detailTitle = EcoUI.Label("Task title", details, "", 17, TextAnchor.UpperLeft, EcoUI.Accent, true);
         detailState = EcoUI.Label("Current state", details, "", 12, TextAnchor.UpperLeft, EcoUI.Muted);
+        hudStyle.Tint(detailTitle, Tone.Text);
+        hudStyle.Tint(detailState, Tone.Muted);
         var close = EcoUI.IconButton("Close instructions", details, "ui_close", 26, () => { selectedId = ""; Relayout(); }, "Görev açıklamasını kapat");
+        hudStyle.Tint(close.targetGraphic, Tone.Raised);
         var closeRect = (RectTransform)close.transform;
         closeRect.anchorMin = closeRect.anchorMax = closeRect.pivot = Vector2.one;
         closeRect.anchoredPosition = new Vector2(-14, -16);
@@ -57,11 +65,14 @@ public sealed class EcoQuestSidebar
         detailContent = EcoUI.Rect("Instructions content", detailViewport, new Vector2(0, 1), new Vector2(0, 1));
         detailScroll = Scroller(detailViewport, detailContent);
         detailBody = EcoUI.Label("How to", detailContent, "", 14, TextAnchor.UpperLeft, EcoUI.Ink);
+        hudStyle.Tint(detailBody, Tone.Text);
         var trackImage = EcoUI.Panel("Track task", details, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent);
         track = trackImage.gameObject.AddComponent<Button>(); track.targetGraphic = trackImage;
+        hudStyle.Tint(trackImage, Tone.Raised);
         ButtonColors(track);
         track.onClick.AddListener(() => { var quest = Selected(); if (quest == null) return; EcoQuestBoard.Toggle(quest); Relayout(); });
         trackText = EcoUI.Label("Track label", track.transform, "Takip et · Ok yol göstersin", 13, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
+        hudStyle.Tint(trackText, Tone.Leaf);
         EcoUI.RegisterWorldLabelObstacle(card.root); EcoUI.RegisterWorldLabelObstacle(details);
         details.gameObject.SetActive(false);
     }
@@ -136,6 +147,9 @@ public sealed class EcoQuestSidebar
             row.title = EcoUI.Label("Title", row.root, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
             row.level = EcoUI.Label("Difficulty", row.root, "", 10, TextAnchor.MiddleLeft, EcoUI.Muted);
             row.fill = EcoUI.Meter("Progress", row.root, out row.meter);
+            hudStyle.Tint(row.title, Tone.Text);
+            hudStyle.Tint(row.level, Tone.Muted);
+            hudStyle.Tint(row.meter.GetComponent<Image>(), Tone.Rule);
             rows.Add(row);
         }
         return rows[index];
@@ -150,7 +164,7 @@ public sealed class EcoQuestSidebar
         float bodyHeight = Mathf.Min(wantedBody, Mathf.Max(0, available - EcoUI.Card.HeaderHeight));
         bool overflow = !card.IsCollapsed && quests.Count * RowHeight > Mathf.Max(0, bodyHeight - 20) + 1;
         card.summary.text = quests.Count + (overflow ? " · Kaydır" : "");
-        card.Layout(new Vector2(Margin, -top), width, bodyHeight, true);
+        card.Layout(new Vector2(Margin, -top), card.IsCollapsed ? EcoQuestHUD.CompactLeftWidth : width, bodyHeight, true);
         EcoUI.Place(viewport, new Vector2(12, -8), new Vector2(width - 24, Mathf.Max(0, bodyHeight - 20)));
         EcoUI.Place(content, content.anchoredPosition, new Vector2(width - 24, quests.Count * RowHeight));
         for (int i = 0; i < quests.Count; i++)
@@ -158,18 +172,17 @@ public sealed class EcoQuestSidebar
             var row = GetRow(i); var quest = quests[i]; row.quest = quest; row.root.gameObject.SetActive(true);
             bool selected = quest.id == selectedId, tracked = EcoQuestBoard.IsTracked(quest);
             EcoUI.Place(row.root, new Vector2(0, -i * RowHeight), new Vector2(width - 24, RowHeight - 3));
-            row.background.color = selected ? EcoUI.Selected : EcoUI.SurfaceRaised;
+            row.background.color = selected ? hudStyle.ColorFor(Tone.Raised) : Color.clear;
             EcoUI.SetIcon(row.icon, quest.icon); EcoUI.LayoutIcon(row.icon, new Vector2(7, -8), 23);
-            row.title.text = quest.title; row.title.color = selected ? EcoUI.PaperInk : EcoUI.Ink;
+            row.title.text = quest.title;
             EcoUI.Layout(row.title, new Vector2(38, -3), new Vector2(width - 70, 28));
             row.level.text = EcoQuestBoard.LevelNames[Mathf.Clamp(quest.level, 1, 3)] + (tracked ? " · Takipte" : " · Nasıl yapılır? ›");
-            row.level.color = selected ? EcoUI.PaperInk : EcoUI.Muted;
             EcoUI.Layout(row.level, new Vector2(38, -29), new Vector2(width - 70, 13));
             row.meter.gameObject.SetActive(quest.progress >= 0);
             if (quest.progress >= 0)
             {
                 EcoUI.Place(row.meter, new Vector2(38, -42), new Vector2(width - 70, 3));
-                EcoUI.SetMeter(row.fill, row.meter, quest.progress, selected ? EcoUI.PaperInk : EcoUI.Accent);
+                EcoUI.SetMeter(row.fill, row.meter, quest.progress, hudStyle.ColorFor(selected ? Tone.Amber : Tone.Leaf));
             }
         }
         for (int i = quests.Count; i < rows.Count; i++) { rows[i].quest = null; rows[i].root.gameObject.SetActive(false); }

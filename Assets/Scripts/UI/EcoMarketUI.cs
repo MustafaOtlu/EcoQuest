@@ -15,7 +15,9 @@ public sealed class EcoMarketUI : MonoBehaviour
     public EcoMarket vendor { get; private set; }
     private PlayerWeaponSystem player;
     private GameObject canvasRoot, content;
-    private Text wallet, notice;
+    private Canvas canvas;
+    private CanvasScaler scaler;
+    private Text wallet, notice, footer;
     // Sized for the largest page (10 offers today); a 4-column grid holds up to 12 cards.
     private const int MaxCards = 12, Columns = 4;
     private readonly Button[] buttons = new Button[MaxCards];
@@ -27,6 +29,7 @@ public sealed class EcoMarketUI : MonoBehaviour
     private readonly Button[] tabs = new Button[3];
     private float refreshAt;
     private CursorLockMode previousLock;
+    private const float WindowWidth = 960f, WindowHeight = 700f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetState() { current = null; closedFrame = -10; waitForRelease = false; }
@@ -61,6 +64,7 @@ public sealed class EcoMarketUI : MonoBehaviour
             return;
         }
         if (!vendor.CanReach(player) || !player.isActiveAndEnabled || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)) { if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) EcoUIFlow.ConsumeEscape(); Close(); return; }
+        FitWindow();
         if (Time.unscaledTime >= refreshAt) { refreshAt = Time.unscaledTime + 0.1f; Refresh(); }
     }
     public void ShowPage(bool upgrades) => ShowPage(upgrades ? Page.Upgrades : Page.Shop);
@@ -68,30 +72,36 @@ public sealed class EcoMarketUI : MonoBehaviour
     private void ShowPage(Page target)
     {
         page = target;
-        // The open tab reads as pressed-in and bold; the others stay lighter so the current page is obvious.
         for (int t = 0; t < tabs.Length; t++)
         {
             if (tabs[t] == null) continue;
             bool selected = t == (int)target;
-            tabs[t].targetGraphic.color = selected ? new Color(0.78f, 0.86f, 0.62f) : new Color(1f, 1f, 1f, 0.72f);
-            var label = tabs[t].GetComponentInChildren<Text>(); label.fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
+            tabs[t].targetGraphic.color = selected ? EcoNotebook.Selected : EcoNotebook.Sheet;
+            var label = tabs[t].GetComponentInChildren<Text>();
+            label.color = selected ? EcoNotebook.Accent : EcoNotebook.Ink;
+            label.fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
         }
         if (content != null) { content.SetActive(false); Destroy(content); }
-        content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(20, -158), new Vector2(920, 460), Color.clear).gameObject;
+        content = Panel("Market entries", canvasRoot.transform.Find("Market window"), new Vector2(25, -148), new Vector2(910, 450), Color.clear).gameObject;
         int count = Mathf.Min(CardCount, MaxCards);
         for (int i = 0; i < count; i++)
         {
             int index = i;
-            var card = EcoUI.Dress(Panel("Offer " + i, content.transform, new Vector2(i % Columns * 230, -(i / Columns) * 155), new Vector2(220, 147), EcoUI.SurfaceRaised).GetComponent<Image>()).rectTransform;
-            card.GetComponent<Image>().sprite = EcoUI.CardSprite;
-            IconAt(card, page == Page.Upgrades ? UpgradeIcons[i] : page == Page.Support ? SupportIcons[i] : OfferIcons[i], new Vector2(174, -12), 32f);
-            var heading = TextAt(card, page == Page.Upgrades ? EcoEquipmentUpgrades.Names[i] : page == Page.Support ? SupportTitles[i] : EcoMarket.Titles[i], new Vector2(14, -14), new Vector2(148, 24), 15);
-            heading.resizeTextForBestFit = true; heading.resizeTextMaxSize = 15 * 4; heading.resizeTextMinSize = 12 * 4;
-            descriptions[i] = TextAt(card, "", new Vector2(14, -40), new Vector2(192, 40), 12);
-            prices[i] = TextAt(card, "", new Vector2(14, -81), new Vector2(192, 18), 12);
-            descriptions[i].resizeTextForBestFit = true; descriptions[i].resizeTextMaxSize = 12 * 4; descriptions[i].resizeTextMinSize = 10 * 4;
-            prices[i].resizeTextForBestFit = true; prices[i].resizeTextMaxSize = 12 * 4; prices[i].resizeTextMinSize = 10 * 4;
-            buttons[i] = ButtonAt(card, "İşlem", new Vector2(14, -105), new Vector2(192, 28), () =>
+            var card = Panel("Offer " + i, content.transform, new Vector2(i % Columns * 230, -(i / Columns) * 152), new Vector2(220, 144), EcoNotebook.Sheet);
+            EcoNotebook.Surface(card.GetComponent<Image>(), EcoNotebook.Sheet);
+            IconAt(card, page == Page.Upgrades ? UpgradeIcons[i] : page == Page.Support ? SupportIcons[i] : OfferIcons[i], new Vector2(179, -12), 28f);
+            var heading = TextAt(card, page == Page.Upgrades ? EcoEquipmentUpgrades.Names[i] : page == Page.Support ? SupportTitles[i] : EcoMarket.Titles[i], new Vector2(13, -10), new Vector2(158, 30), 16);
+            heading.fontStyle = FontStyle.Bold;
+            FitText(heading, 13, 16);
+            descriptions[i] = TextAt(card, "", new Vector2(13, -42), new Vector2(194, 37), 14);
+            descriptions[i].color = EcoNotebook.Muted;
+            descriptions[i].alignment = TextAnchor.UpperLeft;
+            Panel("Offer rule", card, new Vector2(13, -82), new Vector2(194, 1), EcoNotebook.Rule).GetComponent<Image>().raycastTarget = false;
+            prices[i] = TextAt(card, "", new Vector2(13, -85), new Vector2(194, 19), 14);
+            prices[i].fontStyle = FontStyle.Bold;
+            FitText(descriptions[i], 11, 14);
+            FitText(prices[i], 11, 14);
+            buttons[i] = ButtonAt(card, "İşlem", new Vector2(13, -108), new Vector2(194, 28), () =>
             {
                 if (vendor == null || player == null) return;
                 if (page == Page.Upgrades) vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
@@ -100,6 +110,10 @@ public sealed class EcoMarketUI : MonoBehaviour
                 Refresh();
             });
         }
+        footer.text = page == Page.Upgrades
+            ? "Geliştirmeler YEP harcamaz. Her kademe kapasiteyi, erişimi veya hızı tabana göre %15 artırır.\n2. kademe için 2 proje, 3. kademe için 4 proje tamamla. Güçlü araçlar daha fazla elektrik kullanır."
+            : page == Page.Support ? "Acil şarj ve temel destek koşulları her işlemin yanında gösterilir."
+            : "Günlük alışveriş sınırı olan ürünlerde kalan stok teklifin altında görünür.";
         Refresh();
     }
     // GDD §8 "Çıkmaza girmeme": emergency charge, basic rescue, hand sorting and the slow workshop path.
@@ -150,23 +164,45 @@ public sealed class EcoMarketUI : MonoBehaviour
             events.transform.SetParent(transform, false); events.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
         canvasRoot = new GameObject("Eco Market UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        canvasRoot.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay; canvasRoot.GetComponent<Canvas>().sortingOrder = 80;
-        var scaler = canvasRoot.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = 0.5f;
-        var shade = Panel("Shade", canvasRoot.transform, Vector2.zero, Vector2.zero, new Color(0, 0, 0, 0.65f));
+        canvas = canvasRoot.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 80;
+        scaler = canvasRoot.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        FitWindow();
+        var shade = Panel("Shade", canvasRoot.transform, Vector2.zero, Vector2.zero, EcoNotebook.Dim);
         shade.anchorMin = Vector2.zero; shade.anchorMax = Vector2.one; shade.offsetMin = shade.offsetMax = Vector2.zero;
-        var window = EcoUI.Dress(Panel("Market window", canvasRoot.transform, Vector2.zero, new Vector2(960, 720), EcoUI.Surface).GetComponent<Image>()).rectTransform;
+        var window = Panel("Market window", canvasRoot.transform, Vector2.zero, new Vector2(WindowWidth, WindowHeight), EcoNotebook.Paper);
+        EcoNotebook.Surface(window.GetComponent<Image>(), EcoNotebook.Paper);
         window.anchorMin = window.anchorMax = window.pivot = new Vector2(0.5f, 0.5f);
-        IconAt(window, "poi_market", new Vector2(26, -25), 38f);
-        TextAt(window, "EKO MARKET", new Vector2(76, -27), new Vector2(600, 34), 28);
-        wallet = TextAt(window, "", new Vector2(26, -67), new Vector2(908, 28), 17);
-        wallet.resizeTextForBestFit = true; wallet.resizeTextMaxSize = 17 * 4; wallet.resizeTextMinSize = 14 * 4;
-        tabs[(int)Page.Shop] = ButtonAt(window, "Alışveriş", new Vector2(26, -108), new Vector2(180, 34), () => ShowPage(false));
-        tabs[(int)Page.Upgrades] = ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(218, -108), new Vector2(240, 34), () => ShowPage(true));
-        tabs[(int)Page.Support] = ButtonAt(window, "Destek ve atölye", new Vector2(470, -108), new Vector2(200, 34), () => ShowPage(Page.Support));
-        ButtonAt(window, "Kapat [Esc]", new Vector2(790, -27), new Vector2(144, 34), Close);
-        notice = TextAt(window, "", new Vector2(26, -621), new Vector2(908, 27), 16);
-        notice.resizeTextForBestFit = true; notice.resizeTextMaxSize = 16 * 4; notice.resizeTextMinSize = 12 * 4;
-        TextAt(window, "Geliştirmeler YEP harcamaz; her kademe ilgili kapasite/erişim/hızı tabana göre %15 artırır.\n2. kademe 2 tamamlanmış proje, 3. kademe 4 proje ister. Güçlü araç daha çok elektrik kullanır.", new Vector2(26, -656), new Vector2(908, 40), 14);
+        IconAt(window, "poi_market", new Vector2(24, -20), 38f);
+        var eyebrow = TextAt(window, "MAHALLE PAZARI", new Vector2(74, -17), new Vector2(260, 15), 11);
+        eyebrow.color = EcoNotebook.Muted; eyebrow.fontStyle = FontStyle.Bold;
+        TextAt(window, "Eko Market", new Vector2(74, -32), new Vector2(580, 31), 27).fontStyle = FontStyle.Bold;
+        var ledger = Panel("Stok defteri", window, new Vector2(25, -70), new Vector2(910, 31), EcoNotebook.Inset);
+        EcoNotebook.Surface(ledger.GetComponent<Image>(), EcoNotebook.Inset);
+        wallet = TextAt(ledger, "", new Vector2(12, -3), new Vector2(886, 25), 16);
+        FitText(wallet, 13, 16);
+        tabs[(int)Page.Shop] = ButtonAt(window, "Alışveriş", new Vector2(25, -108), new Vector2(155, 30), () => ShowPage(false));
+        tabs[(int)Page.Upgrades] = ButtonAt(window, "Ekipman geliştirmeleri", new Vector2(188, -108), new Vector2(217, 30), () => ShowPage(true));
+        tabs[(int)Page.Support] = ButtonAt(window, "Destek ve atölye", new Vector2(413, -108), new Vector2(173, 30), () => ShowPage(Page.Support));
+        ButtonAt(window, "Kapat [Esc]", new Vector2(796, -23), new Vector2(139, 33), Close);
+        Panel("Footer rule", window, new Vector2(25, -604), new Vector2(910, 1), EcoNotebook.Rule).GetComponent<Image>().raycastTarget = false;
+        notice = TextAt(window, "", new Vector2(25, -612), new Vector2(910, 26), 15);
+        notice.color = EcoNotebook.Accent;
+        notice.fontStyle = FontStyle.Bold;
+        FitText(notice, 12, 15);
+        footer = TextAt(window, "", new Vector2(25, -644), new Vector2(910, 40), 13);
+        footer.color = EcoNotebook.Muted;
+        footer.alignment = TextAnchor.UpperLeft;
+    }
+
+    private void FitWindow()
+    {
+        var viewport = canvas.pixelRect;
+        if (viewport.width < 1f || viewport.height < 1f) return;
+        float fit = Mathf.Min(viewport.width / (WindowWidth + 48f), viewport.height / (WindowHeight + 48f));
+        float scale = Mathf.Min(EcoUI.Scale(canvas), fit);
+        if (Mathf.Approximately(scaler.scaleFactor, scale)) return;
+        scaler.scaleFactor = canvas.scaleFactor = scale;
     }
     private void Refresh()
     {
@@ -182,7 +218,7 @@ public sealed class EcoMarketUI : MonoBehaviour
             {
                 valid = DescribeSupport(i, out string description, out string price, out string action);
                 descriptions[i].text = description; prices[i].text = price;
-                buttons[i].interactable = valid; buttons[i].GetComponentInChildren<Text>().text = action;
+                SetOfferAction(i, action, valid);
                 continue;
             }
             if (page == Page.Upgrades)
@@ -202,10 +238,27 @@ public sealed class EcoMarketUI : MonoBehaviour
                 prices[i].text = EcoMarket.IsPurchase(item) ? EcoMarket.MetalPrice(item) + " metal / " + EcoMarket.PlasticPrice(item) + " plastik"
                     : i == 4 ? "Bedel: 1 ürün" : item == EcoMarket.Offer.SellFish ? "Bedel: 1 temiz balık" : "Bedel: 5 tohum";
             }
-            buttons[i].interactable = valid;
-            buttons[i].GetComponentInChildren<Text>().text = valid ? page == Page.Upgrades ? "Geliştir" : EcoMarket.IsPurchase((EcoMarket.Offer)i) ? "Satın al" : "Sat" : reason;
+            string label = valid ? page == Page.Upgrades ? "Geliştir" : EcoMarket.IsPurchase((EcoMarket.Offer)i) ? "Satın al" : "Sat" : reason;
+            SetOfferAction(i, label, valid);
         }
         notice.text = Time.time < player.FeedbackUntil ? player.Feedback : "Tohum " + player.TotalSeeds + "/" + player.Upgrades.SeedCapacity + " • Seçili " + EcoCropCatalog.Get(player.SelectedSeed).Name + " " + player.SeedCount(player.SelectedSeed) + " • Filtre " + player.SmallFilters + " küçük / " + player.LargeFilters + " büyük";
+    }
+
+    private void SetOfferAction(int index, string action, bool available)
+    {
+        var button = buttons[index];
+        button.interactable = available;
+        button.targetGraphic.color = available ? EcoNotebook.Accent : EcoNotebook.Inset;
+        var label = button.GetComponentInChildren<Text>();
+        label.text = action;
+        label.color = available ? EcoNotebook.Paper : EcoNotebook.Muted;
+    }
+
+    private static void FitText(Text label, int min, int max)
+    {
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = min * 4;
+        label.resizeTextMaxSize = max * 4;
     }
     private RectTransform Panel(string name, Transform parent, Vector2 position, Vector2 size, Color color)
     {
@@ -226,19 +279,19 @@ public sealed class EcoMarketUI : MonoBehaviour
     {
         var go = new GameObject("Text", typeof(RectTransform), typeof(Text)); var rect = go.GetComponent<RectTransform>(); rect.SetParent(parent, false);
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1); rect.anchoredPosition = position; rect.sizeDelta = size * 4; rect.localScale = Vector3.one * 0.25f;
-        var label = go.GetComponent<Text>(); label.font = font; label.fontSize = fontSize * 4; label.color = EcoUI.Ink; label.text = value; label.raycastTarget = false;
+        var label = go.GetComponent<Text>(); label.font = font; label.fontSize = fontSize * 4; label.color = EcoNotebook.Ink; label.text = value; label.raycastTarget = false;
         label.alignment = TextAnchor.MiddleLeft; return label;
     }
     private Button ButtonAt(Transform parent, string value, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
     {
-        var rect = Panel(value, parent, position, size, Color.white);
-        var background = rect.GetComponent<Image>(); background.sprite = EcoUI.SelectedSprite; background.type = Image.Type.Sliced;
-        var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = rect.GetComponent<Image>(); button.onClick.AddListener(action);
-        var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.14f, 1.14f, 1.14f);
-        colors.pressedColor = new Color(0.85f, 0.85f, 0.85f); colors.disabledColor = new Color(0.68f, 0.68f, 0.68f); button.colors = colors;
+        var rect = Panel(value, parent, position, size, EcoNotebook.Inset);
+        var background = EcoNotebook.Surface(rect.GetComponent<Image>(), EcoNotebook.Inset);
+        var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = background; button.onClick.AddListener(action);
+        var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.07f, 1.07f, 1.07f);
+        colors.pressedColor = new Color(0.88f, 0.88f, 0.88f); colors.disabledColor = Color.white; button.colors = colors;
         var label = TextAt(rect, value, new Vector2(8f, -3f), new Vector2(size.x - 16f, size.y - 6f), 15);
-        label.alignment = TextAnchor.MiddleCenter; label.color = EcoUI.Ink;
-        label.resizeTextForBestFit = true; label.resizeTextMaxSize = 15 * 4; label.resizeTextMinSize = 10 * 4;
+        label.alignment = TextAnchor.MiddleCenter;
+        FitText(label, 12, 15);
         return button;
     }
     private void OnDisable() { Close(); if (current == this) { current = null; waitForRelease = false; } }

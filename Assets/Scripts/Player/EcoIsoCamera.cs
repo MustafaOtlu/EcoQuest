@@ -162,7 +162,8 @@ public sealed class EcoIsoCamera : MonoBehaviour
             foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>(true))
             {
                 var parent = renderer.transform.parent;
-                if (renderer.name == "Roof" && parent != null && owners.Add(parent))
+                bool roof = renderer.name == "Roof" || renderer.name.StartsWith("Roof ", System.StringComparison.Ordinal);
+                if (roof && parent != null && owners.Add(parent))
                     roofedBuildings.Add(parent.GetComponentsInChildren<MeshRenderer>(true));
             }
         }
@@ -173,7 +174,7 @@ public sealed class EcoIsoCamera : MonoBehaviour
         {
             foreach (var renderer in building)
             {
-                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy || renderer.name == SceneHitboxInitializer.FacadeDetailsName) continue;
                 if (!BlocksView(renderer, sight, length) && !BlocksView(renderer, headSight, headLength)) continue;
                 // Roofs and canopies often extend beyond the wall collider. Fade the whole building together.
                 foreach (var part in building)

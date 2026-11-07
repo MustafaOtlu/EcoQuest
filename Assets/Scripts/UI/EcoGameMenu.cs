@@ -48,109 +48,148 @@ public sealed class EcoGameMenu : MonoBehaviour
         if (EcoExpertDemo.PanelOpen) return; // the expert demo list is drawn instead of the title menu
         if (EcoSurvey.Current != null && EcoSurvey.Current.IsOpen) return; // the survey opened from here sits on top; the menu returns when it closes
         EcoTheme.Begin();
-        string heading = screen == Screen_.Main ? "ECOQUEST" : screen == Screen_.Settings ? "AYARLAR" : screen == Screen_.Keys ? "TUŞ ATAMALARI"
-            : screen == Screen_.Slots ? "KAYIT SLOTLARI" : "DURAKLATILDI";
+        string heading = screen == Screen_.Main ? "EcoQuest" : screen == Screen_.Settings ? "Ayarlar" : screen == Screen_.Keys ? "Tuş atamaları"
+            : screen == Screen_.Slots ? "Kayıtlar" : "Duraklatıldı";
         string sub = screen == Screen_.Main ? "Kirlenen mahalleyi birlikte toparla." : screen == Screen_.Slots ? "Hızlı, elle ve final öncesi kayıtlar." : screen == Screen_.Settings ? "Arayüz, erişilebilirlik ve ses."
             : screen == Screen_.Keys ? "Değiştirmek için tıkla, sonra yeni tuşa bas." : "Dünya durdu. Devam etmek için Esc." + LastSaveNote();
-        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : screen == Screen_.Pause ? 560f : 504f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
+        var r = EcoTheme.Window(620f, screen == Screen_.Settings || screen == Screen_.Keys ? 720f : screen == Screen_.Slots ? 680f : screen == Screen_.Pause ? 530f : 486f, heading, sub, screen == Screen_.Main ? "yep" : screen == Screen_.Settings ? "ui_gear" : screen == Screen_.Keys ? "ui_help" : screen == Screen_.Slots ? "calendar" : "ui_pause");
         float x = r.x + 40f, w = r.width - 80f, y = r.y + 110f;
+        var footer = new Rect(x, r.yMax - 62f, w, 38f);
+        var view = new Rect(x, y, w, Mathf.Max(1f, footer.y - y - 12f));
         var save = EcoWorldSave.Current;
         switch (screen)
         {
             case Screen_.Main:
-                if (EcoTheme.IconButton(new Rect(x, y, w, 44f), "Yeni oyun", "player")) PlayerController.SetPaused(false);
-                GUI.enabled = save != null && save.HasSave;
-                if (EcoTheme.IconButton(new Rect(x, y + 54f, w, 44f), "Devam et (son kayıt)", "ui_check")) { PlayerController.SetPaused(false); save.QuickLoad(); }
-                GUI.enabled = true;
-                if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Main);
-                if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Main);
-                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), "Uzman demo senaryoları", "ui_journal")) EcoExpertDemo.Current?.Open();
-                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), EcoSurvey.Done(false) ? "Sürdürülebilirlik anketi (ön) ✓" : "Sürdürülebilirlik anketi (ön, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(false);
-                if (EcoTheme.IconButton(new Rect(x, y + 324f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
-                break;
             case Screen_.Pause:
-                if (EcoTheme.IconButton(new Rect(x, y, w, 44f), "Devam et", "player")) PlayerController.SetPaused(false);
-                if (EcoTheme.IconButton(new Rect(x, y + 54f, w, 44f), "Hızlı kaydet", "calendar")) save?.QuickSave();
-                if (EcoTheme.IconButton(new Rect(x, y + 108f, w, 44f), "Kayıt slotları", "calendar")) Go(Screen_.Slots, Screen_.Pause);
-                if (EcoTheme.IconButton(new Rect(x, y + 162f, w, 44f), "Ayarlar", "ui_gear")) Go(Screen_.Settings, Screen_.Pause);
-                // GDD §14 pause menu: also controls/tutorial and a way back to the title screen.
-                if (EcoTheme.IconButton(new Rect(x, y + 216f, w, 44f), "Kontroller [F1]", "ui_help"))
-                { PlayerController.SetPaused(false); FindFirstObjectByType<EcoWorldHUD>()?.ShowHelp(); }
-                if (EcoTheme.IconButton(new Rect(x, y + 270f, w, 44f), EcoSurvey.Done(true) ? "Sürdürülebilirlik anketi (son) ✓" : "Sürdürülebilirlik anketi (son, isteğe bağlı)", "ui_journal")) EcoSurvey.Current?.Open(true);
-                if (EcoTheme.IconButton(new Rect(x, y + 324f, w, 44f), "Ana menüye dön (kaydedilmemiş ilerleme kaybolur)", "yep")) ReturnToTitle();
-                if (EcoTheme.IconButton(new Rect(x, y + 378f, w, 44f), "Oyundan çık", "ui_close")) Application.Quit();
+                DrawSession(new Rect(x, y, w, Mathf.Max(1f, r.yMax - y - 24f)), save);
                 break;
             case Screen_.Slots:
-                if (save == null) { GUI.Label(new Rect(x, y, w, 40f), "Kayıt sistemi bu sahnede yok.", EcoTheme.Body); }
-                else
-                {
-                    if (Time.unscaledTime >= nextSlotScan) { nextSlotScan = Time.unscaledTime + 1f; slots = save.GetSlots(); }
-                    for (int i = 0; i < slots.Length; i++)
-                    {
-                        // Eight slots on 58 px rows fit above "Geri"; name and detail get their own lines so neither is clipped.
-                        var s = slots[i]; float row = y + i * 58f;
-                        GUI.Label(new Rect(x, row - 2f, w - 190f, 26f), s.Name, EcoTheme.Body);
-                        GUI.Label(new Rect(x, row + 23f, w - 190f, 24f), s.Exists ? s.Detail : "Boş", EcoTheme.Muted);
-                        bool manual = s.Id.StartsWith("manual-");
-                        GUI.enabled = manual && back == Screen_.Pause;
-                        if (GUI.Button(new Rect(x + w - 180f, row + 4f, 86f, 40f), "Kaydet", EcoTheme.Button)) { save.SaveManual(int.Parse(s.Id.Substring(7))); nextSlotScan = 0f; }
-                        GUI.enabled = s.CanLoad;
-                        if (GUI.Button(new Rect(x + w - 90f, row + 4f, 86f, 40f), "Yükle", EcoTheme.Button)) { PlayerController.SetPaused(false); save.LoadSlot(s.Id); }
-                        GUI.enabled = true;
-                    }
-                }
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) Back();
+                DrawSlots(view, save);
+                if (GUI.Button(footer, "Geri", EcoTheme.Button)) Back();
                 break;
             case Screen_.Settings:
-            {
-                // Laid out top to bottom inside a scroll area so a large UI scale on a small screen never overlaps "Geri".
-                const float contentHeight = 560f;
-                var view = new Rect(x, y - 14f, w + 18f, r.yMax - 84f - (y - 14f));
-                bool scrolls = view.height < contentHeight;
-                scroll = GUI.BeginScrollView(view, scroll, new Rect(0f, 0f, scrolls ? w - 6f : w, contentHeight));
-                float cw = scrolls ? w - 6f : w;
-                GUI.Label(new Rect(0f, 0f, cw, 28f), "Arayüz ölçeği", EcoTheme.Body);
-                float[] scales = { 1f, 1.25f, 1.5f }; string[] names = { "%100", "%125", "%150" };
-                for (int i = 0; i < 3; i++)
-                {
-                    bool on = Mathf.Approximately(EcoSettings.UIScale, scales[i]);
-                    var prev = GUI.color; if (on) GUI.color = EcoSettings.Good;
-                    if (GUI.Button(new Rect(i * (cw / 3f), 30f, cw / 3f - 6f, 36f), names[i], EcoTheme.Button)) EcoSettings.UIScale = scales[i];
-                    GUI.color = prev;
-                }
-                if (Switch(new Rect(0f, 76f, cw, 34f), "Renk körü dostu palet (mavi/turuncu)", EcoSettings.ColorBlind) != EcoSettings.ColorBlind) EcoSettings.ColorBlind = !EcoSettings.ColorBlind;
-                if (Switch(new Rect(0f, 114f, cw, 34f), "Kamera sarsıntısı", EcoSettings.CameraShake) != EcoSettings.CameraShake) EcoSettings.CameraShake = !EcoSettings.CameraShake;
-                if (Switch(new Rect(0f, 152f, cw, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
-                if (Switch(new Rect(0f, 190f, cw, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
-                if (Switch(new Rect(0f, 228f, cw, 34f), "Tekerlek yönünü ters çevir (yakınlaştırma)", EcoSettings.InvertZoom) != EcoSettings.InvertZoom) EcoSettings.InvertZoom = !EcoSettings.InvertZoom;
-                float audioHeight = EcoAudio.DrawSliders(0f, 274f, cw, EcoTheme.Body);
-                if (EcoTheme.IconButton(new Rect(0f, 274f + audioHeight + 10f, cw, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
-                GUI.Label(new Rect(0f, 274f + audioHeight + 56f, cw, 26f), "F3: performans göstergesi", EcoTheme.Muted);
-                GUI.EndScrollView();
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w, 40f), "Geri", EcoTheme.Button)) Back();
+                DrawSettings(view);
+                if (GUI.Button(footer, "Geri", EcoTheme.Button)) Back();
                 break;
-            }
             case Screen_.Keys:
-                DrawKeys(x, y - 20f, w, r.height - 245f);
+                view.height = Mathf.Max(1f, view.height - 40f);
+                DrawKeys(view);
                 // GDD §13: a conflicting binding is not silent; the player sees which action took the old key.
-                if (keyNotice.Length > 0) GUI.Label(new Rect(x, r.yMax - 106f, w, 30f), keyNotice, EcoTheme.Muted);
-                if (GUI.Button(new Rect(x, r.yMax - 70f, w * 0.5f - 6f, 40f), "Varsayılana dön", EcoTheme.Button)) { EcoKeys.ResetAll(); keyNotice = ""; }
-                if (GUI.Button(new Rect(x + w * 0.5f + 6f, r.yMax - 70f, w * 0.5f - 6f, 40f), "Geri", EcoTheme.Button)) { listening = -1; Back(); }
+                if (keyNotice.Length > 0) GUI.Label(new Rect(x, view.yMax + 3f, w, 44f), keyNotice, EcoTheme.Muted);
+                float half = (w - 10f) * 0.5f;
+                if (GUI.Button(new Rect(x, footer.y, half, footer.height), "Varsayılana dön", EcoTheme.Button)) { EcoKeys.ResetAll(); keyNotice = ""; }
+                if (GUI.Button(new Rect(footer.xMax - half, footer.y, half, footer.height), "Geri", EcoTheme.Button)) { listening = -1; Back(); }
                 break;
         }
         EcoTheme.End();
     }
 
-    private void DrawKeys(float x, float y, float w, float height)
+    private void DrawSession(Rect area, EcoWorldSave save)
+    {
+        bool main = screen == Screen_.Main;
+        var origin = screen;
+        if (EcoTheme.IconButton(new Rect(area.x, area.y, area.width, 46f), main ? "Yeni oyun" : "Devam et", "player", EcoTheme.PrimaryButton))
+            PlayerController.SetPaused(false);
+        GUI.Label(new Rect(area.x, area.y + 57f, area.width, 22f), main ? "Oyun seçenekleri" : "Oturum seçenekleri", EcoTheme.Muted);
+
+        const float gap = 5f;
+        int count = main ? 6 : 7;
+        var view = new Rect(area.x, area.y + 82f, area.width, Mathf.Max(1f, area.height - 82f));
+        float height = Mathf.Clamp((view.height + gap) / count - gap, 34f, 40f);
+        float w = BeginRows(view, count * (height + gap) - gap);
+        int row = 0;
+        Rect Next() => new Rect(0f, row++ * (height + gap), w, height);
+        if (main)
+        {
+            GUI.enabled = save != null && save.HasSave;
+            if (EcoTheme.IconButton(Next(), "Devam et (son kayıt)", "ui_check")) { PlayerController.SetPaused(false); save.QuickLoad(); }
+            GUI.enabled = true;
+        }
+        else if (EcoTheme.IconButton(Next(), "Hızlı kaydet", "calendar")) save?.QuickSave();
+        if (EcoTheme.IconButton(Next(), "Kayıt slotları", "calendar")) Go(Screen_.Slots, origin);
+        if (EcoTheme.IconButton(Next(), "Ayarlar", "ui_gear")) Go(Screen_.Settings, origin);
+        if (main)
+        {
+            if (EcoTheme.IconButton(Next(), "Uzman demo senaryoları", "ui_journal")) EcoExpertDemo.Current?.Open();
+        }
+        else if (EcoTheme.IconButton(Next(), "Kontroller [F1]", "ui_help"))
+        { PlayerController.SetPaused(false); FindFirstObjectByType<EcoWorldHUD>()?.ShowHelp(); }
+        string survey = "Sürdürülebilirlik anketi (" + (main ? "ön" : "son") + (EcoSurvey.Done(!main) ? ") ✓" : ", isteğe bağlı)");
+        if (EcoTheme.IconButton(Next(), survey, "ui_journal")) EcoSurvey.Current?.Open(!main);
+        if (!main && EcoTheme.IconButton(Next(), "Ana menüye dön (kaydedilmemiş ilerleme kaybolur)", "yep")) ReturnToTitle();
+        if (EcoTheme.IconButton(Next(), "Oyundan çık", "ui_close")) Application.Quit();
+        GUI.EndScrollView();
+    }
+
+    private void DrawSlots(Rect view, EcoWorldSave save)
+    {
+        if (save == null) { GUI.Label(view, "Kayıt sistemi bu sahnede yok.", EcoTheme.Body); return; }
+        if (Time.unscaledTime >= nextSlotScan) { nextSlotScan = Time.unscaledTime + 1f; slots = save.GetSlots(); }
+        const float height = 64f;
+        float w = BeginRows(view, slots.Length * height);
+        float actionWidth = Mathf.Min(86f, w * 0.24f);
+        float loadX = w - actionWidth - 6f, saveX = loadX - actionWidth - 6f;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            var s = slots[i]; float y = i * height;
+            GUI.Box(new Rect(0f, y, w, height - 5f), GUIContent.none, EcoTheme.Card);
+            GUI.Label(new Rect(10f, y + 3f, saveX - 18f, 25f), s.Name, EcoTheme.Body);
+            GUI.Label(new Rect(10f, y + 28f, saveX - 18f, 28f), s.Exists ? s.Detail : "Boş", EcoTheme.Muted);
+            GUI.enabled = s.Id.StartsWith("manual-") && back == Screen_.Pause;
+            if (GUI.Button(new Rect(saveX, y + 11f, actionWidth, 36f), "Kaydet", EcoTheme.Button))
+            { save.SaveManual(int.Parse(s.Id.Substring(7))); nextSlotScan = 0f; }
+            GUI.enabled = s.CanLoad;
+            if (GUI.Button(new Rect(loadX, y + 11f, actionWidth, 36f), "Yükle", EcoTheme.Button))
+            { PlayerController.SetPaused(false); save.LoadSlot(s.Id); }
+            GUI.enabled = true;
+        }
+        GUI.EndScrollView();
+    }
+
+    private void DrawSettings(Rect view)
+    {
+        const float audioTop = 336f;
+        float w = BeginRows(view, audioTop + 308f);
+        GUI.Label(new Rect(0f, 0f, w, 28f), "Görünüm ve erişilebilirlik", EcoTheme.Subtitle);
+        GUI.Label(new Rect(0f, 34f, 114f, 34f), "Arayüz ölçeği", EcoTheme.Body);
+        float step = (w - 124f) / 3f;
+        for (int i = 0; i < 3; i++)
+        {
+            float scale = 1f + i * 0.25f;
+            var style = Mathf.Approximately(EcoSettings.UIScale, scale) ? EcoTheme.PrimaryButton : EcoTheme.Button;
+            if (GUI.Button(new Rect(124f + i * step, 34f, step - 5f, 34f), "%" + (100 + i * 25), style)) EcoSettings.UIScale = scale;
+        }
+        if (Switch(new Rect(0f, 77f, w, 34f), "Renk körü dostu palet (mavi/turuncu)", EcoSettings.ColorBlind) != EcoSettings.ColorBlind) EcoSettings.ColorBlind = !EcoSettings.ColorBlind;
+        if (Switch(new Rect(0f, 115f, w, 34f), "Kamera sarsıntısı", EcoSettings.CameraShake) != EcoSettings.CameraShake) EcoSettings.CameraShake = !EcoSettings.CameraShake;
+        if (Switch(new Rect(0f, 153f, w, 34f), "Bulanıklık ve hasar vurgusunu azalt", EcoSettings.ReduceBlur) != EcoSettings.ReduceBlur) EcoSettings.ReduceBlur = !EcoSettings.ReduceBlur;
+        GUI.Label(new Rect(0f, 198f, w, 28f), "Kontroller", EcoTheme.Subtitle);
+        if (Switch(new Rect(0f, 231f, w, 34f), "Araç düğmesi: basılı tutmak yerine aç/kapat", EcoKeys.HoldToggle) != EcoKeys.HoldToggle) EcoKeys.HoldToggle = !EcoKeys.HoldToggle;
+        if (Switch(new Rect(0f, 269f, w, 34f), "Tekerlek yönünü ters çevir (yakınlaştırma)", EcoSettings.InvertZoom) != EcoSettings.InvertZoom) EcoSettings.InvertZoom = !EcoSettings.InvertZoom;
+        GUI.Label(new Rect(0f, 307f, w, 28f), "Ses", EcoTheme.Subtitle);
+        float audioHeight = EcoAudio.DrawSliders(0f, audioTop, w, EcoTheme.Body);
+        if (EcoTheme.IconButton(new Rect(0f, audioTop + audioHeight + 10f, w, 40f), "Tuş atamaları", "ui_help")) Go(Screen_.Keys, Screen_.Settings);
+        GUI.Label(new Rect(0f, audioTop + audioHeight + 56f, w, 26f), "F3: performans göstergesi", EcoTheme.Muted);
+        GUI.EndScrollView();
+    }
+
+    private float BeginRows(Rect view, float height)
+    {
+        var scrollbar = GUI.skin.verticalScrollbar;
+        float gutter = view.height < height ? Mathf.Max(16f, scrollbar.fixedWidth + scrollbar.margin.left) + 3f : 0f;
+        float width = Mathf.Max(1f, view.width - gutter);
+        scroll = GUI.BeginScrollView(view, scroll, new Rect(0f, 0f, width, height), false, false, GUIStyle.none, scrollbar);
+        return width;
+    }
+
+    private void DrawKeys(Rect view)
     {
         int count = EcoKeys.Names.Length;
-        var view = new Rect(x, y, w, height);
-        scroll = GUI.BeginScrollView(view, scroll, new Rect(0f, 0f, w - 24f, count * 36f));
+        float w = BeginRows(view, count * 36f);
         for (int i = 0; i < count; i++)
         {
             GUI.Label(new Rect(0f, i * 36f, w * 0.55f, 32f), EcoKeys.Names[i], EcoTheme.Body);
             string label = listening == i ? "bir tuşa bas…" : EcoKeys.Label((EcoKeys.Action)i);
-            if (GUI.Button(new Rect(w * 0.55f, i * 36f, w * 0.38f - 24f, 32f), label, EcoTheme.Button)) listening = listening == i ? -1 : i;
+            if (GUI.Button(new Rect(w * 0.56f, i * 36f, w * 0.44f, 32f), label, EcoTheme.Button)) listening = listening == i ? -1 : i;
         }
         GUI.EndScrollView();
         var e = Event.current;
@@ -168,9 +207,8 @@ public sealed class EcoGameMenu : MonoBehaviour
     }
     private static bool Switch(Rect rect, string label, bool value)
     {
-        var previous = GUI.color; if (value) GUI.color = EcoSettings.Good;
-        bool click = GUI.Button(rect, (value ? "✓ " : "✗ ") + label, EcoTheme.Button);
-        GUI.color = previous; return click ? !value : value;
+        var style = value ? EcoTheme.PrimaryButton : EcoTheme.Button;
+        return GUI.Button(rect, (value ? "✓ " : "✗ ") + label, style) ? !value : value;
     }
     // Reloading the scene gives the title a fresh world, so "Yeni oyun" there really starts over; the clock is
     // released first because the title opens through a scaled-time Invoke.

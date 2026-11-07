@@ -50,9 +50,11 @@ public static class EcoUI
     }
     public static string ModeName => Mode == HudMode.Full ? "Tam" : Mode == HudMode.Compact ? "Sade" : "Gizli";
     public static void CycleMode() => Mode = (HudMode)(((int)Mode + 1) % 3);
-    public static bool Collapsed(string card) => PlayerPrefs.GetInt("EcoQuest.card." + card,
-        card == "environment" || card == "resources" ? 1 : 0) == 1;
-    public static void SetCollapsed(string card, bool value) { PlayerPrefs.SetInt("EcoQuest.card." + card, value ? 1 : 0); PlayerPrefs.Save(); LayoutChanged?.Invoke(); }
+    private static bool StartsCollapsed(string card) => card == "environment" || card == "resources" || card == "local_quests";
+    // These three sections now open on demand. Keep their new choices separate from the old dashboard layout.
+    private static string CardPreference(string card) => (StartsCollapsed(card) ? "EcoQuest.fieldGuide.card." : "EcoQuest.card.") + card;
+    public static bool Collapsed(string card) => PlayerPrefs.GetInt(CardPreference(card), StartsCollapsed(card) ? 1 : 0) == 1;
+    public static void SetCollapsed(string card, bool value) { PlayerPrefs.SetInt(CardPreference(card), value ? 1 : 0); PlayerPrefs.Save(); LayoutChanged?.Invoke(); }
 
     /// <summary>Canvas scale shared by every HUD layer (resolution fit × the player's UI scale setting).</summary>
     public static float Scale(Canvas canvas)
@@ -444,18 +446,18 @@ public static class EcoUI
         if (string.IsNullOrEmpty(text)) { HideTooltip(owner); return; }
         if (tooltip == null)
         {
-            var canvas = CreateCanvas("EcoUI Tooltip", 60, out var scaler);
-            canvas.gameObject.AddComponent<TooltipFollower>();
-            var panel = Dress(Panel("Tooltip", canvas.transform, Vector2.zero, new Vector2(0, 1), Surface, false), false);
+            var canvas = CreateCanvas("EcoUI Tooltip", 60, out _);
+            var follower = canvas.gameObject.AddComponent<TooltipFollower>();
+            var panel = follower.Style.Surface(Panel("Tooltip", canvas.transform, Vector2.zero, new Vector2(0, 1), Surface, false));
             tooltip = panel.rectTransform;
             tooltipText = Label("Text", tooltip, "", 14, TextAnchor.UpperLeft, Ink);
-            var outline = panel.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(0.24f, 0.37f, 0.22f, 0.12f); outline.effectDistance = new Vector2(1, -1);
+            follower.Style.Tint(tooltipText, EcoHudStyle.Tone.Text);
         }
         tooltipOwner = owner;
         tooltipText.text = text;
-        float width = Mathf.Clamp(text.Length * 7.2f + 28f, 120f, 300f);
-        int lines = Mathf.CeilToInt(text.Length * 7.2f / (width - 28f)) + text.Split('\n').Length - 1;
-        float height = 16f + Mathf.Max(1, lines) * 18f;
+        float width = Mathf.Clamp(tooltipText.preferredWidth / RasterScale + 24f, 120f, 330f);
+        Layout(tooltipText, new Vector2(12f, -8f), new Vector2(width - 24f, 0f));
+        float height = Mathf.Max(18f, tooltipText.preferredHeight / RasterScale) + 18f;
         tooltip.sizeDelta = new Vector2(width, height);
         Layout(tooltipText, new Vector2(12, -8), new Vector2(width - 24f, height - 12f));
         tooltip.gameObject.SetActive(true);
@@ -469,12 +471,14 @@ public static class EcoUI
 
     private sealed class TooltipFollower : MonoBehaviour
     {
+        internal readonly EcoHudStyle Style = new EcoHudStyle();
         private Canvas canvas;
         private void Awake() => canvas = GetComponent<Canvas>();
         private void LateUpdate()
         {
             if (tooltip == null || !tooltip.gameObject.activeSelf || Mouse.current == null) return;
             if (!Cursor.visible) { HideTooltip(null); return; } // an idle, hidden pointer leaves no floating tip behind
+            Style.Refresh(EcoWorldClock.Current);
             float scale = Scale(canvas); canvas.scaleFactor = scale;
             Vector2 mouse = Mouse.current.position.ReadValue() / scale;
             float w = canvas.pixelRect.width / scale, h = canvas.pixelRect.height / scale;

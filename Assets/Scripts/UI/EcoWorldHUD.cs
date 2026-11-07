@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using Tone = EcoHudStyle.Tone;
 
 // World layer of the HUD (GDD §13):
 //  - environment card: the region's air, water, carbon, biodiversity, ecosystem health and temperature, with icons,
@@ -25,6 +26,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     /// <summary>Bottom edge (canvas units from the top) of the map card; EcoQuestHUD stacks the resources card below.</summary>
     public static float MapBottom { get; private set; } = 282f;
+    internal const float CompactMapWidth = 170f;
     /// <summary>Bottom edge of the region banner while it is visible (0 when hidden); other top-centre notices sit below it.</summary>
     public static float BannerBottom { get; private set; }
     private float bannerBottom;
@@ -46,6 +48,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     };
 
     private PlayerWeaponSystem weapons;
+    private readonly EcoHudStyle hudStyle = new EcoHudStyle();
     private Transform player;
     private Canvas canvas, overlay;
     private CanvasScaler scaler, overlayScaler;
@@ -68,13 +71,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     // Mini map card
     private EcoUI.Card mapCard;
-    private RectTransform miniFrame, miniArrow, miniStatus, miniRim, miniWeatherHit;
+    private RectTransform miniFrame, miniArrow, miniStatus, miniWeatherHit;
     private RawImage miniImage;
     private Text miniNorth;
     private Button bigMapButton;
-    private Image clockIcon, weatherIcon, windIcon;
-    private Text clockText, weatherText, windText;
-    private RectTransform miniStatusPaper;
+    private Image clockIcon, weatherIcon;
+    private Text clockText, weatherText;
+    private int shownWind = -1;
     private string announcedWeather = "";
     private readonly List<Image> miniPins = new List<Image>();
 
@@ -87,16 +90,18 @@ public sealed class EcoWorldHUD : MonoBehaviour
     // Quick actions & help
     private RectTransform actions;
     private readonly List<(Button button, Text key, string id)> actionButtons = new List<(Button, Text, string)>();
-    private RectTransform help;
+    private RectTransform helpRoot, help;
+    private static readonly Vector2 HelpSize = new Vector2(780f, 550f);
     private Image skillsAlert;
     private bool helpOpen;
     private readonly EcoUI.HudPanel helpOwner = new EcoUI.HudPanel();
     private Text modeToast; private float modeToastUntil; private Image modeToastBg;
 
     // Big map
-    private RectTransform bigRoot, bigCard, bigFrame, bigView, infoCard, legend;
-    private float legendWidth;
-    private Image bigDim;
+    private RectTransform bigRoot, bigCard, bigFrame, bigView, infoCard, infoViewport, infoContent, legend;
+    private ScrollRect infoScroll;
+    private EcoRegion infoRegion;
+    private readonly List<(Image icon, Text label)> legendItems = new List<(Image, Text)>();
     private RawImage bigImage;
     private RectTransform bigArrow, hintPin;
     private Text bigTitle, bigHint, coordText;
@@ -132,11 +137,12 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void Start()
     {
         startTime = Time.unscaledTime;
+        hudStyle.Refresh(EcoWorldClock.Current);
         canvas = EcoUI.CreateCanvas("EcoWorld HUD", 19, out scaler);
         // The world map and the controls sheet sit above every HUD card (their dim covers the HUD).
         overlay = EcoUI.CreateCanvas("EcoWorld Map", 30, out overlayScaler);
         BuildEnvironmentCard();
-        questSidebar = new EcoQuestSidebar(canvas.transform);
+        questSidebar = new EcoQuestSidebar(canvas.transform, hudStyle);
         BuildMiniMap();
         BuildBanner();
         BuildActions();
@@ -170,6 +176,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void Update()
     {
         if (canvas == null) return;
+        hudStyle.Refresh(EcoWorldClock.Current);
+        if (minimapTexture != null) miniImage.color = Color.Lerp(Color.white, new Color(0.74f, 0.78f, 0.77f), hudStyle.NightAmount);
         bool foreign = EcoMarketUI.IsOpen || EcoUI.ForeignWindowOpen;
         canvas.enabled = !foreign;
         overlay.enabled = !foreign;
@@ -207,12 +215,15 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 string soon = clock.ForecastName(45f);
                 bool harsh = soon != clock.WeatherName && (soon == "Yağmurlu" || soon == "Fırtına");
                 weatherText.text = harsh ? "→ " + soon : clock.WeatherName; // the icon still shows the current weather
-                weatherText.color = harsh ? EcoUI.OnPaper(new Color(0.85f, 0.45f, 0.05f)) : EcoUI.Ink; // on the paper strip
+                weatherText.color = hudStyle.ColorFor(harsh ? Tone.Amber : Tone.Muted);
                 if (harsh && soon != announcedWeather && weapons != null) { announcedWeather = soon; weapons.ShowFeedback("Hava değişiyor: yaklaşık 45 sn içinde " + soon.ToLowerInvariant() + ". Açık ekinler sulanır, güneş üretimi düşer."); }
                 if (!harsh) announcedWeather = "";
-                float wind = RegionWind(current, clock);
-                windText.text = "%" + Mathf.RoundToInt(wind * 100f);
-                mapCard.summary.text = clockText.text + "  ·  " + clock.WeatherName;
+                int wind = Mathf.RoundToInt(RegionWind(current, clock) * 100f);
+                if (shownWind != wind)
+                {
+                    shownWind = wind;
+                    EcoUI.AddTooltip(miniWeatherHit.gameObject, "Rüzgâr %" + wind + " · Bulut güneş üretimini, sakin hava rüzgâr üretimini azaltır. Yağmur açık ekinleri sular.");
+                }
             }
             var skills = EcoSpecialization.Current;
             bool alert = skills != null && skills.Points > 0;
@@ -303,8 +314,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void BuildEnvironmentCard()
     {
-        envCard = new EcoUI.Card("environment", canvas.transform, new Vector2(0, 1), new Vector2(0, 1), "region_city", "ÇEVRE",
+        envCard = new EcoUI.Card("environment", canvas.transform, new Vector2(0, 1), new Vector2(0, 1), "region_city", "Çevre",
             "Bulunduğun bölgenin göstergeleri. Kartı daralt / genişlet.");
+        hudStyle.Card(envCard);
         // Row 7: karbon ayak izi (EcoCarbonFootprint). Clicking it opens the breakdown.
         for (int i = 0; i < 8; i++)
         {
@@ -313,6 +325,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
             rowNames[i] = EcoUI.Label("Row name " + i, envCard.body, i < 6 ? RowNames[i] : i == 6 ? "Sıcaklık" : "Ayak izi", 14, TextAnchor.MiddleLeft, EcoUI.Muted);
             rowValues[i] = EcoUI.Label("Row value " + i, envCard.body, "—", 14, TextAnchor.MiddleRight, EcoUI.Ink, true);
             rowFills[i] = EcoUI.Meter("Row meter " + i, envCard.body, out rowTracks[i]);
+            hudStyle.Tint(rowNames[i], Tone.Muted);
+            hudStyle.Tint(rowValues[i], Tone.Text);
+            hudStyle.Tint(rowTracks[i].GetComponent<Image>(), Tone.Rule);
             var hit = EcoUI.Panel("Hit " + i, envCard.body, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
             hit.rectTransform.anchoredPosition = new Vector2(0, -4 - i * 29); hit.rectTransform.sizeDelta = new Vector2(300, 28);
             EcoUI.AddTooltip(hit.gameObject, i < 6 ? RowTips[i] : i == 6 ? "Sıcaklık: bölgenin tabanı + karbon ve hava kirliliği etkisi. Ekinlerin uygun aralığı vardır."
@@ -329,6 +344,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     {
         float k = 1f - Mathf.Exp(-7f * Time.unscaledDeltaTime);
         bool has = current != null;
+        string muted = EcoUI.Hex(hudStyle.ColorFor(Tone.Muted));
         for (int i = 0; i < 7; i++)
         {
             shown[i] = Mathf.Lerp(shown[i], target[i], k);
@@ -341,24 +357,24 @@ public sealed class EcoWorldHUD : MonoBehaviour
             float good = i == 3 ? 1f - shown[i] / 100f : shown[i] / 100f;
             EcoUI.SetMeter(rowFills[i], rowTracks[i], has ? shown[i] / 100f : 0f, EcoUI.GoodColor(good));
             string reading = has ? Reading(current, i, true) : "";
-            rowValues[i].text = !has ? "—" : (reading.Length > 0 ? "<size=" + 11 * EcoUI.RasterScale + "><color=#" + EcoUI.Hex(EcoUI.Muted) + ">" + reading + "</color></size>  " : "")
+            rowValues[i].text = !has ? "—" : (reading.Length > 0 ? "<size=" + 11 * EcoUI.RasterScale + "><color=#" + muted + ">" + reading + "</color></size>  " : "")
                 + Mathf.RoundToInt(shown[i]);
         }
         // Karbon ayak izi: world-wide, so it is shown even outside a region. Bar: world carbon (low is good).
         float footprint = EcoCarbonFootprint.NetPerDay, worldCarbon = EcoRegion.WorldCarbon();
-        rowValues[7].text = "<size=" + 11 * EcoUI.RasterScale + "><color=#" + EcoUI.Hex(EcoUI.Muted) + ">dünya " + Mathf.RoundToInt(worldCarbon) + "</color></size>  "
-            + "<color=#" + EcoUI.Hex(EcoUI.OnPaper(footprint > 0.05f ? EcoUI.Amber : EcoUI.GoodColor(1f))) + ">" + EcoCarbonFootprint.Signed(footprint) + "/gün</color>";
+        rowValues[7].text = "<size=" + 11 * EcoUI.RasterScale + "><color=#" + muted + ">dünya " + Mathf.RoundToInt(worldCarbon) + "</color></size>  "
+            + "<color=#" + EcoUI.Hex(hudStyle.ColorFor(footprint > 0.05f ? Tone.Amber : Tone.Leaf)) + ">" + EcoCarbonFootprint.Signed(footprint) + "/gün</color>";
         EcoUI.SetMeter(rowFills[7], rowTracks[7], worldCarbon / 100f, EcoUI.GoodColor(1f - worldCarbon / 100f));
         if (has)
         {
             var info = current.GetComponent<EcoRegionInfo>();
-            envCard.title.text = EcoUI.Upper(current.regionName);
+            envCard.title.text = current.regionName;
             EcoUI.SetIcon(envCard.icon, info != null ? EcoIcons.Region(info.kind, current.waterPollution > 35f) : "region_city");
             float health = shown[5];
-            envCard.summary.text = StateName(health) + " · " + Mathf.RoundToInt(health) + "%";
-            envCard.summary.color = EcoUI.OnPaper(EcoUI.GoodColor(health / 100f));
+            envCard.summary.text = "%" + Mathf.RoundToInt(health);
+            envCard.summary.color = hudStyle.ColorFor(health < 50f ? Tone.Amber : Tone.Leaf);
         }
-        else { envCard.title.text = "BÖLGE DIŞI"; envCard.summary.text = ""; }
+        else { envCard.title.text = "Bölge dışı"; envCard.summary.text = ""; }
     }
 
     // ================================================================== mini map
@@ -366,6 +382,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
     private void BuildMiniMap()
     {
         mapCard = new EcoUI.Card("minimap", canvas.transform, new Vector2(1, 1), new Vector2(1, 1), "ui_map", "HARİTA", "Mini harita. Kartı daralt / genişlet.");
+        hudStyle.Card(mapCard);
         var frame = EcoUI.Panel("Frame", mapCard.body, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised);
         miniFrame = frame.rectTransform;
         miniFrame.gameObject.AddComponent<RectMask2D>();
@@ -376,25 +393,18 @@ public sealed class EcoWorldHUD : MonoBehaviour
         miniArrow = EcoUI.Icon("Player", miniFrame, "player", new Vector2(0, 1), new Vector2(0.5f, 0.5f), 22f).rectTransform;
         miniNorth = EcoUI.Label("North", miniFrame, "K", 13, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
         miniNorth.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.9f);
-        // The transparent-center rim sits outside the mask, leaving pins and UV mapping untouched.
-        miniRim = EcoUI.Panel("Minimap rim", mapCard.body, new Vector2(0, 1), new Vector2(0, 1),
-            Color.white, false, EcoUI.MapFrameSprite).rectTransform;
         bigMapButton = EcoUI.IconButton("Open map", mapCard.root, "ui_layers", 26f, () => SetMap(true), "Büyük harita " + EcoKeys.Tag(EcoKeys.Action.Map));
-        // Time and weather float below the map and remain available when the map itself is collapsed.
+        hudStyle.Tint(bigMapButton.targetGraphic, Tone.Raised);
         miniStatus = EcoUI.Rect("Time and weather", mapCard.root, new Vector2(0, 1), new Vector2(0, 1));
-        // A paper strip behind time and weather: light outlined text vanished over the snow of the glacier region.
-        miniStatusPaper = EcoUI.Dress(EcoUI.Panel("Status paper", miniStatus, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Surface, false), false).rectTransform;
         clockIcon = EcoUI.Icon("Clock", miniStatus, "clock", new Vector2(0, 1), new Vector2(0, 1), 18f);
         clockText = EcoUI.Label("Clock text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         weatherIcon = EcoUI.Icon("Weather", miniStatus, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 20f);
         weatherText = EcoUI.Label("Weather text", miniStatus, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink);
-        windIcon = EcoUI.Icon("Wind", miniStatus, "w_wind", new Vector2(0, 1), new Vector2(0, 1), 20f);
-        windText = EcoUI.Label("Wind text", miniStatus, "", 13, TextAnchor.MiddleRight, EcoUI.Ink, true);
+        hudStyle.Tint(clockText, Tone.Text);
+        weatherText.color = hudStyle.ColorFor(Tone.Muted);
         var strip = EcoUI.Panel("Weather hit", miniStatus, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
         miniWeatherHit = strip.rectTransform;
         EcoUI.AddTooltip(strip.gameObject, "Gün, saat ve hava. Bulut güneş üretimini, sakin hava rüzgâr türbinini düşürür; yağmur açık ekinleri sular.");
-        mapCard.background.enabled = false;
-        mapCard.background.raycastTarget = false;
         mapCard.toggle.transform.SetAsLastSibling();
         var button = frame.gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
         button.onClick.AddListener(() => SetMap(true));
@@ -468,7 +478,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void BuildBanner()
     {
-        var bg = EcoUI.Dress(EcoUI.Panel("Region banner", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false));
+        var bg = hudStyle.Surface(EcoUI.Panel("Region banner", canvas.transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), EcoUI.Surface, false));
         banner = bg.rectTransform;
         bannerGroup = banner.gameObject.AddComponent<CanvasGroup>(); bannerGroup.alpha = 0f; bannerGroup.interactable = false; bannerGroup.blocksRaycasts = false;
         bannerStrip = EcoUI.Fill("Strip", banner, EcoUI.Accent);
@@ -476,6 +486,9 @@ public sealed class EcoWorldHUD : MonoBehaviour
         bannerTitle = EcoUI.Label("Title", banner, "", 21, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         bannerState = EcoUI.Label("State", banner, "", 13, TextAnchor.MiddleRight, EcoUI.Accent, true);
         bannerSub = EcoUI.Label("Tagline", banner, "", 13, TextAnchor.UpperLeft, EcoUI.Muted);
+        hudStyle.Tint(bannerTitle, Tone.Text);
+        hudStyle.Tint(bannerSub, Tone.Muted);
+        hudStyle.Tint(bannerState, Tone.Leaf);
     }
 
     private void ShowBanner(EcoRegion region)
@@ -487,14 +500,13 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.SetIcon(bannerIcon, info != null ? EcoIcons.Region(info.kind, region.waterPollution > 35f) : "region_city");
         float health = Health(region);
         bannerState.text = StateName(health);
-        bannerState.color = EcoUI.OnPaper(EcoUI.GoodColor(health / 100f));
-        bannerUntil = Time.unscaledTime + 5f;
+        bannerUntil = Time.unscaledTime + 3.5f;
     }
 
     private void UpdateBanner()
     {
         float left = bannerUntil - Time.unscaledTime;
-        bannerGroup.alpha = !bannerFits || EcoUI.Mode == EcoUI.HudMode.Hidden || left <= 0f ? 0f : Mathf.Clamp01(Mathf.Min(left, 5f - left) * 2.5f);
+        bannerGroup.alpha = !bannerFits || EcoUI.Mode != EcoUI.HudMode.Full || left <= 0f ? 0f : Mathf.Clamp01(Mathf.Min(left, 3.5f - left) * 2.5f);
         BannerBottom = bannerGroup.alpha > 0.01f ? bannerBottom : 0f;
     }
 
@@ -533,7 +545,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void BuildActions()
     {
-        actions = EcoUI.Rect("Quick actions", canvas.transform, Vector2.zero, Vector2.zero);
+        actions = hudStyle.Surface(EcoUI.Panel("Quick actions", canvas.transform, Vector2.zero, Vector2.zero, EcoUI.Surface)).rectTransform;
         AddAction("map", "ui_map", EcoKeys.Label(EcoKeys.Action.Map), "Dünya haritası", () => SetMap(!MapOpen));
         AddAction("quests", "poi_quest", EcoKeys.Label(EcoKeys.Action.Quests), "Görev panosu", () => SetBoard(!BoardOpen));
         AddAction("journal", "ui_journal", EcoKeys.Label(EcoKeys.Action.Journal), "Proje günlüğü", () => { var p = EcoProjects.Current; if (p != null) p.SetOpen(!p.PanelOpen); });
@@ -542,17 +554,21 @@ public sealed class EcoWorldHUD : MonoBehaviour
         AddAction("settings", "ui_gear", EcoKeys.Label(EcoKeys.Action.Settings), "Ses ayarları", () => { var a = FindFirstObjectByType<EcoAudio>(); if (a != null) a.TogglePanel(); });
         AddAction("help", "ui_help", "F1", "Kontroller ve yardım", () => SetHelp(!helpOpen));
         AddAction("hud", "ui_hud", "H", "Arayüz: Tam / Sade / Gizli", CycleHud);
-        var bg = EcoUI.Dress(EcoUI.Panel("Mode toast", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false));
+        var bg = hudStyle.Surface(EcoUI.Panel("Mode toast", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface, false));
         modeToastBg = bg; modeToast = EcoUI.Label("Text", bg.transform, "", 18, TextAnchor.MiddleCenter, EcoUI.Ink, true);
+        hudStyle.Tint(modeToast, Tone.Text);
         bg.gameObject.SetActive(false);
     }
 
     private void AddAction(string id, string icon, string key, string tip, System.Action onClick)
     {
-        var button = EcoUI.IconButton("Action " + id, actions, icon, 36f, onClick, tip + "  [" + key + "]");
+        var button = EcoUI.IconButton("Action " + id, actions, icon, 28f, onClick, tip + "  [" + key + "]");
+        hudStyle.Tint(button.targetGraphic, Tone.Raised);
         var badge = EcoUI.Panel("Key", button.transform, new Vector2(1, 0), new Vector2(1, 0), EcoUI.Selected, false, EcoUI.Rounded);
         EcoUI.Place(badge.rectTransform, new Vector2(6f, -4f), new Vector2(key.Length > 2 ? 30f : 20f, 16f));
         var text = EcoUI.Label("Key text", badge.transform, key, 10, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
+        hudStyle.Tint(badge, Tone.Surface);
+        hudStyle.Tint(text, Tone.Muted);
         EcoUI.Layout(text, Vector2.zero, badge.rectTransform.sizeDelta);
         actionButtons.Add((button, text, id));
         if (id == "skills")
@@ -580,14 +596,15 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void BuildHelp()
     {
-        var card = EcoUI.Dress(EcoUI.Panel("Help", overlay.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface));
-        help = card.rectTransform; help.sizeDelta = new Vector2(780f, 590f);
-        var icon = EcoUI.Icon("Icon", help, "ui_help", new Vector2(0, 1), new Vector2(0, 1), 34f); EcoUI.LayoutIcon(icon, new Vector2(22f, -18f), 34f);
-        var title = EcoUI.Label("Title", help, "KONTROLLER", 22, TextAnchor.MiddleLeft, EcoUI.Accent, true); EcoUI.Layout(title, new Vector2(66f, -22f), new Vector2(400f, 28f));
-        var sub = EcoUI.Label("Sub", help, "Tuşlar Ayarlar > Tuş atamaları'ndan değiştirilebilir. Paneller açıkken dünya %10 hızda akar.", 13, TextAnchor.MiddleLeft, EcoUI.Muted);
-        EcoUI.Layout(sub, new Vector2(66f, -48f), new Vector2(640f, 18f));
-        var close = EcoUI.IconButton("Close", help, "ui_close", 30f, () => SetHelp(false), "Kapat [F1] / [Esc]");
-        var cr = (RectTransform)close.transform; cr.anchorMin = cr.anchorMax = new Vector2(1, 1); cr.pivot = new Vector2(1, 1); cr.anchoredPosition = new Vector2(-14f, -14f);
+        helpRoot = NotebookBackdrop("Controls");
+        var card = EcoNotebook.Surface(EcoUI.Panel("Help", helpRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoNotebook.Paper), EcoNotebook.Paper);
+        help = card.rectTransform; help.sizeDelta = HelpSize;
+        var icon = EcoUI.Icon("Icon", help, "ui_help", new Vector2(0, 1), new Vector2(0, 1), 28f); EcoUI.LayoutIcon(icon, new Vector2(22f, -18f), 28f);
+        var title = EcoUI.Label("Title", help, "Kontroller", 23, TextAnchor.MiddleLeft, EcoNotebook.Ink, true); EcoUI.Layout(title, new Vector2(61f, -15f), new Vector2(400f, 30f));
+        var sub = EcoUI.Label("Sub", help, "Tuşları Ayarlar menüsünden değiştirebilirsin. Paneller açıkken dünya %10 hızda akar.", 13, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+        EcoUI.Layout(sub, new Vector2(61f, -46f), new Vector2(640f, 20f));
+        NotebookClose(help, () => SetHelp(false), "Kapat [F1] / [Esc]");
+        NotebookRule(help, 74f, 20f);
         var rows = new (string icon, string key, string text)[]
         {
             ("player", "WASD", "Kameraya göre yürü (" + EcoKeys.Label(EcoKeys.Action.Sprint) + " koş)"), ("poi_quest", "Sağ tık", "Tıklanan yere yürü"),
@@ -603,14 +620,14 @@ public sealed class EcoWorldHUD : MonoBehaviour
         };
         for (int i = 0; i < rows.Length; i++)
         {
-            float x = i % 2 == 0 ? 28f : 400f, y = -84f - (i / 2) * 48f;
-            var rowIcon = EcoUI.Icon("Row icon", help, rows[i].icon, new Vector2(0, 1), new Vector2(0, 1), 30f); EcoUI.LayoutIcon(rowIcon, new Vector2(x, y), 30f);
-            var keyBg = EcoUI.Panel("Key", help, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised, false);
-            EcoUI.Place(keyBg.rectTransform, new Vector2(x + 38f, y - 3f), new Vector2(76f, 24f));
-            var key = EcoUI.Label("Key", keyBg.transform, rows[i].key, 13, TextAnchor.MiddleCenter, EcoUI.Accent, true); EcoUI.Layout(key, Vector2.zero, new Vector2(76f, 24f));
-            var text = EcoUI.Label("Text", help, rows[i].text, 13, TextAnchor.MiddleLeft, EcoUI.Ink); EcoUI.Layout(text, new Vector2(x + 122f, y + 5f), new Vector2(240f, 40f));
+            float x = i % 2 == 0 ? 24f : 404f, y = -89f - (i / 2) * 45f;
+            var rowIcon = EcoUI.Icon("Row icon", help, rows[i].icon, new Vector2(0, 1), new Vector2(0, 1), 24f); EcoUI.LayoutIcon(rowIcon, new Vector2(x, y), 24f);
+            var keyBg = EcoUI.Panel("Key", help, new Vector2(0, 1), new Vector2(0, 1), EcoNotebook.Inset, false);
+            EcoUI.Place(keyBg.rectTransform, new Vector2(x + 32f, y), new Vector2(74f, 24f));
+            var key = EcoUI.Label("Key", keyBg.transform, rows[i].key, 13, TextAnchor.MiddleCenter, EcoNotebook.Accent, true); EcoUI.Layout(key, Vector2.zero, new Vector2(74f, 24f));
+            var text = EcoUI.Label("Text", help, rows[i].text, 13, TextAnchor.MiddleLeft, EcoNotebook.Ink); EcoUI.Layout(text, new Vector2(x + 117f, y + 7f), new Vector2(234f, 38f));
         }
-        help.gameObject.SetActive(false);
+        helpRoot.gameObject.SetActive(false);
     }
 
     /// <summary>Opens the F1 controls panel (pause menu "Kontroller").</summary>
@@ -620,26 +637,62 @@ public sealed class EcoWorldHUD : MonoBehaviour
     {
         if (open && MapOpen) SetMap(false);
         if (open && BoardOpen) SetBoard(false);
-        helpOpen = open; help.gameObject.SetActive(open);
+        helpOpen = open; helpRoot.gameObject.SetActive(open);
         EcoUIFlow.SetPanel(helpOwner, open);
+    }
+
+    private RectTransform NotebookBackdrop(string name)
+    {
+        var root = EcoUI.Panel(name, overlay.transform, Vector2.zero, Vector2.zero, EcoNotebook.Dim);
+        root.sprite = null; root.type = Image.Type.Simple;
+        EcoUI.Stretch(root.rectTransform);
+        return root.rectTransform;
+    }
+
+    private static void NotebookClose(RectTransform parent, System.Action onClick, string tip)
+    {
+        var close = EcoUI.IconButton("Close", parent, "ui_close", 30f, onClick, tip);
+        close.targetGraphic.color = EcoNotebook.Inset;
+        var rect = (RectTransform)close.transform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+        rect.anchoredPosition = new Vector2(-14f, -14f);
+    }
+
+    private static void NotebookRule(RectTransform parent, float top, float margin)
+    {
+        var line = EcoUI.Fill("Header rule", parent, EcoNotebook.Rule).rectTransform;
+        line.anchorMax = Vector2.one;
+        line.offsetMin = new Vector2(margin, -top - 1f);
+        line.offsetMax = new Vector2(-margin, -top);
+    }
+
+    private static ScrollRect NotebookScroll(Image viewport, RectTransform content)
+    {
+        viewport.gameObject.AddComponent<RectMask2D>();
+        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+        scroll.viewport = viewport.rectTransform;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 36f;
+        scroll.inertia = false;
+        return scroll;
     }
 
     // ================================================================== big map
 
     private void BuildBigMap()
     {
-        bigRoot = EcoUI.Rect("Big map", overlay.transform, Vector2.zero, Vector2.zero); EcoUI.Stretch(bigRoot);
-        bigDim = EcoUI.Panel("Dim", bigRoot, Vector2.zero, Vector2.zero, new Color(0f, 0.02f, 0.03f, 0.78f));
-        bigDim.sprite = null; bigDim.type = Image.Type.Simple; EcoUI.Stretch(bigDim.rectTransform);
-        var card = EcoUI.Dress(EcoUI.Panel("Card", bigRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface));
+        bigRoot = NotebookBackdrop("Big map");
+        var card = EcoNotebook.Surface(EcoUI.Panel("Card", bigRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoNotebook.Paper), EcoNotebook.Paper);
         bigCard = card.rectTransform;
-        var titleIcon = EcoUI.Icon("Icon", bigCard, "ui_map", new Vector2(0, 1), new Vector2(0, 1), 30f); EcoUI.LayoutIcon(titleIcon, new Vector2(18f, -14f), 30f);
-        bigTitle = EcoUI.Label("Title", bigCard, "DÜNYA HARİTASI", 19, TextAnchor.MiddleLeft, EcoUI.Accent, true);
-        bigHint = EcoUI.Label("Hint", bigCard, "", 12, TextAnchor.MiddleRight, EcoUI.Muted);
-        var close = EcoUI.IconButton("Close", bigCard, "ui_close", 30f, () => SetMap(false), "Kapat " + EcoKeys.Tag(EcoKeys.Action.Map) + " / [Esc]");
-        var cr = (RectTransform)close.transform; cr.anchorMin = cr.anchorMax = new Vector2(1, 1); cr.pivot = new Vector2(1, 1); cr.anchoredPosition = new Vector2(-12f, -12f);
+        var titleIcon = EcoUI.Icon("Icon", bigCard, "ui_map", new Vector2(0, 1), new Vector2(0, 1), 28f); EcoUI.LayoutIcon(titleIcon, new Vector2(20f, -16f), 28f);
+        bigTitle = EcoUI.Label("Title", bigCard, "Dünya haritası", 23, TextAnchor.MiddleLeft, EcoNotebook.Ink, true);
+        bigHint = EcoUI.Label("Hint", bigCard, "", 12, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+        NotebookClose(bigCard, () => SetMap(false), "Kapat " + EcoKeys.Tag(EcoKeys.Action.Map) + " / [Esc]");
+        NotebookRule(bigCard, 68f, 18f);
 
-        var frame = EcoUI.Panel("Frame", bigCard, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised);
+        var frame = EcoNotebook.Surface(EcoUI.Panel("Frame", bigCard, new Vector2(0, 1), new Vector2(0, 1), EcoNotebook.Inset), EcoNotebook.Inset);
         bigFrame = frame.rectTransform;
         bigFrame.gameObject.AddComponent<RectMask2D>();
         var go = new GameObject("Map image", typeof(RectTransform), typeof(RawImage)); go.layer = 5;
@@ -648,19 +701,17 @@ public sealed class EcoWorldHUD : MonoBehaviour
         bigView = EcoUI.Rect("Overlay", bigFrame, new Vector2(0, 1), new Vector2(0, 1)); // region tints, outlines and icons live here
         hintPin = EcoUI.Icon("Hint", bigFrame, "poi_quest", new Vector2(0, 1), new Vector2(0.5f, 0.5f), 34f).rectTransform;
         bigArrow = EcoUI.Icon("Player", bigFrame, "player", new Vector2(0, 1), new Vector2(0.5f, 0.5f), 30f).rectTransform;
-        coordText = EcoUI.Label("Coordinates", bigCard, "", 12, TextAnchor.MiddleLeft, EcoUI.Muted);
+        coordText = EcoUI.Label("Coordinates", bigCard, "", 12, TextAnchor.MiddleLeft, EcoNotebook.Muted);
 
         legend = EcoUI.Rect("Legend", bigCard, new Vector2(0, 1), new Vector2(0, 1));
         var items = new[] { ("player", "Sen"), ("poi_quest", "Görev"), ("poi_market", "Pazar"), ("poi_home", "Ev"), ("poi_factory", "Fabrika"), ("poi_station", "İstasyon"),
             ("w_wind", "Rüzgâr"), ("poi_fire", "Yangın"), ("poi_enemy", "Tehdit") };
-        float lx = 0f;
         foreach (var (icon, text) in items)
         {
-            var img = EcoUI.Icon("Legend icon", legend, icon, new Vector2(0, 1), new Vector2(0, 1), 18f); EcoUI.LayoutIcon(img, new Vector2(lx, -2f), 18f);
-            var label = EcoUI.Label("Legend text", legend, text, 12, TextAnchor.MiddleLeft, EcoUI.Muted); EcoUI.Layout(label, new Vector2(lx + 21f, -2f), new Vector2(70f, 18f));
-            lx += 26f + text.Length * 7.5f + 10f;
+            var img = EcoUI.Icon("Legend icon", legend, icon, new Vector2(0, 1), new Vector2(0, 1), 16f);
+            var label = EcoUI.Label("Legend text", legend, text, 12, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+            legendItems.Add((img, label));
         }
-        legendWidth = lx;
 
         BuildInfoCard();
         bigRoot.gameObject.SetActive(false);
@@ -668,35 +719,41 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void BuildInfoCard()
     {
-        var bg = EcoUI.Dress(EcoUI.Panel("Info", bigCard, new Vector2(1, 1), new Vector2(1, 1), EcoUI.SurfaceRaised), false);
+        var bg = EcoNotebook.Surface(EcoUI.Panel("Info", bigCard, Vector2.one, Vector2.one, EcoNotebook.Sheet), EcoNotebook.Sheet);
         infoCard = bg.rectTransform;
-        infoIcon = EcoUI.Icon("Region icon", infoCard, "region_city", new Vector2(0, 1), new Vector2(0, 1), 50f);
-        infoName = EcoUI.Label("Name", infoCard, "", 20, TextAnchor.MiddleLeft, EcoUI.Ink, true);
-        infoBadge = EcoUI.Panel("Badge", infoCard, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent, false, EcoUI.Rounded);
-        infoBadgeText = EcoUI.Label("Badge text", infoBadge.transform, "", 11, TextAnchor.MiddleCenter, EcoUI.Ink, true);
-        infoTag = EcoUI.Label("Tagline", infoCard, "", 13, TextAnchor.UpperLeft, EcoUI.Muted);
-        infoEmpty = EcoUI.Label("Empty", infoCard, "Bir bölgenin üzerine gel.\nTıklayınca bilgi kartı sabitlenir.", 15, TextAnchor.MiddleCenter, EcoUI.Muted);
+        var viewport = EcoUI.Panel("Region notes viewport", infoCard, Vector2.up, Vector2.up, Color.clear);
+        infoViewport = viewport.rectTransform;
+        infoContent = EcoUI.Rect("Region notes", infoViewport, Vector2.up, Vector2.up);
+        infoScroll = NotebookScroll(viewport, infoContent);
+        infoIcon = EcoUI.Icon("Region icon", infoContent, "region_city", new Vector2(0, 1), new Vector2(0, 1), 50f);
+        infoName = EcoUI.Label("Name", infoContent, "", 20, TextAnchor.MiddleLeft, EcoNotebook.Ink, true);
+        infoBadge = EcoUI.Panel("Badge", infoContent, new Vector2(0, 1), new Vector2(0, 1), EcoNotebook.Inset, false);
+        infoBadgeText = EcoUI.Label("Badge text", infoBadge.transform, "", 11, TextAnchor.MiddleCenter, EcoNotebook.Ink, true);
+        infoTag = EcoUI.Label("Tagline", infoContent, "", 13, TextAnchor.UpperLeft, EcoNotebook.Muted);
+        infoEmpty = EcoUI.Label("Empty", infoCard, "Bir bölgenin üzerine gel.\nTıklayınca bölge notları burada kalır.", 15, TextAnchor.MiddleCenter, EcoNotebook.Muted);
         for (int i = 0; i < 6; i++)
         {
-            infoRowIcon[i] = EcoUI.Icon("Row icon", infoCard, RowIcons[i], new Vector2(0, 1), new Vector2(0, 1), 18f);
-            infoRowName[i] = EcoUI.Label("Row name", infoCard, RowNames[i], 13, TextAnchor.MiddleLeft, EcoUI.Muted);
-            infoRowValue[i] = EcoUI.Label("Row value", infoCard, "", 13, TextAnchor.MiddleRight, EcoUI.Ink, true);
-            infoRowReading[i] = EcoUI.Label("Row reading", infoCard, "", 11, TextAnchor.MiddleLeft, EcoUI.Muted);
-            infoRowFill[i] = EcoUI.Meter("Row meter", infoCard, out infoRowTrack[i]);
+            infoRowIcon[i] = EcoUI.Icon("Row icon", infoContent, RowIcons[i], new Vector2(0, 1), new Vector2(0, 1), 18f);
+            infoRowName[i] = EcoUI.Label("Row name", infoContent, RowNames[i], 13, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+            infoRowValue[i] = EcoUI.Label("Row value", infoContent, "", 13, TextAnchor.MiddleRight, EcoNotebook.Ink, true);
+            infoRowReading[i] = EcoUI.Label("Row reading", infoContent, "", 11, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+            infoRowFill[i] = EcoUI.Meter("Row meter", infoContent, out infoRowTrack[i]);
+            infoRowTrack[i].GetComponent<Image>().color = EcoNotebook.Rule;
         }
-        climateHeader = EcoUI.Label("Climate", infoCard, "İKLİM ŞU AN", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
+        climateHeader = EcoUI.Label("Climate", infoContent, "İklim şu an", 13, TextAnchor.MiddleLeft, EcoNotebook.Accent, true);
         for (int i = 0; i < 4; i++)
         {
-            climateIcon[i] = EcoUI.Icon("Climate icon", infoCard, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 26f);
-            climateText[i] = EcoUI.Label("Climate text", infoCard, "", 12, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+            climateIcon[i] = EcoUI.Icon("Climate icon", infoContent, "w_sun", new Vector2(0, 1), new Vector2(0, 1), 22f);
+            climateText[i] = EcoUI.Label("Climate text", infoContent, "", 12, TextAnchor.MiddleLeft, EcoNotebook.Ink, true);
         }
-        tasksHeader = EcoUI.Label("Tasks", infoCard, "GÖREVLER · KOLAYDAN ZORA · TIKLA: TAKİP ET", 11, TextAnchor.MiddleLeft, EcoUI.Accent, true);
+        tasksHeader = EcoUI.Label("Tasks", infoContent, "Bölge görevleri · Tıkla ve takip et", 13, TextAnchor.MiddleLeft, EcoNotebook.Accent, true);
         for (int i = 0; i < taskIcon.Length; i++)
         {
-            taskIcon[i] = EcoUI.Icon("Task icon", infoCard, "poi_project", new Vector2(0, 1), new Vector2(0, 1), 22f);
-            taskText[i] = EcoUI.Label("Task text", infoCard, "", 13, TextAnchor.UpperLeft, EcoUI.Ink);
-            taskFill[i] = EcoUI.Meter("Task meter", infoCard, out taskTrack[i]);
-            taskHit[i] = EcoUI.Panel("Task hit", infoCard, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0f));
+            taskIcon[i] = EcoUI.Icon("Task icon", infoContent, "poi_project", new Vector2(0, 1), new Vector2(0, 1), 22f);
+            taskText[i] = EcoUI.Label("Task text", infoContent, "", 13, TextAnchor.UpperLeft, EcoNotebook.Ink);
+            taskFill[i] = EcoUI.Meter("Task meter", infoContent, out taskTrack[i]);
+            taskTrack[i].GetComponent<Image>().color = EcoNotebook.Rule;
+            taskHit[i] = EcoUI.Panel("Task hit", infoContent, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
             int row = i;
             var button = taskHit[i].gameObject.AddComponent<Button>(); button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() => { if (taskQuest[row] != null) { EcoQuestBoard.Toggle(taskQuest[row]); mapRefreshAt = 0f; } });
@@ -715,6 +772,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
         {
             RebuildOverlays();
             zoom = 1f; viewCenter = new Vector2(0.5f, 0.5f); pinned = null;
+            dragging = false;
+            infoRegion = null;
             mapRefreshAt = 0f;
             dirty = true;
         }
@@ -736,10 +795,11 @@ public sealed class EcoWorldHUD : MonoBehaviour
             for (int e = 0; e < 4; e++) o.edges[e] = EcoUI.Fill("Edge", bigView, new Color(c.r, c.g, c.b, 0.55f));
             if (info != null)
             {
-                var chip = EcoUI.Panel("Chip", bigView, new Vector2(0, 1), new Vector2(0.5f, 0.5f), EcoUI.Surface, false);
+                var chip = EcoUI.Panel("Chip", bigView, new Vector2(0, 1), new Vector2(0.5f, 0.5f), EcoNotebook.Sheet, false);
+                chip.pixelsPerUnitMultiplier = 2.5f;
                 o.chip = chip.rectTransform;
                 o.chipIcon = EcoUI.Icon("Icon", o.chip, EcoIcons.Region(info.kind, region.waterPollution > 35f), new Vector2(0, 1), new Vector2(0, 1), 24f);
-                o.chipText = EcoUI.Label("Name", o.chip, region.regionName, 12, TextAnchor.MiddleLeft, EcoUI.Ink, true);
+                o.chipText = EcoUI.Label("Name", o.chip, region.regionName, 12, TextAnchor.MiddleLeft, EcoNotebook.Ink, true);
                 o.weather = EcoUI.Icon("Weather", o.chip, "w_wind", new Vector2(0, 1), new Vector2(0, 1), 24f);
             }
             overlays.Add(o);
@@ -792,7 +852,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             Vector2 delta = local - dragStart;
             if (delta.magnitude > 4f) dragMoved = true;
             if (dragMoved) { viewCenter = dragCenter - new Vector2(delta.x / side * view.width, -delta.y / side * view.height); view = BigView(); }
-            if (mouse.leftButton.wasReleasedThisFrame)
+            if (!mouse.leftButton.isPressed)
             {
                 dragging = false;
                 if (!dragMoved && overMap) pinned = RegionAtUv(mouseUv);
@@ -815,8 +875,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
             bool focusOn = o.region == focus;
             Color c = o.info != null ? o.info.mapColor : Color.white;
             EcoUI.Place(o.fill.rectTransform, new Vector2(x0, y0), new Vector2(x1 - x0, y0 - y1));
-            o.fill.color = new Color(c.r, c.g, c.b, focusOn ? 0.26f : 0.05f);
-            float t = focusOn ? 3f : 1.5f;
+            o.fill.color = new Color(c.r, c.g, c.b, focusOn ? 0.23f : 0.05f);
+            float t = focusOn ? 2.5f : 1.2f;
             EcoUI.Place(o.edges[0].rectTransform, new Vector2(x0, y0), new Vector2(x1 - x0, t));
             EcoUI.Place(o.edges[1].rectTransform, new Vector2(x0, y1 + t), new Vector2(x1 - x0, t));
             EcoUI.Place(o.edges[2].rectTransform, new Vector2(x0, y0), new Vector2(t, y0 - y1));
@@ -839,8 +899,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 EcoUI.LayoutIcon(o.chipIcon, new Vector2(6f, -3f), 24f);
                 EcoUI.Layout(o.chipText, new Vector2(34f, -6f), new Vector2(textWidth, 18f));
                 EcoUI.LayoutIcon(o.weather, new Vector2(34f + textWidth + sway, -3f), 24f);
-                o.chip.GetComponent<Image>().color = focusOn ? EcoUI.Selected : EcoUI.Surface;
-                o.chipText.color = focusOn ? EcoUI.PaperInk : EcoUI.Ink;
+                o.chip.GetComponent<Image>().color = focusOn ? EcoNotebook.Selected : EcoNotebook.Sheet;
             }
         }
 
@@ -934,12 +993,19 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void RefreshInfoCard(EcoRegion r)
     {
-        float w = infoCard.sizeDelta.x;
+        float w = infoViewport.sizeDelta.x;
         bool has = r != null;
+        bool changed = infoRegion != r;
+        infoRegion = r;
         infoEmpty.gameObject.SetActive(!has);
-        EcoUI.Layout(infoEmpty, new Vector2(16f, -infoCard.sizeDelta.y * 0.5f + 30f), new Vector2(w - 32f, 60f));
-        foreach (Transform child in infoCard) if (child != infoEmpty.transform) child.gameObject.SetActive(has);
+        EcoUI.Layout(infoEmpty, new Vector2(16f, -infoCard.sizeDelta.y * 0.5f + 30f), new Vector2(infoCard.sizeDelta.x - 32f, 60f));
+        infoViewport.gameObject.SetActive(has);
         if (!has) return;
+        if (changed)
+        {
+            infoScroll.StopMovement();
+            infoContent.anchoredPosition = Vector2.zero;
+        }
         var info = r.GetComponent<EcoRegionInfo>();
         var clock = EcoWorldClock.Current;
         var values = new float[7]; Sample(r, values);
@@ -949,15 +1015,14 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.SetIcon(infoIcon, info != null ? EcoIcons.Region(info.kind, r.waterPollution > 35f) : "region_city");
         EcoUI.LayoutIcon(infoIcon, new Vector2(16f, y), 50f);
         infoName.text = r.regionName;
-        EcoUI.Layout(infoName, new Vector2(76f, y - 2f), new Vector2(w - 92f, 26f));
-        infoBadge.color = EcoUI.GoodColor(health / 100f);
+        float titleHeight = NoteHeight(infoName, new Vector2(76f, y - 2f), w - 92f, 26f);
+        infoBadge.color = Color.Lerp(EcoNotebook.Inset, EcoUI.GoodColor(health / 100f), 0.3f);
         infoBadgeText.text = StateName(health) + "  ·  " + Mathf.RoundToInt(health);
-        EcoUI.Place(infoBadge.rectTransform, new Vector2(76f, y - 30f), new Vector2(118f, 20f));
-        EcoUI.Layout(infoBadgeText, Vector2.zero, new Vector2(118f, 20f));
+        EcoUI.Place(infoBadge.rectTransform, new Vector2(76f, y - titleHeight - 4f), new Vector2(138f, 20f));
+        EcoUI.Layout(infoBadgeText, Vector2.zero, new Vector2(138f, 20f));
         infoTag.text = info != null ? info.tagline : "";
-        y -= 58f;
-        EcoUI.Layout(infoTag, new Vector2(16f, y), new Vector2(w - 32f, 34f));
-        y -= 40f;
+        y -= titleHeight + 32f;
+        y -= NoteHeight(infoTag, new Vector2(16f, y), w - 32f, 16f) + 10f;
         for (int i = 0; i < 6; i++)
         {
             float v = values[i];
@@ -965,7 +1030,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
             EcoUI.LayoutIcon(infoRowIcon[i], new Vector2(16f, y), 18f);
             EcoUI.Layout(infoRowName[i], new Vector2(40f, y), new Vector2(130f, 18f));
             infoRowValue[i].text = Mathf.RoundToInt(v).ToString();
-            infoRowValue[i].color = EcoUI.OnPaper(EcoUI.GoodColor(good));
+            infoRowValue[i].color = Color.Lerp(EcoUI.GoodColor(good), EcoNotebook.Ink, 0.65f);
             EcoUI.Layout(infoRowValue[i], new Vector2(w - 56f, y), new Vector2(40f, 18f));
             EcoUI.Place(infoRowTrack[i], new Vector2(170f, y - 7f), new Vector2(w - 232f, 5f));
             EcoUI.SetMeter(infoRowFill[i], infoRowTrack[i], v / 100f, EcoUI.GoodColor(good));
@@ -988,24 +1053,26 @@ public sealed class EcoWorldHUD : MonoBehaviour
             ("w_sun", "%" + Mathf.RoundToInt(sun * 100f) + "\nGüneş"),
             (EcoIcons.Weather(clock), clock != null ? clock.WeatherName + "\nHava" : "—"),
         };
-        float cw = (w - 32f) / 4f;
+        float cw = (w - 32f) * 0.5f;
         for (int i = 0; i < 4; i++)
         {
+            float x = 16f + i % 2 * cw;
+            float top = y - i / 2 * 36f;
             EcoUI.SetIcon(climateIcon[i], chips[i].icon);
-            EcoUI.LayoutIcon(climateIcon[i], new Vector2(16f + i * cw, y), 26f);
+            EcoUI.LayoutIcon(climateIcon[i], new Vector2(x, top - 3f), 22f);
             climateText[i].text = chips[i].text;
-            EcoUI.Layout(climateText[i], new Vector2(16f + i * cw + 30f, y + 2f), new Vector2(cw - 32f, 32f));
+            EcoUI.Layout(climateText[i], new Vector2(x + 29f, top), new Vector2(cw - 34f, 32f));
         }
-        y -= 40f;
+        y -= 80f;
 
         // This region's quests from the quest board, easy first and harder below; a click tracks one. Finished projects
         // and live readings (fish, station) follow as plain status lines.
         var tasks = new List<(string icon, string text, float progress, EcoQuestBoard.Quest quest)>();
         foreach (var q in EcoQuestBoard.For(r, player.position).OrderBy(q => q.level))
-            tasks.Add((q.icon, LevelTag(q.level) + "  <b>" + q.title + "</b>" + (EcoQuestBoard.IsTracked(q) ? "  <color=#" + EcoUI.Hex(EcoUI.Accent) + ">· takipte</color>" : "") + "\n" + q.detail, q.progress, q));
+            tasks.Add((q.icon, LevelTag(q.level) + "  <b>" + q.title + "</b>" + (EcoQuestBoard.IsTracked(q) ? "  <color=#" + EcoUI.Hex(EcoNotebook.Accent) + ">· takipte</color>" : "") + "\n" + q.detail, q.progress, q));
         var projects = EcoProjects.Current;
         if (info != null && info.projectIndex >= 0 && projects != null && info.projectIndex < projects.All.Count && projects.All[info.projectIndex].done)
-            tasks.Add(("ui_check", "<b>" + projects.All[info.projectIndex].name + "</b>  <color=#" + EcoUI.Hex(EcoUI.Accent) + ">tamamlandı</color>\nBaşarı korunuyor", 1f, null));
+            tasks.Add(("ui_check", "<b>" + projects.All[info.projectIndex].name + "</b>  <color=#" + EcoUI.Hex(EcoNotebook.Accent) + ">tamamlandı</color>\nBaşarı korunuyor", 1f, null));
         foreach (var spot in FindObjectsByType<EcoFishingSpot>(FindObjectsSortMode.None))
             if (r.Contains(spot.transform.position)) { tasks.Add((r.waterPollution < 35f ? "fish" : "fish_dirty", "Balık nüfusu " + Mathf.FloorToInt(spot.population) + " / 12" + (spot.population <= 4f ? " · av kapalı" : ""), spot.population / 12f, null)); break; }
         var station = EcoGlacierStation.Current;
@@ -1026,50 +1093,53 @@ public sealed class EcoWorldHUD : MonoBehaviour
             EcoUI.SetIcon(taskIcon[i], tasks[i].icon);
             EcoUI.LayoutIcon(taskIcon[i], new Vector2(16f, y), 22f);
             taskText[i].text = tasks[i].text;
-            bool twoLines = tasks[i].text.Contains("\n") || tasks[i].text.Length > 44;
-            float h = twoLines ? 34f : 18f;
-            EcoUI.Layout(taskText[i], new Vector2(46f, y - 1f), new Vector2(w - 62f, h));
+            float h = NoteHeight(taskText[i], new Vector2(46f, y - 1f), w - 62f, 23f);
             y -= h + 4f;
             if (tasks[i].progress >= 0f)
             {
                 EcoUI.Place(taskTrack[i], new Vector2(46f, y), new Vector2(w - 62f, 5f));
-                EcoUI.SetMeter(taskFill[i], taskTrack[i], tasks[i].progress, tasks[i].progress >= 1f ? EcoUI.Accent : EcoUI.Amber);
+                EcoUI.SetMeter(taskFill[i], taskTrack[i], tasks[i].progress, tasks[i].progress >= 1f ? EcoNotebook.Accent : EcoUI.Amber);
                 y -= 10f;
             }
             y -= 4f;
             if (tasks[i].quest != null)
             {
                 EcoUI.Place(taskHit[i].rectTransform, new Vector2(10f, rowTop + 2f), new Vector2(w - 20f, rowTop - y));
-                taskHit[i].color = EcoQuestBoard.IsTracked(tasks[i].quest) ? new Color(EcoUI.Accent.r, EcoUI.Accent.g, EcoUI.Accent.b, 0.14f) : new Color(1f, 1f, 1f, 0f);
+                taskHit[i].color = EcoQuestBoard.IsTracked(tasks[i].quest) ? EcoNotebook.Selected : Color.clear;
                 taskHit[i].transform.SetAsFirstSibling(); // behind the text, still catching the click
             }
         }
+        infoContent.sizeDelta = new Vector2(w, Mathf.Max(infoViewport.rect.height, -y + 8f));
+    }
+
+    private static float NoteHeight(Text label, Vector2 position, float width, float minimum)
+    {
+        EcoUI.Layout(label, position, new Vector2(width, minimum));
+        float height = Mathf.Max(minimum, Mathf.Ceil(label.preferredHeight / EcoUI.RasterScale) + 2f);
+        EcoUI.Layout(label, position, new Vector2(width, height));
+        return height;
     }
 
     private static string LevelTag(int level) =>
-        "<color=#" + EcoUI.Hex(LevelColor(level)) + "><b>" + EcoUI.Upper(EcoQuestBoard.LevelNames[Mathf.Clamp(level, 1, 3)]) + "</b></color>";
-    private static Color LevelColor(int level) => level <= 1 ? EcoUI.Accent : level == 2 ? EcoUI.Amber : EcoUI.Coral;
+        "<color=#" + EcoUI.Hex(Color.Lerp(LevelColor(level), EcoNotebook.Ink, 0.45f)) + "><b>" + EcoQuestBoard.LevelNames[Mathf.Clamp(level, 1, 3)] + "</b></color>";
+    private static Color LevelColor(int level) => level <= 1 ? EcoNotebook.Accent : level == 2 ? EcoUI.Amber : EcoUI.Coral;
 
     // ================================================================== quest board
 
     private void BuildBoard()
     {
-        boardRoot = EcoUI.Rect("Quest board", overlay.transform, Vector2.zero, Vector2.zero); EcoUI.Stretch(boardRoot);
-        var dim = EcoUI.Panel("Dim", boardRoot, Vector2.zero, Vector2.zero, new Color(0f, 0.02f, 0.03f, 0.72f));
-        dim.sprite = null; dim.type = Image.Type.Simple; EcoUI.Stretch(dim.rectTransform);
-        boardCard = EcoUI.Dress(EcoUI.Panel("Card", boardRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoUI.Surface)).rectTransform;
-        var icon = EcoUI.Icon("Icon", boardCard, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 32f); EcoUI.LayoutIcon(icon, new Vector2(18f, -14f), 32f);
-        var title = EcoUI.Label("Title", boardCard, "GÖREV PANOSU", 20, TextAnchor.MiddleLeft, EcoUI.Accent, true); EcoUI.Layout(title, new Vector2(58f, -16f), new Vector2(320f, 26f));
-        boardHint = EcoUI.Label("Hint", boardCard, "", 12, TextAnchor.MiddleLeft, EcoUI.Muted);
-        var close = EcoUI.IconButton("Close", boardCard, "ui_close", 30f, () => SetBoard(false), "Kapat " + EcoKeys.Tag(EcoKeys.Action.Quests) + " / [Esc]");
-        var cr = (RectTransform)close.transform; cr.anchorMin = cr.anchorMax = new Vector2(1, 1); cr.pivot = new Vector2(1, 1); cr.anchoredPosition = new Vector2(-12f, -12f);
-        var viewport = EcoUI.Panel("Viewport", boardCard, new Vector2(0, 1), new Vector2(0, 1), new Color(1f, 1f, 1f, 0f));
-        boardViewport = viewport.rectTransform; viewport.gameObject.AddComponent<RectMask2D>();
+        boardRoot = NotebookBackdrop("Quest board");
+        boardCard = EcoNotebook.Surface(EcoUI.Panel("Card", boardRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), EcoNotebook.Paper), EcoNotebook.Paper).rectTransform;
+        var icon = EcoUI.Icon("Icon", boardCard, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 28f); EcoUI.LayoutIcon(icon, new Vector2(18f, -16f), 28f);
+        var title = EcoUI.Label("Title", boardCard, "Görev panosu", 23, TextAnchor.MiddleLeft, EcoNotebook.Ink, true); EcoUI.Layout(title, new Vector2(56f, -15f), new Vector2(320f, 30f));
+        boardHint = EcoUI.Label("Hint", boardCard, "", 13, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+        NotebookClose(boardCard, () => SetBoard(false), "Kapat " + EcoKeys.Tag(EcoKeys.Action.Quests) + " / [Esc]");
+        NotebookRule(boardCard, 88f, 18f);
+        var viewport = EcoUI.Panel("Viewport", boardCard, new Vector2(0, 1), new Vector2(0, 1), Color.clear);
+        boardViewport = viewport.rectTransform;
         boardContent = EcoUI.Rect("Content", boardViewport, new Vector2(0, 1), new Vector2(0, 1));
-        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
-        scroll.viewport = boardViewport; scroll.content = boardContent; scroll.horizontal = false; scroll.vertical = true;
-        scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 36f; scroll.inertia = false;
-        boardEmpty = EcoUI.Label("Empty", boardCard, "Şu an açık görev yok. Bölgeler temiz; korumaya devam et.", 15, TextAnchor.MiddleCenter, EcoUI.Muted);
+        NotebookScroll(viewport, boardContent);
+        boardEmpty = EcoUI.Label("Empty", boardCard, "Şu an açık görev yok. Bölgeler temiz, korumaya devam et.", 15, TextAnchor.MiddleCenter, EcoNotebook.Muted);
         boardRoot.gameObject.SetActive(false);
     }
 
@@ -1089,19 +1159,20 @@ public sealed class EcoWorldHUD : MonoBehaviour
         while (boardRows.Count <= index)
         {
             var row = new BoardRow();
-            row.bg = EcoUI.Panel("Quest", boardContent, new Vector2(0, 1), new Vector2(0, 1), EcoUI.SurfaceRaised, true, EcoUI.Rounded);
+            row.bg = EcoNotebook.Surface(EcoUI.Panel("Quest", boardContent, new Vector2(0, 1), new Vector2(0, 1), EcoNotebook.Sheet), EcoNotebook.Sheet);
             row.root = row.bg.rectTransform;
             var button = row.bg.gameObject.AddComponent<Button>();
             var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(0.9f, 0.96f, 0.86f); colors.pressedColor = new Color(0.8f, 0.86f, 0.78f);
             button.colors = colors; button.targetGraphic = row.bg;
             button.onClick.AddListener(() => { if (row.quest == null) return; EcoQuestBoard.Toggle(row.quest); boardRefreshAt = 0f; });
             row.icon = EcoUI.Icon("Icon", row.root, "poi_quest", new Vector2(0, 1), new Vector2(0, 1), 32f);
-            row.chip = EcoUI.Panel("Level", row.root, new Vector2(0, 1), new Vector2(0, 1), EcoUI.Accent, false, EcoUI.Rounded);
-            row.chipText = EcoUI.Label("Level text", row.chip.transform, "", 11, TextAnchor.MiddleCenter, EcoUI.PaperInk, true);
-            row.title = EcoUI.Label("Title", row.root, "", 15, TextAnchor.MiddleLeft, EcoUI.Ink, true);
-            row.detail = EcoUI.Label("Detail", row.root, "", 12, TextAnchor.MiddleLeft, EcoUI.Muted);
-            row.action = EcoUI.Label("Action", row.root, "", 12, TextAnchor.MiddleRight, EcoUI.Accent, true);
+            row.chip = EcoUI.Panel("Level", row.root, new Vector2(0, 1), new Vector2(0, 1), EcoNotebook.Inset, false);
+            row.chipText = EcoUI.Label("Level text", row.chip.transform, "", 11, TextAnchor.MiddleCenter, EcoNotebook.Ink, true);
+            row.title = EcoUI.Label("Title", row.root, "", 15, TextAnchor.MiddleLeft, EcoNotebook.Ink, true);
+            row.detail = EcoUI.Label("Detail", row.root, "", 12, TextAnchor.MiddleLeft, EcoNotebook.Muted);
+            row.action = EcoUI.Label("Action", row.root, "", 12, TextAnchor.MiddleRight, EcoNotebook.Accent, true);
             row.fill = EcoUI.Meter("Progress", row.root, out row.track);
+            row.track.GetComponent<Image>().color = EcoNotebook.Rule;
             boardRows.Add(row);
         }
         return boardRows[index];
@@ -1109,7 +1180,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private Text Header(int index)
     {
-        while (boardHeaders.Count <= index) boardHeaders.Add(EcoUI.Label("Region", boardContent, "", 13, TextAnchor.MiddleLeft, EcoUI.Accent, true));
+        while (boardHeaders.Count <= index) boardHeaders.Add(EcoUI.Label("Region", boardContent, "", 14, TextAnchor.MiddleLeft, EcoNotebook.Accent, true));
         return boardHeaders[index];
     }
 
@@ -1119,17 +1190,18 @@ public sealed class EcoWorldHUD : MonoBehaviour
         var size = ((RectTransform)overlay.transform).rect.size;
         float cw = Mathf.Min(800f, size.x - 32f), ch = Mathf.Min(660f, size.y - 48f);
         boardCard.sizeDelta = new Vector2(cw, ch);
-        EcoUI.Place(boardViewport, new Vector2(16f, -74f), new Vector2(cw - 32f, ch - 90f));
-        float w = cw - 32f;
+        EcoUI.Place(boardViewport, new Vector2(18f, -98f), new Vector2(cw - 36f, ch - 114f));
+        float w = cw - 36f;
         var tracked = EcoQuestBoard.Tracked(player.position);
-        boardHint.text = (tracked != null ? "Takipte: <b>" + tracked.title + "</b>  ·  " : "") + "Bir göreve tıkla, ok yol göstersin · tekrar tıkla: bırak  ·  "
-            + EcoKeys.Tag(EcoKeys.Action.Quests) + " / [Esc] kapat";
-        EcoUI.Layout(boardHint, new Vector2(58f, -44f), new Vector2(cw - 110f, 18f));
+        boardHint.text = tracked != null ? "Takipte: <b>" + tracked.title + "</b>\nTekrar tıklayarak takibi bırak." : "Bir görevi seç, hedef oku yolu göstersin.";
+        EcoUI.Layout(boardHint, new Vector2(56f, -45f), new Vector2(cw - 94f, 38f));
 
         var quests = EcoQuestBoard.All(player.position);
+        // The tutorial can precede the local region. Keep its region together in the displayed list.
+        var groups = quests.GroupBy(q => q.region).ToList();
         var here = EcoRegion.At(player.position);
         float y = 0f; int rows = 0, headers = 0; EcoRegion last = null;
-        foreach (var q in quests)
+        foreach (var q in groups.SelectMany(group => group))
         {
             if (q.region != last)
             {
@@ -1137,33 +1209,35 @@ public sealed class EcoWorldHUD : MonoBehaviour
                 if (headers > 0) y -= 10f;
                 var header = Header(headers++); header.gameObject.SetActive(true);
                 int count = quests.Count(o => o.region == q.region);
-                header.text = EcoUI.Upper(q.region.regionName) + "   <color=#" + EcoUI.Hex(EcoUI.Muted) + ">" + count + " görev" + (q.region == here ? " · buradasın" : "") + "</color>";
+                header.text = q.region.regionName + "   <color=#" + EcoUI.Hex(EcoNotebook.Muted) + ">" + count + " görev" + (q.region == here ? " · buradasın" : "") + "</color>";
                 EcoUI.Layout(header, new Vector2(4f, y), new Vector2(w - 8f, 22f));
                 y -= 26f;
             }
             var row = Row(rows++); row.quest = q; row.root.gameObject.SetActive(true);
             bool on = EcoQuestBoard.IsTracked(q);
-            EcoUI.Place(row.root, new Vector2(0f, y), new Vector2(w, 56f));
-            row.bg.color = on ? EcoUI.Selected : EcoUI.SurfaceRaised;
-            EcoUI.SetIcon(row.icon, q.icon); EcoUI.LayoutIcon(row.icon, new Vector2(10f, -12f), 32f);
-            row.chip.color = LevelColor(q.level);
+            row.bg.color = on ? EcoNotebook.Selected : EcoNotebook.Sheet;
+            EcoUI.SetIcon(row.icon, q.icon); EcoUI.LayoutIcon(row.icon, new Vector2(12f, -12f), 28f);
+            row.chip.color = Color.Lerp(EcoNotebook.Inset, LevelColor(q.level), 0.25f);
             EcoUI.Place(row.chip.rectTransform, new Vector2(52f, -8f), new Vector2(54f, 18f));
-            row.chipText.text = EcoUI.Upper(EcoQuestBoard.LevelNames[Mathf.Clamp(q.level, 1, 3)]);
+            row.chipText.text = EcoQuestBoard.LevelNames[Mathf.Clamp(q.level, 1, 3)];
             EcoUI.Layout(row.chipText, Vector2.zero, new Vector2(54f, 18f));
-            row.title.text = q.title; row.title.color = on ? EcoUI.PaperInk : EcoUI.Ink;
-            EcoUI.Layout(row.title, new Vector2(114f, -6f), new Vector2(w - 114f - 136f, 22f));
-            row.detail.text = q.detail; row.detail.color = on ? new Color(0.86f, 0.9f, 0.82f) : EcoUI.Muted;
-            EcoUI.Layout(row.detail, new Vector2(52f, -31f), new Vector2(w - 52f - 136f, 20f));
-            row.action.text = on ? "TAKİPTE · bırak" : "Takip et ›"; row.action.color = on ? EcoUI.PaperInk : EcoUI.Accent;
+            row.title.text = q.title;
+            float titleHeight = NoteHeight(row.title, new Vector2(114f, -6f), w - 250f, 22f);
+            row.detail.text = q.detail;
+            float detailTop = titleHeight + 10f;
+            float detailHeight = NoteHeight(row.detail, new Vector2(52f, -detailTop), w - 188f, 20f);
+            float rowHeight = Mathf.Max(56f, detailTop + detailHeight + 7f);
+            EcoUI.Place(row.root, new Vector2(0f, y), new Vector2(w, rowHeight));
+            row.action.text = on ? "Takipte · Bırak" : "Takip et ›";
             EcoUI.Layout(row.action, new Vector2(w - 130f, -10f), new Vector2(118f, 20f));
             bool meter = q.progress >= 0f;
             row.track.gameObject.SetActive(meter);
             if (meter)
             {
                 EcoUI.Place(row.track, new Vector2(w - 130f, -38f), new Vector2(118f, 5f));
-                EcoUI.SetMeter(row.fill, row.track, q.progress, q.progress >= 1f ? EcoUI.Accent : EcoUI.Amber);
+                EcoUI.SetMeter(row.fill, row.track, q.progress, q.progress >= 1f ? EcoNotebook.Accent : EcoUI.Amber);
             }
-            y -= 62f;
+            y -= rowHeight + 6f;
         }
         for (int i = rows; i < boardRows.Count; i++) { boardRows[i].quest = null; boardRows[i].root.gameObject.SetActive(false); }
         for (int i = headers; i < boardHeaders.Count; i++) boardHeaders[i].gameObject.SetActive(false);
@@ -1176,16 +1250,6 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private int DisplayWidth => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.width));
     private int DisplayHeight => Mathf.Max(1, Mathf.RoundToInt(canvas.pixelRect.height));
-
-    private static void SetFloatingText(Text text, bool floating)
-    {
-        var outline = text.GetComponent<Outline>();
-        if (outline == null && floating) outline = text.gameObject.AddComponent<Outline>();
-        if (outline == null) return;
-        outline.effectColor = new Color(0.025f, 0.045f, 0.03f, 0.9f);
-        outline.effectDistance = new Vector2(2f, -2f);
-        outline.enabled = floating;
-    }
 
     private void ApplyLayout()
     {
@@ -1202,35 +1266,29 @@ public sealed class EcoWorldHUD : MonoBehaviour
         float leftWidth = EcoQuestHUD.LeftColumnWidth, rightWidth = compact ? 250f : 276f;
         bool narrow = width - leftWidth - rightWidth - 4f * margin < 280f;
 
-        // During play the region is a small two-line badge; the full indicators remain one click away.
+        // The region badge shows a quick reading; the expanded card retains all eight measurements.
         laidOutVitalsBottom = EcoQuestHUD.VitalsBottom;
         laidOutDockWidth = EcoQuestHUD.DockWidth; laidOutDockTop = EcoQuestHUD.DockTop;
         envCard.SetVisible(!hidden);
         bool compactEnvironment = envCard.IsCollapsed || sade || narrow;
         float envBody = sade ? 0f : 8 * 29f + 8f;
-        envCard.Layout(new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 10f)), leftWidth, envBody, sade);
-        // The two-line region badge keeps its paper too; floating light text was lost over snow and bright grass.
+        envCard.Layout(new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 7f)), leftWidth, envBody, true);
         envCard.background.enabled = true;
         envCard.body.gameObject.SetActive(!compactEnvironment);
-        envCard.title.color = EcoUI.Accent;
-        envCard.summary.color = EcoUI.Ink;
-        SetFloatingText(envCard.title, false);
-        SetFloatingText(envCard.summary, false);
         if (compactEnvironment)
         {
-            float badgeWidth = leftWidth;
-            EcoUI.Place(envCard.root, new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 8f)), new Vector2(badgeWidth, 50f));
-            EcoUI.LayoutIcon(envCard.icon, new Vector2(10f, -10f), 28f);
-            EcoUI.Layout(envCard.title, new Vector2(46f, -6f), new Vector2(badgeWidth - 80f, 20f));
-            EcoUI.Layout(envCard.summary, new Vector2(46f, -25f), new Vector2(badgeWidth - 80f, 18f));
-            envCard.summary.resizeTextForBestFit = false;
-            envCard.summary.alignment = TextAnchor.MiddleLeft;
+            const float badgeWidth = EcoQuestHUD.CompactLeftWidth;
+            EcoUI.Place(envCard.root, new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 7f)), new Vector2(badgeWidth, 34f));
+            EcoUI.LayoutIcon(envCard.icon, new Vector2(8f, -8f), 17f);
+            EcoUI.Layout(envCard.title, new Vector2(31f, -7f), new Vector2(badgeWidth - 105f, 20f));
+            EcoUI.Layout(envCard.summary, new Vector2(badgeWidth - 69f, -8f), new Vector2(39f, 18f));
+            envCard.summary.alignment = TextAnchor.MiddleRight;
             envCard.title.resizeTextForBestFit = true;
             envCard.title.resizeTextMinSize = 11 * EcoUI.RasterScale;
             envCard.title.resizeTextMaxSize = 13 * EcoUI.RasterScale;
             envCard.summary.gameObject.SetActive(true);
             envCard.rule.gameObject.SetActive(false);
-            ((RectTransform)envCard.toggle.transform).anchoredPosition = new Vector2(-6f, -10f);
+            ((RectTransform)envCard.toggle.transform).anchoredPosition = new Vector2(-6f, -6f);
         }
         for (int i = 0; i < 8; i++)
         {
@@ -1242,34 +1300,33 @@ public sealed class EcoWorldHUD : MonoBehaviour
             EcoUI.Place(rowTracks[i], new Vector2(38f, y - 20f), new Vector2(leftWidth - 50f, 4f));
         }
 
-        // The minimap is a framed game element, without a dashboard header or a surrounding card.
+        // The slim map frame also contains time and weather, with room for the map controls.
         mapCard.SetVisible(!hidden);
-        float mapSide = narrow ? 150f : compact ? 190f : 200f, mapOuter = mapSide + 16f;
+        const float mapOuter = CompactMapWidth;
+        const float mapSide = mapOuter - 10f;
         bool mapCollapsed = mapCard.IsCollapsed;
-        float mapHeight = mapCollapsed ? 0f : mapOuter;
-        float statusTop = mapHeight + (mapCollapsed ? 30f : 6f);
-        float mh = statusTop + 44f;
+        float statusTop = mapCollapsed ? 26f : mapSide + 8f;
+        float mh = statusTop + 26f;
         mapCard.Layout(new Vector2(-margin, -margin), mapOuter, mapOuter);
         EcoUI.Place(mapCard.root, new Vector2(-margin, -margin), new Vector2(mapOuter, mh));
-        mapCard.background.enabled = false;
+        mapCard.background.enabled = true;
         mapCard.title.gameObject.SetActive(false); mapCard.icon.gameObject.SetActive(false);
         mapCard.summary.gameObject.SetActive(false); mapCard.rule.gameObject.SetActive(false);
         EcoUI.Place(mapCard.body, Vector2.zero, new Vector2(mapOuter, mapOuter));
         mapCard.body.gameObject.SetActive(!mapCollapsed);
-        EcoUI.Place(miniFrame, new Vector2(8f, -8f), new Vector2(mapSide, mapSide));
-        EcoUI.Place(miniRim, Vector2.zero, new Vector2(mapOuter, mapOuter));
-        EcoUI.Place(miniStatus, new Vector2(4f, -statusTop), new Vector2(mapOuter - 8f, 44f));
+        EcoUI.Place(miniFrame, new Vector2(5f, -5f), new Vector2(mapSide, mapSide));
+        EcoUI.Place(miniStatus, new Vector2(4f, -statusTop), new Vector2(mapOuter - 8f, 23f));
         EcoUI.Place(miniWeatherHit, Vector2.zero, miniStatus.sizeDelta);
-        EcoUI.Place(miniStatusPaper, new Vector2(-4f, 3f), new Vector2(mapOuter, 50f));
-        EcoUI.LayoutIcon(clockIcon, new Vector2(6f, -2f), 18f);
-        EcoUI.Layout(clockText, new Vector2(30f, -1f), new Vector2(mapOuter - 44f, 20f));
-        EcoUI.LayoutIcon(weatherIcon, new Vector2(6f, -23f), 20f);
-        EcoUI.Layout(weatherText, new Vector2(30f, -23f), new Vector2(mapOuter - 114f, 20f));
-        EcoUI.LayoutIcon(windIcon, new Vector2(mapOuter - 80f, -23f), 20f);
-        EcoUI.Layout(windText, new Vector2(mapOuter - 58f, -23f), new Vector2(42f, 20f));
-        EcoUI.Layout(miniNorth, new Vector2(mapSide * 0.5f - 10f, -5f), new Vector2(20f, 16f));
+        EcoUI.LayoutIcon(clockIcon, new Vector2(3f, -4f), 13f);
+        EcoUI.Layout(clockText, new Vector2(20f, -2f), new Vector2(67f, 18f));
+        clockText.fontSize = 11 * EcoUI.RasterScale;
+        EcoUI.LayoutIcon(weatherIcon, new Vector2(91f, -3f), 14f);
+        EcoUI.Layout(weatherText, new Vector2(108f, -2f), new Vector2(51f, 18f));
+        weatherText.resizeTextForBestFit = true; weatherText.resizeTextMinSize = 9 * EcoUI.RasterScale;
+        weatherText.resizeTextMaxSize = 11 * EcoUI.RasterScale;
+        EcoUI.Layout(miniNorth, new Vector2(mapSide * 0.5f - 10f, -4f), new Vector2(20f, 16f));
         var bb = (RectTransform)bigMapButton.transform; bb.anchorMin = bb.anchorMax = new Vector2(0, 1); bb.pivot = new Vector2(0, 1);
-        bb.anchoredPosition = mapCollapsed ? new Vector2(4f, -2f) : new Vector2(mapOuter - 36f, -(mapOuter - 36f));
+        EcoUI.Place(bb, mapCollapsed ? new Vector2(5f, -4f) : new Vector2(mapOuter - 28f, -(mapSide - 22f)), Vector2.one * 21f);
         ((RectTransform)mapCard.toggle.transform).anchoredPosition = new Vector2(-4f, -4f);
         mapCard.toggle.transform.SetAsLastSibling();
         MapBottom = hidden ? margin : margin + mh;
@@ -1277,25 +1334,25 @@ public sealed class EcoWorldHUD : MonoBehaviour
         // Banner under the objective card.
         float bannerWidth = narrow ? Mathf.Min(440f, width - margin * 2f)
             : Mathf.Min(470f, width - leftWidth - rightWidth - 4f * margin);
-        float center = narrow ? 0f : (leftWidth - rightWidth) * 0.5f;
-        float bannerTop = Mathf.Max(margin + 72f, EcoQuestHUD.ObjectiveBottomPixels / Mathf.Max(.01f, scale) + 8f);
-        EcoUI.Place(banner, new Vector2(center, -bannerTop), new Vector2(bannerWidth, 70f));
-        bannerBottom = bannerTop + 70f;
+        float bannerTop = Mathf.Max(margin + 44f, EcoQuestHUD.ObjectiveBottomPixels / Mathf.Max(.01f, scale) + 7f);
+        EcoUI.Place(banner, new Vector2(0f, -bannerTop), new Vector2(bannerWidth, 46f));
+        bannerBottom = bannerTop + 46f;
         // The compact region badge already carries this information when a short viewport cannot fit a second notice.
         bannerFits = bannerBottom + 64f < height - EcoQuestHUD.DockTop;
-        EcoUI.Place(bannerStrip.rectTransform, Vector2.zero, new Vector2(5f, 70f));
-        EcoUI.LayoutIcon(bannerIcon, new Vector2(14f, -13f), 44f);
-        EcoUI.Layout(bannerTitle, new Vector2(68f, -9f), new Vector2(bannerWidth - 190f, 26f));
-        EcoUI.Layout(bannerState, new Vector2(bannerWidth - 124f, -12f), new Vector2(110f, 18f));
-        EcoUI.Layout(bannerSub, new Vector2(68f, -38f), new Vector2(bannerWidth - 82f, 30f));
+        EcoUI.Place(bannerStrip.rectTransform, new Vector2(2f, -6f), new Vector2(2f, 34f));
+        EcoUI.LayoutIcon(bannerIcon, new Vector2(9f, -9f), 27f);
+        EcoUI.Layout(bannerTitle, new Vector2(43f, -3f), new Vector2(bannerWidth - 166f, 22f));
+        EcoUI.Layout(bannerState, new Vector2(bannerWidth - 119f, -5f), new Vector2(110f, 18f));
+        EcoUI.Layout(bannerSub, new Vector2(43f, -25f), new Vector2(bannerWidth - 52f, 18f));
 
         // Quick actions use the space beside the compact belt and wrap into a short grid on small screens.
         // In Gizli only the HUD button stays so the player can bring the interface back.
         int count = actionButtons.Count(a => !hidden || a.id == "hud");
         float dockHalf = hidden ? 0f : EcoQuestHUD.DockWidth * 0.5f;
         float availableLeft = width * 0.5f - dockHalf - margin - 12f;
-        bool aboveBelt = !hidden && availableLeft < 44f;
-        int columns = aboveBelt ? Mathf.Min(4, count) : Mathf.Clamp(Mathf.FloorToInt(availableLeft / 44f), 1, count);
+        const float actionStep = 34f;
+        bool aboveBelt = !hidden && availableLeft < actionStep;
+        int columns = aboveBelt ? Mathf.Min(4, count) : Mathf.Clamp(Mathf.FloorToInt(availableLeft / actionStep), 1, count);
         int actionIndex = 0;
         foreach (var (button, _, id) in actionButtons)
         {
@@ -1303,12 +1360,12 @@ public sealed class EcoWorldHUD : MonoBehaviour
             button.gameObject.SetActive(show);
             if (!show) continue;
             var rt = (RectTransform)button.transform; rt.anchorMin = rt.anchorMax = new Vector2(0, 0); rt.pivot = new Vector2(0, 0);
-            rt.anchoredPosition = new Vector2(actionIndex % columns * 44f, actionIndex / columns * 44f);
+            rt.anchoredPosition = new Vector2(4f + actionIndex % columns * actionStep, 4f + actionIndex / columns * actionStep);
             actionIndex++;
         }
         int actionRows = Mathf.CeilToInt(count / (float)columns);
-        EcoUI.Place(actions, new Vector2(margin, aboveBelt ? EcoQuestHUD.DockTop + 8f : margin + 4f),
-            new Vector2((columns - 1) * 44f + 42f, (actionRows - 1) * 44f + 36f));
+        EcoUI.Place(actions, new Vector2(margin, aboveBelt ? EcoQuestHUD.DockTop + 8f : margin),
+            new Vector2((columns - 1) * actionStep + 38f, (actionRows - 1) * actionStep + 36f));
 
         // Local quests follow the actual environment-card height, including its collapsed state.
         float questsTop = -envCard.root.anchoredPosition.y + envCard.root.rect.height + 10f;
@@ -1322,22 +1379,35 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.Layout(modeToast, new Vector2(10f, -12f), new Vector2(360f, 24f));
 
         // Help sheet.
-        help.localScale = Vector3.one * Mathf.Min(1f, (width - 40f) / 780f, (height - 40f) / 540f);
+        help.localScale = Vector3.one * Mathf.Min(1f, (width - 40f) / HelpSize.x, (height - 40f) / HelpSize.y);
 
         // Big map: map square on the left, information card on the right.
-        float cardW = Mathf.Min(1180f, width - 40f), cardH = Mathf.Min(760f, height - 40f);
+        float availableMapWidth = Mathf.Min(1180f, width - 40f), cardH = Mathf.Min(760f, height - 40f);
+        float infoW = Mathf.Clamp(availableMapWidth * 0.37f, 310f, 420f);
+        const float mapTop = 78f;
+        float side = Mathf.Min(cardH - 150f, availableMapWidth - infoW - 54f);
+        float cardW = side + infoW + 54f;
         EcoUI.Place(bigCard, Vector2.zero, new Vector2(cardW, cardH));
-        float infoW = Mathf.Clamp(cardW * 0.32f, 300f, 380f);
-        // Below the map: coordinates (16) + legend (20) + margins; keep it all inside the card.
-        float side = Mathf.Min(cardH - 140f, cardW - infoW - 52f);
-        EcoUI.Layout(bigTitle, new Vector2(56f, -18f), new Vector2(cardW - 100f, 24f));
-        bigHint.text = "Tekerlek: yakınlaştır  ·  Sürükle: kaydır  ·  Tıkla: bölgeyi sabitle  ·  Sağ tık: bırak  ·  " + EcoKeys.Tag(EcoKeys.Action.Map) + " / [Esc] kapat";
-        EcoUI.Layout(bigHint, new Vector2(18f, -48f), new Vector2(cardW - 36f, 34f));
-        EcoUI.Place(bigFrame, new Vector2(18f, -84f), new Vector2(side, side));
+        EcoUI.Layout(bigTitle, new Vector2(57f, -13f), new Vector2(cardW - 115f, 31f));
+        bigHint.text = "Tekerlek: yakınlaştır  ·  Sürükle: kaydır  ·  Tıkla: bölgeyi sabitle  ·  Sağ tık: bırak";
+        EcoUI.Layout(bigHint, new Vector2(57f, -44f), new Vector2(cardW - 115f, 20f));
+        EcoUI.Place(bigFrame, new Vector2(18f, -mapTop), new Vector2(side, side));
         EcoUI.Place(bigView, Vector2.zero, new Vector2(side, side));
-        EcoUI.Layout(coordText, new Vector2(18f, -(84f + side + 6f)), new Vector2(side, 16f));
-        EcoUI.Place(legend, new Vector2(18f, -(84f + side + 22f)), new Vector2(side, 20f));
-        legend.localScale = Vector3.one * Mathf.Min(1f, side / Mathf.Max(1f, legendWidth));
-        EcoUI.Place(infoCard, new Vector2(-16f, -84f), new Vector2(cardW - side - 52f, side + 38f));
+        float mapBottom = mapTop + side;
+        EcoUI.Layout(coordText, new Vector2(18f, -mapBottom - 4f), new Vector2(side, 18f));
+        EcoUI.Place(legend, new Vector2(18f, -mapBottom - 24f), new Vector2(side, 38f));
+        const int legendColumns = 5;
+        float column = side / legendColumns;
+        for (int i = 0; i < legendItems.Count; i++)
+        {
+            float x = i % legendColumns * column, y = -(i / legendColumns) * 19f;
+            var (icon, label) = legendItems[i];
+            EcoUI.LayoutIcon(icon, new Vector2(x, y), 16f);
+            EcoUI.Layout(label, new Vector2(x + 19f, y), new Vector2(column - 21f, 17f));
+        }
+        float infoHeight = cardH - mapTop - 17f;
+        EcoUI.Place(infoCard, new Vector2(-18f, -mapTop), new Vector2(infoW, infoHeight));
+        EcoUI.Place(infoViewport, new Vector2(1f, -1f), new Vector2(infoW - 2f, infoHeight - 2f));
+        if (MapOpen) mapRefreshAt = 0f;
     }
 }

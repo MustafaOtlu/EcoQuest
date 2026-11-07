@@ -18,7 +18,7 @@ using UnityEngine.UI;
 //  * Layout (150 × 150 m, authored on a 150 m frame and scaled by L): glacier north, windy hills + grove west,
 //    town centre with a roundabout, industry east, sunny meadows and the starting base south, two lakes.
 //  * Run from the menu: EcoQuest > Build EcoWorld map scene.
-public static class BuildEcoWorldMap
+public static partial class BuildEcoWorldMap
 {
     private const string SourceScene = "Assets/Scenes/MainScene.unity";
     private const string TargetScene = "Assets/Scenes/EcoWorld.unity";
@@ -410,6 +410,7 @@ public static class BuildEcoWorldMap
             BuildEnergy();
             Progress("Buzul", 0.74f);
             BuildGlacier();
+            DetailBuildingFacades(worldRoot);
             Progress("Bitki örtüsü", 0.80f);
             BuildVegetation();
             BuildSigns();

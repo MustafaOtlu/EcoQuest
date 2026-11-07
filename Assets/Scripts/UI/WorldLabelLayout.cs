@@ -4,6 +4,18 @@ using UnityEngine;
 // World captions share one screen-space budget, below HUD/modal layers and clear of the player.
 public static class WorldLabelLayout
 {
+    internal readonly struct Marker
+    {
+        public readonly Rect Bounds;
+        public readonly string Text;
+        public readonly Vector2 Direction;
+
+        public Marker(Rect bounds, string text, Vector2 direction)
+        {
+            Bounds = bounds; Text = text; Direction = direction;
+        }
+    }
+
     private struct Candidate
     {
         public WorldSpaceLabel label;
@@ -18,12 +30,14 @@ public static class WorldLabelLayout
     private static PlayerController player;
     private static SkinnedMeshRenderer[] playerRenderers;
     private static int lastFrame = -1, lastCamera;
+    private static Marker objectiveMarker, projectMarker;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset()
     {
         labels.Clear(); candidates.Clear(); occupied.Clear();
         player = null; playerRenderers = null; lastFrame = -1; lastCamera = 0;
+        objectiveMarker = projectMarker = default;
     }
 
     internal static void Register(WorldSpaceLabel label)
@@ -45,6 +59,13 @@ public static class WorldLabelLayout
         Arrange(camera, labels, player != null ? player.transform : null, playerRenderers, true);
     }
 
+    internal static void GetMarkers(Camera camera, out Marker objective, out Marker project)
+    {
+        Refresh(camera);
+        objective = camera != null ? objectiveMarker : default;
+        project = camera != null ? projectMarker : default;
+    }
+
     // Isolated editor layout previews can supply clone labels without touching the authored scene.
     public static void Preview(Camera camera, WorldSpaceLabel[] previewLabels, Transform actor = null)
         => Arrange(camera, previewLabels, actor,
@@ -53,6 +74,7 @@ public static class WorldLabelLayout
     private static void Arrange(Camera camera, IList<WorldSpaceLabel> source, Transform actor,
         SkinnedMeshRenderer[] renderers, bool respectMenus)
     {
+        if (respectMenus) objectiveMarker = projectMarker = default;
         if (camera == null || camera.pixelHeight < 1 || camera.pixelWidth < 1) return;
         candidates.Clear(); occupied.Clear();
         EcoUI.AppendWorldLabelObstacles(occupied);
@@ -64,6 +86,8 @@ public static class WorldLabelLayout
                 Mathf.Min(viewport.xMax, safe.xMax), Mathf.Min(viewport.yMax, safe.yMax));
         float gap = 10f * Mathf.Clamp(camera.pixelHeight / 900f, 0.85f, 1.25f);
         bool blocked = respectMenus && EcoUI.WorldCovered;
+        if (respectMenus && !blocked && EcoUI.Mode != EcoUI.HudMode.Hidden)
+            PlaceMarkers(camera, viewport, actor, gap);
         foreach (var label in source)
         {
             if (label == null || !label.isActiveAndEnabled) continue;
@@ -85,7 +109,7 @@ public static class WorldLabelLayout
         {
             var label = candidate.label;
             Vector2 center = Vector2.zero;
-            bool show = visible < 7 && (!label.IsPlantHint || !plantShown)
+            bool show = visible < 4 && (!label.IsPlantHint || !plantShown)
                 && FindSpace(candidate.bounds, viewport, gap, occupied, out center);
             if (!show) { label.SetVisible(false); label.WasPlaced = false; continue; }
             label.PlaceAt(camera, center);
@@ -93,6 +117,50 @@ public static class WorldLabelLayout
             occupied.Add(new Rect(center - candidate.bounds.size * 0.5f, candidate.bounds.size));
             visible++; plantShown |= label.IsPlantHint;
         }
+    }
+
+    private static void PlaceMarkers(Camera camera, Rect viewport, Transform actor, float gap)
+    {
+        if (actor != null && EcoGuide.Target is Vector3 goal)
+        {
+            float distance = Vector3.ProjectOnPlane(goal - actor.position, Vector3.up).magnitude;
+            if (distance >= 5f)
+            {
+                string meters = Mathf.RoundToInt(distance) + " m";
+                string name = string.IsNullOrWhiteSpace(EcoGuide.Label) ? "Hedef" : EcoGuide.Label;
+                objectiveMarker = PlaceMarker(camera, viewport, goal, name + "  " + meters, gap, true);
+                if (objectiveMarker.Text == null) objectiveMarker = PlaceMarker(camera, viewport, goal, meters, gap, true);
+            }
+        }
+        var projects = EcoProjects.Current;
+        if (projects != null && Time.unscaledTime < projects.HintUntil)
+            projectMarker = PlaceMarker(camera, viewport, projects.HintPosition, "İpucu · Çalışma alanı", gap, false);
+    }
+
+    private static Marker PlaceMarker(Camera camera, Rect viewport, Vector3 world, string text, float gap, bool allowOffscreen)
+    {
+        Vector3 screen = camera.WorldToScreenPoint(world + Vector3.up * 2.6f);
+        Vector2 point = screen;
+        Vector2 direction = Vector2.zero;
+        if (screen.z <= camera.nearClipPlane || !viewport.Contains(point))
+        {
+            if (!allowOffscreen) return default;
+            direction = point - viewport.center;
+            if (screen.z <= 0f) direction = -direction;
+            if (direction.sqrMagnitude < 1f) direction = Vector2.up;
+            direction.Normalize();
+            float edge = Mathf.Min(viewport.width * 0.43f / Mathf.Max(0.01f, Mathf.Abs(direction.x)),
+                viewport.height * 0.42f / Mathf.Max(0.01f, Mathf.Abs(direction.y)));
+            point = viewport.center + direction * edge;
+        }
+
+        float scale = Mathf.Min(gap / 10f * EcoSettings.UIScale, Mathf.Min(viewport.width / 1000f, viewport.height / 620f));
+        var size = new Vector2(Mathf.Clamp(37f + text.Length * 7.5f, 76f, 275f), 29f) * scale;
+        var preferred = new Rect(point - size * 0.5f, size);
+        if (!FindSpace(preferred, viewport, gap, occupied, out var center)) return default;
+        var bounds = new Rect(center - size * 0.5f, size);
+        occupied.Add(bounds);
+        return new Marker(bounds, text, direction);
     }
 
     private static bool FindSpace(Rect original, Rect viewport, float gap, List<Rect> obstacles, out Vector2 result)

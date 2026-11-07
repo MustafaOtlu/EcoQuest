@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 
 public static class SceneHitboxInitializer
 {
+    public const string FacadeDetailsName = "Facade details";
+
     private static readonly string[] BuildingAndTreeKeywords =
     {
         "modern+house",
@@ -133,7 +135,8 @@ public static class SceneHitboxInitializer
     private static bool ShouldSkipSubtree(Transform t)
     {
         string n = t.name;
-        if (n.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0 ||
+        if (n == FacadeDetailsName || (t.parent != null && t.parent.name == FacadeDetailsName) ||
+            n.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0 ||
             n.IndexOf("Cam", StringComparison.OrdinalIgnoreCase) >= 0 ||
             n.IndexOf("Weapon", StringComparison.OrdinalIgnoreCase) >= 0 ||
             n.IndexOf("Vakum", StringComparison.OrdinalIgnoreCase) >= 0 ||
