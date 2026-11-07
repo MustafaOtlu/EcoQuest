@@ -13,12 +13,14 @@ public sealed partial class WeaponVisualEffects
     private int intakeCount;
     private Material intakeMaterial;
     private Texture2D intakeStamp;
+    private IntakeWisps wisps;
 
     private struct IntakeMote
     {
         public Vector3 Source;
         public float Age, Duration, Radius, Angle, Turn, Size, Spin;
         public Color Tint;
+        public bool Wisp;
     }
 
     internal void BindMuzzle(FirstPersonWeaponHolder holder) => muzzleHolder = holder;
@@ -27,6 +29,7 @@ public sealed partial class WeaponVisualEffects
     {
         var renderer = Stream.GetComponent<ParticleSystemRenderer>();
         renderer.maxParticleSize = 0.024f;
+        wisps = IntakeWisps.Create(transform);
         if (renderer.sharedMaterial == null) return;
         intakeStamp = new Texture2D(32, 32, TextureFormat.RGBA32, false)
         {
@@ -65,7 +68,7 @@ public sealed partial class WeaponVisualEffects
             AddIntake(Vector3.Lerp(muzzle, target, fraction),
                 Mathf.Clamp(distance * fraction / Range(8.5f, 12.2f), 0.16f, 0.60f),
                 Mathf.Min(distance * 0.15f, contact ? 0.48f : 0.39f) * fraction * Range(0.25f, 1f),
-                fragment ? Range(0.095f, 0.152f) : Range(0.075f, 0.128f), tint);
+                fragment ? Range(0.11f, 0.161f) : Range(0.086f, 0.139f), tint, !fragment && Range(0f, 1f) < 0.58f);
         }
     }
 
@@ -76,15 +79,15 @@ public sealed partial class WeaponVisualEffects
         Color tint = CurrentFlow == Flow.Recycle ? Spark : Scrap;
         for (int i = 0; i < 9 && intakeCount < intake.Length; i++)
             AddIntake(source, Mathf.Clamp(distance / Range(9f, 13f), 0.17f, 0.48f),
-                Mathf.Min(distance * 0.17f, Range(0.08f, 0.32f)), Range(0.11f, 0.18f), tint);
+                Mathf.Min(distance * 0.17f, Range(0.08f, 0.32f)), Range(0.11f, 0.18f), tint, i % 3 == 0);
     }
 
-    private void AddIntake(Vector3 source, float duration, float radius, float size, Color tint)
+    private void AddIntake(Vector3 source, float duration, float radius, float size, Color tint, bool wisp)
     {
         intake[intakeCount++] = new IntakeMote
         {
             Source = source, Duration = duration, Radius = radius, Angle = Range(0f, 2f * Mathf.PI),
-            Turn = Range(2.2f, 3.65f), Size = size, Spin = Range(-145f, 145f), Tint = tint
+            Turn = Range(2.2f, 3.65f), Size = size, Spin = Range(-145f, 145f), Tint = tint, Wisp = wisp
         };
     }
 
@@ -111,6 +114,9 @@ public sealed partial class WeaponVisualEffects
     {
         if (intakeCount == 0 || Time.deltaTime <= 0f) return;
         Vector3 mouth = IntakeMuzzle;
+        var view = EcoIsoCamera.Cam;
+        Vector3 screenNormal = view != null ? view.transform.forward : Vector3.down;
+        wisps?.Begin(CurrentFlow == Flow.Fill ? WaterBlue : CurrentFlow == Flow.Recycle ? Spark : Air);
         for (int i = 0; i < intakeCount;)
         {
             var mote = intake[i];
@@ -124,23 +130,27 @@ public sealed partial class WeaponVisualEffects
                 * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - t) * 6f));
             Color color = mote.Tint;
             color.a *= alpha;
+            Vector3 head = IntakePoint(mote.Source, mouth, t, mote.Radius, mote.Angle, mote.Turn);
             intakeParticles[i] = new ParticleSystem.Particle
             {
-                position = IntakePoint(mote.Source, mouth, t, mote.Radius, mote.Angle, mote.Turn),
+                position = head,
                 startColor = color, startSize = mote.Size * Mathf.Lerp(1f, 0.36f, t),
                 startLifetime = 1f, remainingLifetime = 0.98f,
                 rotation = mote.Angle * Mathf.Rad2Deg + mote.Spin * t,
                 randomSeed = (uint)(i + 1)
             };
+            if (mote.Wisp && alpha > 0.08f) wisps?.Add(mote, mouth, t, head, screenNormal, alpha);
             mote.Age += Time.deltaTime;
             intake[i++] = mote;
         }
         Stream.SetParticles(intakeParticles, intakeCount);
+        wisps?.Finish();
     }
 
     private void OnDestroy()
     {
         if (intakeMaterial != null) Destroy(intakeMaterial);
         if (intakeStamp != null) Destroy(intakeStamp);
+        wisps?.Dispose();
     }
 }

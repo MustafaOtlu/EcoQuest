@@ -20,7 +20,7 @@ public sealed partial class EcoCatalogueToolVisual : MonoBehaviour
     internal Transform Muzzle { get; private set; }
 
     private readonly List<Object> generated = new List<Object>();
-    private readonly MaterialPropertyBlock lampProperties = new MaterialPropertyBlock();
+    private MaterialPropertyBlock lampProperties;
     private Material shell, edge, metal, rubber, glass, accent, signal;
     private Transform primary, secondary, selector;
     private MeshRenderer lamp;
@@ -187,6 +187,7 @@ public sealed partial class EcoCatalogueToolVisual : MonoBehaviour
     private void SetLamp(Color color, float strength)
     {
         if (lamp == null) return;
+        lampProperties ??= new MaterialPropertyBlock();
         lampProperties.SetColor(BaseColor, Color.Lerp(new Color(.24f, .34f, .31f), color, Mathf.Clamp01(strength + .12f)));
         lampProperties.SetColor(Emission, color * strength);
         lamp.SetPropertyBlock(lampProperties);

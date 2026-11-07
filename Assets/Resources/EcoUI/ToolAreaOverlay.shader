@@ -4,6 +4,7 @@ Shader "EcoQuest/Tools/AreaOverlay"
     {
         [MainColor] _BaseColor ("Tint", Color) = (0.3, 0.9, 0.65, 0.1)
         _Feather ("Use vertex opacity", Range(0, 1)) = 0
+        [Enum(UnityEngine.Rendering.CompareFunction)] _DepthTest ("Depth test", Float) = 8
     }
     SubShader
     {
@@ -14,7 +15,7 @@ Shader "EcoQuest/Tools/AreaOverlay"
             Tags { "LightMode" = "SRPDefaultUnlit" }
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
-            ZTest Always
+            ZTest [_DepthTest]
             Cull Off
 
             HLSLPROGRAM

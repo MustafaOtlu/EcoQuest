@@ -232,6 +232,7 @@ public sealed partial class WeaponVisualEffects : MonoBehaviour
         flowing = false; emissionRemainder = 0;
         if (!clear) return;
         intakeCount = 0;
+        if (wisps != null) wisps.Hide();
         if (Stream != null) Stream.Clear();
         if (streaks != null) streaks.Clear();
         if (jet != null) jet.Clear();

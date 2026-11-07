@@ -5,7 +5,7 @@ internal sealed class EcoEnemyAppearance : MonoBehaviour
 {
     private EnemyBrain enemy;
     private CharacterController motor;
-    private Transform rig;
+    [SerializeField, HideInInspector] private Transform rig;
     private EcoEnemySculpture.Node[] parts;
     private float gait, travel, pulse, nextHit, phaseOffset, defeated;
     private float nextBlink = 2.2f;
@@ -16,9 +16,16 @@ internal sealed class EcoEnemyAppearance : MonoBehaviour
         var art = EcoEnemySculpture.For(enemy.species);
         if (art == null) return null;
 
-        // Capture the old renderers before the new hierarchy is attached.
+        // The save system may clone a live enemy as its respawn template.
+        var visual = enemy.GetComponent<EcoEnemyAppearance>();
+        if (visual == null) visual = enemy.gameObject.AddComponent<EcoEnemyAppearance>();
+        else if (visual.rig != null)
+        {
+            visual.rig.gameObject.SetActive(false);
+            visual.rig.name = "Retired creature rig";
+            Destroy(visual.rig.gameObject);
+        }
         var previous = enemy.GetComponentsInChildren<Renderer>(true);
-        var visual = enemy.gameObject.AddComponent<EcoEnemyAppearance>();
         visual.enemy = enemy;
         visual.motor = motor;
         visual.phaseOffset = Mathf.Repeat(enemy.GetInstanceID() * 0.1316f, 6.28f);
