@@ -238,6 +238,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void HandleKeys()
     {
+        if (EcoUIFlow.PanelFreezesWorld || EcoUIFlow.EscapeConsumed) return;
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
         bool typing = PlayerController.Paused;
@@ -549,6 +550,12 @@ public sealed class EcoWorldHUD : MonoBehaviour
         AddAction("map", "ui_map", EcoKeys.Label(EcoKeys.Action.Map), "Dünya haritası", () => SetMap(!MapOpen));
         AddAction("quests", "poi_quest", EcoKeys.Label(EcoKeys.Action.Quests), "Görev panosu", () => SetBoard(!BoardOpen));
         AddAction("journal", "ui_journal", EcoKeys.Label(EcoKeys.Action.Journal), "Proje günlüğü", () => { var p = EcoProjects.Current; if (p != null) p.SetOpen(!p.PanelOpen); });
+        if (gameObject.scene.path == "Assets/Scenes/EcoWorld.unity")
+        {
+            var catalog = gameObject.AddComponent<EcoFieldCatalog>();
+            catalog.Bind(this);
+            AddAction("catalog", "ui_journal", "", "Saha kataloğu", catalog.Open);
+        }
         AddAction("build", "ui_build", EcoKeys.Label(EcoKeys.Action.Build), "İnşa modu", () => { if (weapons != null && weapons.Builder != null) weapons.Builder.SetBuildMode(!weapons.Builder.IsBuilding); });
         AddAction("skills", "ui_skills", EcoKeys.Label(EcoKeys.Action.Skills), "Uzmanlık", () => { var s = FindFirstObjectByType<EcoSpecialization>(); if (s != null) s.SetOpen(!s.PanelOpen); });
         AddAction("settings", "ui_gear", EcoKeys.Label(EcoKeys.Action.Settings), "Ses ayarları", () => { var a = FindFirstObjectByType<EcoAudio>(); if (a != null) a.TogglePanel(); });
@@ -562,7 +569,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
 
     private void AddAction(string id, string icon, string key, string tip, System.Action onClick)
     {
-        var button = EcoUI.IconButton("Action " + id, actions, icon, 28f, onClick, tip + "  [" + key + "]");
+        var button = EcoUI.IconButton("Action " + id, actions, icon, 28f, onClick, key.Length == 0 ? tip : tip + "  [" + key + "]");
         hudStyle.Tint(button.targetGraphic, Tone.Raised);
         var badge = EcoUI.Panel("Key", button.transform, new Vector2(1, 0), new Vector2(1, 0), EcoUI.Selected, false, EcoUI.Rounded);
         EcoUI.Place(badge.rectTransform, new Vector2(6f, -4f), new Vector2(key.Length > 2 ? 30f : 20f, 16f));
@@ -570,6 +577,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         hudStyle.Tint(badge, Tone.Surface);
         hudStyle.Tint(text, Tone.Muted);
         EcoUI.Layout(text, Vector2.zero, badge.rectTransform.sizeDelta);
+        badge.gameObject.SetActive(key.Length > 0);
         actionButtons.Add((button, text, id));
         if (id == "skills")
         {

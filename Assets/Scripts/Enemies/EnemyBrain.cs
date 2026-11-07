@@ -13,6 +13,7 @@ public sealed class EnemyBrain : MonoBehaviour
     public float damage = 10f, cooldown = 2f, windup = 0.5f, attackDuration = 1f, projectileSpeed = 7f;
     public float patrolRadius = 2f;
     public Behaviour State { get; private set; }
+    internal float AttackAge => State == Behaviour.Attack ? Time.time - attackStarted : 0f;
     public float Health { get; private set; }
     public bool IsStunned => State != Behaviour.Dead && species == Species.Tin && Time.time < stunnedUntil;
     public float StunRemaining => IsStunned ? stunnedUntil - Time.time : 0;
@@ -20,6 +21,7 @@ public sealed class EnemyBrain : MonoBehaviour
     private float stunnedUntil;
     private bool animationPausedByStun;
     private CharacterController motor;
+    private EcoEnemyAppearance appearance;
     private EcoEnemyPath route;
     private Vector3 lastKnownPosition;
     private PlayerVitals player;
@@ -48,6 +50,12 @@ public sealed class EnemyBrain : MonoBehaviour
         gameObject.AddComponent<EnemyHealthBar>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null) animator.applyRootMotion = false;
+        appearance = EcoEnemyAppearance.Install(this, motor);
+        if (appearance != null && animator != null)
+        {
+            animator.enabled = false;
+            animator = null;
+        }
         State = Behaviour.Idle; nextDecision = Time.time + Random.Range(1f, 3f);
     }
     private void Start() { player = FindFirstObjectByType<PlayerVitals>(); }
@@ -226,6 +234,7 @@ public sealed class EnemyBrain : MonoBehaviour
     public void TakeDamage(float amount)
     {
         if (State == Behaviour.Dead || !EcoRegion.Valid(amount)) return;
+        appearance?.Hit();
         Health = Mathf.Max(0f, Health - amount);
         if (Health > 0f)
         {

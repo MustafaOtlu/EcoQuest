@@ -93,7 +93,7 @@ public sealed class EcoGameMenu : MonoBehaviour
         GUI.Label(new Rect(area.x, area.y + 57f, area.width, 22f), main ? "Oyun seçenekleri" : "Oturum seçenekleri", EcoTheme.Muted);
 
         const float gap = 5f;
-        int count = main ? 6 : 7;
+        int count = main ? 8 : 7;
         var view = new Rect(area.x, area.y + 82f, area.width, Mathf.Max(1f, area.height - 82f));
         float height = Mathf.Clamp((view.height + gap) / count - gap, 34f, 40f);
         float w = BeginRows(view, count * (height + gap) - gap);
@@ -101,6 +101,8 @@ public sealed class EcoGameMenu : MonoBehaviour
         Rect Next() => new Rect(0f, row++ * (height + gap), w, height);
         if (main)
         {
+            if (EcoTheme.IconButton(Next(), "Öğretici", "ui_help")) EcoTutorialLesson.Open();
+            if (EcoTheme.IconButton(Next(), "Düşman eğitimi", "poi_enemy")) EcoEnemyTutorial.Open();
             GUI.enabled = save != null && save.HasSave;
             if (EcoTheme.IconButton(Next(), "Devam et (son kayıt)", "ui_check")) { PlayerController.SetPaused(false); save.QuickLoad(); }
             GUI.enabled = true;

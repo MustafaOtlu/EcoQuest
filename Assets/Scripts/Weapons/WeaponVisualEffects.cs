@@ -9,7 +9,8 @@ using UnityEngine.Rendering;
 //   fill     – blue droplets drawn up into the nozzle; recycle – green sparks spiralling in.
 // Success has its own feedback (Burst): steam when a fire or Alev is put out, a green sparkle when a plant drinks, a
 // pop when litter is taken, a coloured burst when the right mode hits a threat, and a grey puff when the mode is wrong.
-public sealed class WeaponVisualEffects : MonoBehaviour
+[DefaultExecutionOrder(160)]
+public sealed partial class WeaponVisualEffects : MonoBehaviour
 {
     public enum Flow { Water, Collect, Disperse, Recycle, Fill }
     public enum Burst { Hit, Fizzle, Steam, Grow, Pop, Splash }
@@ -23,25 +24,25 @@ public sealed class WeaponVisualEffects : MonoBehaviour
     private readonly float[] nextBurst = new float[6];
     private bool flowing;
 
-    private static readonly Color Dust = new Color(0.98f, 0.86f, 0.58f, 0.9f), Litter = new Color(0.52f, 0.42f, 0.30f, 0.95f);
-    private static readonly Color Wind = new Color(0.94f, 0.98f, 1f, 0.75f), WaterBlue = new Color(0.42f, 0.78f, 1f, 0.95f);
-    private static readonly Color Foam = new Color(0.88f, 0.96f, 1f, 0.9f), Spark = new Color(0.55f, 1f, 0.45f, 0.95f);
+    private static readonly Color Dust = new Color32(215, 192, 149, 213);
+    private static readonly Color Wind = new Color32(217, 246, 237, 207), WaterBlue = new Color32(83, 195, 232, 241);
+    private static readonly Color Foam = new Color32(211, 243, 250, 219), Spark = new Color32(139, 224, 109, 232);
 
     private void Awake()
     {
-        Stream = CreateParticles("Moving droplets and airflow", transform, 500);
+        Stream = CreateParticles("Nozzle-bound intake", transform, IntakeLimit);
+        PrepareIntake();
         Impacts = CreateParticles("Weapon contact particles", transform, 260);
         streaks = CreateParticles("Wind streaks", transform, 220);
         var r = streaks.GetComponent<ParticleSystemRenderer>();
-        r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.035f; r.lengthScale = 1.2f;
+        r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.023f; r.lengthScale = 1.65f;
         jet = CreateParticles("Water jet", transform, 400);
         var jm = jet.main; jm.gravityModifier = 1f;
         puffs = CreateParticles("Soft puffs", transform, 120);
         var pm = puffs.main; pm.gravityModifier = -0.08f;
         var size = puffs.sizeOverLifetime;
         size.size = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(new Keyframe(0, 0.4f), new Keyframe(0.4f, 1f), new Keyframe(1, 1.25f)));
-        foreach (var ps in new[] { Stream, Impacts, streaks, jet, puffs })
-            ps.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.5f;
+        puffs.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.065f;
     }
 
     public void Show(Flow flow, Vector3 muzzle, Vector3 target, bool contact, Vector3 normal, float seconds)
@@ -62,82 +63,40 @@ public sealed class WeaponVisualEffects : MonoBehaviour
         {
             case Flow.Water: WaterJet(muzzle, target, contact, normal, dt); break;
             case Flow.Disperse: Blow(muzzle, target, direction, side, up, distance, contact, normal, dt); break;
-            default: Pull(flow, muzzle, target, direction, side, up, distance, dt); break;
-        }
-    }
-
-    // Collect / fill / recycle: particles start on a wide ring at the target and spiral down a cone into the nozzle.
-    private void Pull(Flow flow, Vector3 muzzle, Vector3 target, Vector3 direction, Vector3 side, Vector3 up, float distance, float dt)
-    {
-        int count = Take(dt * (flow == Flow.Recycle ? 70f : 130f));
-        Color main = flow == Flow.Fill ? WaterBlue : flow == Flow.Recycle ? Spark : Dust;
-        for (int i = 0; i < count; i++)
-        {
-            float fraction = Range(0.3f, 1f);                        // how far out along the funnel it starts
-            float radius = Mathf.Lerp(0.04f, 0.55f, fraction * fraction);
-            float angle = Range(0, Mathf.PI * 2);
-            Vector3 radial = side * Mathf.Cos(angle) + up * Mathf.Sin(angle);
-            Vector3 position = muzzle + direction * (distance * fraction) + radial * radius;
-            Vector3 toNozzle = muzzle - position;
-            float speed = Mathf.Lerp(5f, 9f, fraction);
-            Vector3 swirl = Vector3.Cross(direction, radial) * speed * 0.55f; // tangential: the funnel turns
-            bool litter = flow == Flow.Collect && Range(0, 1) < 0.18f;
-            Emit(Stream, new ParticleSystem.EmitParams
-            {
-                position = position,
-                velocity = toNozzle.normalized * speed + swirl,
-                startLifetime = Mathf.Clamp(toNozzle.magnitude / speed, 0.05f, 0.7f),
-                startSize = litter ? Range(0.07f, 0.12f) : flow == Flow.Recycle ? Range(0.06f, 0.11f) : Range(0.08f, 0.16f),
-                startColor = litter ? Litter : main
-            });
-        }
-        // A faint ring at the mouth of the funnel marks where the suction reaches.
-        if (Time.time >= nextRing && flow != Flow.Recycle)
-        {
-            nextRing = Time.time + 0.16f;
-            for (int k = 0; k < 10; k++)
-            {
-                float a = k * Mathf.PI * 2f / 10f + Range(0, 0.3f);
-                Vector3 radial = side * Mathf.Cos(a) + up * Mathf.Sin(a);
-                Emit(Impacts, new ParticleSystem.EmitParams
-                {
-                    position = target + radial * 0.6f, velocity = -radial * 1.6f + (muzzle - target).normalized * 1.2f,
-                    startLifetime = 0.3f, startSize = 0.07f, startColor = new Color(main.r, main.g, main.b, 0.55f)
-                });
-            }
+            default: Pull(flow, muzzle, target, distance, contact, dt); break;
         }
     }
 
     // Blow / anti-vacuum: stretched streaks widening from the nozzle; a gust ring where the air meets something.
     private void Blow(Vector3 muzzle, Vector3 target, Vector3 direction, Vector3 side, Vector3 up, float distance, bool contact, Vector3 normal, float dt)
     {
-        int count = Take(dt * 70f);
+        int count = Take(dt * 62f);
         for (int i = 0; i < count; i++)
         {
             float angle = Range(0, Mathf.PI * 2);
             Vector3 radial = side * Mathf.Cos(angle) + up * Mathf.Sin(angle);
-            Vector3 aimAt = target + radial * Range(0.15f, 0.65f);
+            Vector3 aimAt = target + radial * Range(0.06f, 0.36f);
             Vector3 position = muzzle + radial * Range(0.01f, 0.06f);
             float speed = Range(14f, 20f);
             Emit(streaks, new ParticleSystem.EmitParams
             {
                 position = position, velocity = (aimAt - position).normalized * speed,
                 startLifetime = Mathf.Clamp(Vector3.Distance(position, aimAt) / speed, 0.05f, 0.5f),
-                startSize = Range(0.05f, 0.09f), startColor = Wind
+                startSize = Range(0.043f, 0.079f), startColor = Wind
             });
         }
-        if (Time.time >= nextRing)
+        if (contact && Time.time >= nextRing)
         {
-            nextRing = Time.time + 0.12f;
+            nextRing = Time.time + 0.18f;
             Vector3 face = contact && normal.sqrMagnitude > 0.01f ? normal.normalized : -direction;
-            Ring(target + face * 0.05f, face, new Color(0.95f, 0.98f, 1f, 0.6f), 12, 2.6f, 0.11f, puffs);
+            Ring(target + face * 0.05f, face, Wind, 9, 1.75f, 0.07f, streaks);
         }
     }
 
     // Water: droplets thrown on a ballistic arc that lands on the target, so the jet visibly curves.
     private void WaterJet(Vector3 muzzle, Vector3 target, bool contact, Vector3 normal, float dt)
     {
-        int count = Take(dt * 160f);
+        int count = Take(dt * 112f);
         float g = -Physics.gravity.y;
         float distance = Vector3.Distance(muzzle, target);
         float flight = Mathf.Clamp(distance / 11f, 0.08f, 0.6f);
@@ -149,15 +108,15 @@ public sealed class WeaponVisualEffects : MonoBehaviour
             Emit(jet, new ParticleSystem.EmitParams
             {
                 position = muzzle, velocity = velocity, startLifetime = flight * Range(0.97f, 1.03f),
-                startSize = Range(0.08f, 0.12f), startColor = WaterBlue
+                startSize = Range(0.07f, 0.116f), startColor = i % 4 == 0 ? Foam : WaterBlue
             });
         }
         if (contact && Time.time >= nextSplash)
         {
-            nextSplash = Time.time + 0.07f;
+            nextSplash = Time.time + 0.12f;
             Vector3 face = normal.sqrMagnitude > 0.01f ? normal.normalized : Vector3.up;
-            Splash(target, face, Foam, 6, 2.4f);
-            Ring(target + face * 0.03f, face, new Color(0.75f, 0.92f, 1f, 0.75f), 10, 1.8f, 0.07f, Impacts);
+            Splash(target, face, Foam, 5, 1.9f);
+            Ring(target + face * 0.03f, face, new Color(0.55f, 0.85f, 0.96f, 0.63f), 8, 1.35f, 0.064f, Impacts);
         }
     }
 
@@ -172,8 +131,7 @@ public sealed class WeaponVisualEffects : MonoBehaviour
         switch (kind)
         {
             case Burst.Hit:
-                Splash(at, Vector3.up, tint ?? new Color(1f, 0.9f, 0.5f, 0.95f), 12, 3.2f);
-                Ring(at, Vector3.up, tint ?? Color.white, 8, 2.2f, 0.12f, puffs);
+                Splash(at, Vector3.up, tint ?? Dust, 6, 1.65f);
                 break;
             case Burst.Fizzle:
                 for (int i = 0; i < 4; i++)
@@ -185,12 +143,12 @@ public sealed class WeaponVisualEffects : MonoBehaviour
                     });
                 break;
             case Burst.Steam:
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 3; i++)
                     Emit(puffs, new ParticleSystem.EmitParams
                     {
                         position = at + new Vector3(Range(-0.25f, 0.25f), Range(0f, 0.15f), Range(-0.25f, 0.25f)),
                         velocity = new Vector3(Range(-0.2f, 0.2f), Range(1.0f, 1.8f), Range(-0.2f, 0.2f)),
-                        startLifetime = Range(0.8f, 1.2f), startSize = Range(0.22f, 0.36f), startColor = new Color(0.95f, 0.96f, 0.97f, 0.6f)
+                        startLifetime = Range(0.38f, 0.68f), startSize = Range(0.16f, 0.26f), startColor = new Color(0.86f, 0.96f, 0.97f, 0.42f)
                     });
                 break;
             case Burst.Grow:
@@ -203,8 +161,7 @@ public sealed class WeaponVisualEffects : MonoBehaviour
                     });
                 break;
             case Burst.Pop:
-                Splash(at, Vector3.up, Dust, 14, 3.6f);
-                Ring(at + Vector3.up * 0.05f, Vector3.up, new Color(1f, 0.92f, 0.6f, 0.9f), 12, 2.8f, 0.1f, Impacts);
+                Gather(at);
                 break;
             case Burst.Splash:
                 Splash(at, Vector3.up, Foam, 10, 2.6f);
@@ -258,8 +215,8 @@ public sealed class WeaponVisualEffects : MonoBehaviour
         }
     }
 
-    // Seen from the isometric camera a 6 cm droplet is only a few pixels; every particle is drawn this much larger.
-    private const float SizeScale = 2.8f;
+    // Keep the marks compact even when the isometric camera zooms in.
+    private const float SizeScale = 1.2f;
     private static void Emit(ParticleSystem system, ParticleSystem.EmitParams particle) { particle.startSize *= SizeScale; system.Emit(particle, 1); }
 
     private int Take(float amount)
@@ -274,6 +231,7 @@ public sealed class WeaponVisualEffects : MonoBehaviour
     {
         flowing = false; emissionRemainder = 0;
         if (!clear) return;
+        intakeCount = 0;
         if (Stream != null) Stream.Clear();
         if (streaks != null) streaks.Clear();
         if (jet != null) jet.Clear();

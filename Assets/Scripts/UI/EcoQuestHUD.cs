@@ -8,6 +8,7 @@ using Tone = EcoHudStyle.Tone;
 public sealed class EcoQuestHUD : MonoBehaviour
 {
     public PlayerWeaponSystem weapons;
+    [SerializeField] private bool training;
     [Header("Optional imported UI artwork")]
     public Sprite panelSprite;
     public Sprite slotSprite;
@@ -109,10 +110,13 @@ public sealed class EcoQuestHUD : MonoBehaviour
         lastMode = EcoUI.Mode;
         ApplyLayout();
         if (weapons != null) weapons.Changed += OnInventoryChanged;
-        var guide = GetComponent<EcoGuide>();
-        if (guide == null) guide = gameObject.AddComponent<EcoGuide>();
-        guide.Bind(canvas, hudStyle);
-        if (GetComponent<EcoPlaytestLog>() == null) gameObject.AddComponent<EcoPlaytestLog>(); // GDD v4 §18 event log
+        if (!training)
+        {
+            var guide = GetComponent<EcoGuide>();
+            if (guide == null) guide = gameObject.AddComponent<EcoGuide>();
+            guide.Bind(canvas, hudStyle);
+            if (GetComponent<EcoPlaytestLog>() == null) gameObject.AddComponent<EcoPlaytestLog>(); // GDD v4 §18 event log
+        }
         Refresh();
     }
 
@@ -279,13 +283,16 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (controlsVisible != showControls) { controlsVisible = showControls; dirty = true; }
         if (dirty) ApplyLayout();
         int selected = building ? weapons.Builder.Selection % BuilderSlotCount : (int)weapons.Selected;
+        Color raised = hudStyle.ColorFor(Tone.Raised);
+        Color idle = training ? Color.Lerp(hudStyle.ColorFor(Tone.Surface), raised, 0.5f) : Color.clear;
+        Color selectedSurface = training ? Color.Lerp(raised, hudStyle.ColorFor(building ? Tone.Amber : Tone.Leaf), 0.2f) : raised;
         for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
             bool showSlot = !building || i < BuilderSlotCount;
             if (slotRects[i].gameObject.activeSelf != showSlot) slotRects[i].gameObject.SetActive(showSlot);
             if (!showSlot) continue;
             bool active = selected == i;
-            slotBg[i].color = active ? hudStyle.ColorFor(Tone.Raised) : Color.clear;
+            slotBg[i].color = active ? selectedSurface : idle;
             slotMarker[i].enabled = active;
             slotMarker[i].color = hudStyle.ColorFor(building ? Tone.Amber : Tone.Leaf);
             slotCountBg[i].gameObject.SetActive(building && !string.IsNullOrEmpty(slotCounts[i].text));
@@ -319,7 +326,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             weatherText.text = "Gün " + worldClock.day + "  " + Mathf.FloorToInt(worldClock.hour).ToString("00") + ":" + Mathf.FloorToInt(worldClock.hour % 1f * 60f).ToString("00")
                 + "  ·  " + worldClock.WeatherName;
             // GDD v4 Ö2: the first sunset of a game explains why panels stop and introduces the flashlight (once per save).
-            if (EcoWorldClock.IsDaylight(worldClock.hour) && worldClock.SecondsUntilSunset < 20f && EcoDiscoveries.Remember("hint.sunset"))
+            if (!training && EcoWorldClock.IsDaylight(worldClock.hour) && worldClock.SecondsUntilSunset < 20f && EcoDiscoveries.Remember("hint.sunset"))
                 weapons.ShowFeedback("Güneş batıyor · panel durur, batarya ve rüzgâr gece işi sürdürür · [6] fener");
             int wind = Mathf.RoundToInt(worldClock.windStrength * 100);
             windText.text = "%" + wind + (wind > 70 ? " güçlü" : wind < 25 ? " sakin" : "");
@@ -404,7 +411,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             showControlsUntil = Time.unscaledTime + (lastTutorialStep < 0 && tutorialStep >= 0 ? 10f : 4.5f);
         }
         lastTutorialStep = tutorialStep;
-        SetVisible(contextBg, context, !string.IsNullOrEmpty(context.text) && EcoUI.Mode != EcoUI.HudMode.Hidden);
+        SetVisible(contextBg, context, !string.IsNullOrEmpty(context.text) && (training || EcoUI.Mode != EcoUI.HudMode.Hidden));
         FitContext();
         var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
         feedback.text = weapons.ChargingStation != null
@@ -417,7 +424,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool recovering = vitals != null && vitals.IsRecovering;
         recovery.text = recovering ? "ENERJİ TOPLANIYOR\n" + vitals.RecoveryRemaining.ToString("0.0") + " saniye" : "";
         SetVisible(recoveryBg, recovery, recovering);
-        if (Time.unscaledTime >= objectiveAt) { objectiveAt = Time.unscaledTime + 0.5f; RefreshObjective(); }
+        if (!training && Time.unscaledTime >= objectiveAt) { objectiveAt = Time.unscaledTime + 0.5f; RefreshObjective(); }
     }
 
     /// <summary>One line that shrinks (down to 10 pt) instead of wrapping or running into its neighbour.</summary>
@@ -634,15 +641,16 @@ public sealed class EcoQuestHUD : MonoBehaviour
         float width = lastWidth / scale, height = lastHeight / scale;
         const float margin = 16f;
         bool compact = width < 1250f;
-        var hudMode = EcoUI.Mode;
+        var hudMode = training ? EcoUI.HudMode.Full : EcoUI.Mode;
         bool hidden = hudMode == EcoUI.HudMode.Hidden, sade = hudMode == EcoUI.HudMode.Compact;
         float leftWidth = LeftColumnWidth, rightWidth = compact ? 250f : 276f;
         bool narrow = width - leftWidth - rightWidth - 4f * margin < 280f;
 
         const float vitalsWidth = CompactLeftWidth;
         vitalsCard.SetVisible(!hidden);
-        vitalsCard.Layout(new Vector2(margin, -margin), vitalsWidth, 68f);
-        bool vitalsCollapsed = vitalsCard.IsCollapsed;
+        vitalsCard.Layout(new Vector2(margin, -margin), vitalsWidth, 68f, forceExpanded: training);
+        vitalsCard.toggle.gameObject.SetActive(!training);
+        bool vitalsCollapsed = !training && vitalsCard.IsCollapsed;
         float vh = vitalsCollapsed ? 32f : 68f;
         vitalsCard.root.sizeDelta = new Vector2(vitalsWidth, vh);
         HudFrame(vitalsCard, true); vitalsCard.rule.gameObject.SetActive(false);
@@ -676,12 +684,19 @@ public sealed class EcoQuestHUD : MonoBehaviour
         bool showResources = !hidden;
         resourcesCard.SetVisible(showResources);
         laidOutMapBottom = EcoWorldHUD.MapBottom;
-        float ry = EcoWorldHUD.MapBottom + 7f;
+        float ry = training ? margin : EcoWorldHUD.MapBottom + 7f;
         float chipW = (rightWidth - 30f) * 0.5f;
+        int trainingChip = 0;
         for (int i = 0; i < Chips.Length; i++)
         {
             var rt = (RectTransform)chipHits[i].transform;
-            EcoUI.Place(rt, new Vector2(10f + (i % 2) * (chipW + 10f), -6f - (i / 2) * 32f), new Vector2(chipW, 30f));
+            if (training)
+            {
+                rt.gameObject.SetActive(i == 0 || i == 1 || i == 6 || i == 8);
+                if (!rt.gameObject.activeSelf) continue;
+            }
+            int rowSlot = training ? trainingChip++ : i;
+            EcoUI.Place(rt, new Vector2(10f + (rowSlot % 2) * (chipW + 10f), -6f - (rowSlot / 2) * 32f), new Vector2(chipW, 30f));
             EcoUI.LayoutIcon(chipIcons[i], new Vector2(4f, -4f), 22f);
             EcoUI.Layout(chipValues[i], new Vector2(32f, -1f), new Vector2(chipW - 38f, 17f));
             EcoUI.Layout(chipNames[i], new Vector2(32f, -18f), new Vector2(chipW - 38f, 12f));
@@ -691,8 +706,13 @@ public sealed class EcoQuestHUD : MonoBehaviour
         EcoUI.LayoutIcon(yepIcon, new Vector2(10f, yy), 24f);
         EcoUI.Layout(yepText, new Vector2(40f, yy), new Vector2(rightWidth - 52f, 18f));
         EcoUI.Place(yepTrack, new Vector2(40f, yy - 21f), new Vector2(rightWidth - 52f, 6f));
-        bool resourceCompact = sade || resourcesCard.IsCollapsed || ry + 240f > height - margin;
-        resourcesCard.Layout(new Vector2(-margin, -ry), resourceCompact ? EcoWorldHUD.CompactMapWidth : rightWidth, resourceCompact ? 0f : 206f);
+        yepIcon.gameObject.SetActive(!training);
+        yepText.gameObject.SetActive(!training);
+        yepTrack.gameObject.SetActive(!training);
+        bool resourceCompact = !training && (sade || resourcesCard.IsCollapsed || ry + 240f > height - margin);
+        resourcesCard.Layout(new Vector2(-margin, -ry), resourceCompact ? EcoWorldHUD.CompactMapWidth : rightWidth,
+            resourceCompact ? 0f : training ? 72f : 206f, forceExpanded: training);
+        resourcesCard.toggle.gameObject.SetActive(!training);
         resourcesCard.summary.gameObject.SetActive(false);
         HudFrame(resourcesCard, true);
         if (resourceCompact) resourcesCard.rule.gameObject.SetActive(false);
@@ -706,7 +726,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         EcoUI.Layout(resourceNoticeText, new Vector2(8f, -2f), new Vector2(EcoWorldHUD.CompactMapWidth - 18f, 20f));
 
         // A quest symbol and a short line, rather than a second window across the scene.
-        objectiveCard.SetVisible(!hidden);
+        objectiveCard.SetVisible(!hidden && !training);
         float objectiveMax = Mathf.Min(470f, narrow ? width - margin * 2f : width - leftWidth - rightWidth - 4f * margin);
         float objectiveWidth = Mathf.Min(objectiveMax, Mathf.Max(210f, ObjectiveWidth(fullObjective, 15) + 68f));
         float objectiveCenter = 0f;
@@ -730,9 +750,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         buildingLayout = weapons != null && weapons.Builder != null && weapons.Builder.IsBuilding;
         int slotCount = buildingLayout ? BuilderSlotCount : PlayerWeaponSystem.ToolCount;
         const float slotGap = 4f, dockPadding = 4f;
-        float normalDockWidth = PlayerWeaponSystem.ToolCount * 50f + (PlayerWeaponSystem.ToolCount - 1) * slotGap + 2f * dockPadding;
+        float normalDockWidth = PlayerWeaponSystem.ToolCount * (training ? 86f : 50f) + (PlayerWeaponSystem.ToolCount - 1) * slotGap + 2f * dockPadding;
         float dockWidth = Mathf.Min(buildingLayout ? 580f : normalDockWidth, width - 2f * margin);
-        float slotHeight = buildingLayout ? 96f : 53f;
+        float slotHeight = buildingLayout ? 96f : training ? 75f : 53f;
         DockWidth = hidden ? 0f : dockWidth;
         dock.gameObject.SetActive(!hidden);
         EcoUI.Place(dock, new Vector2(0f, margin), new Vector2(dockWidth, slotHeight));
@@ -749,10 +769,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.Place(slotKeyBg[i].rectTransform, new Vector2(1f, -1f), new Vector2(16f, 15f));
             EcoUI.Layout(slotKeys[i], Vector2.zero, new Vector2(16f, 15f));
             slotKeyBg[i].rectTransform.SetAsLastSibling();
-            slotTitles[i].gameObject.SetActive(buildingLayout);
-            EcoUI.Layout(slotTitles[i], new Vector2(4f, -49f), new Vector2(slotWidth - 8f, 18f));
+            slotTitles[i].gameObject.SetActive(buildingLayout || training);
+            EcoUI.Layout(slotTitles[i], new Vector2(4f, buildingLayout ? -49f : -35f), new Vector2(slotWidth - 8f, 18f));
             FitOneLine(slotTitles[i], 12);
-            float countY = buildingLayout ? -68f : -30f;
+            float countY = buildingLayout ? -68f : training ? -53f : -30f;
             EcoUI.Place(slotCountBg[i].rectTransform, new Vector2(5f, countY), new Vector2(slotWidth - 10f, 16f));
             slotCounts[i].alignment = buildingLayout ? TextAnchor.MiddleCenter : TextAnchor.MiddleRight;
             slotCounts[i].fontSize = (buildingLayout ? 12 : 10) * EcoUI.RasterScale;
@@ -778,7 +798,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         contextMaxWidth = contextWidth; contextBottom = -height * 0.5f + DockTop + 10f; contextFitFor = null;
         FitContext();
         float feedbackWidth = Mathf.Min(520f, objectiveWidth + 80f);
-        feedbackTop = objectiveTop + oh + 10f;
+        feedbackTop = training ? 149f : objectiveTop + oh + 10f;
         ObjectiveBottomPixels = hidden ? 0f : (objectiveTop + oh) * uiScale;
         EcoUI.Place(feedbackPanel, new Vector2(objectiveCenter, -feedbackTop), new Vector2(feedbackWidth, 56f));
         EcoUI.Layout(feedback, new Vector2(12f, -6f), new Vector2(feedbackWidth - 24f, 44f));

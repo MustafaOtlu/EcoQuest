@@ -413,10 +413,10 @@ public static class EcoUI
         }
 
         /// <summary>Lays the card out; returns its total height.</summary>
-        public float Layout(Vector2 position, float width, float bodyHeight, bool showSummaryWhenOpen = false)
+        public float Layout(Vector2 position, float width, float bodyHeight, bool showSummaryWhenOpen = false, bool forceExpanded = false)
         {
             Width = width;
-            bool collapsed = IsCollapsed;
+            bool collapsed = !forceExpanded && IsCollapsed;
             float height = HeaderHeight + (collapsed ? 0f : bodyHeight);
             Place(root, position, new Vector2(width, height));
             LayoutIcon(icon, new Vector2(10f, -6f), 22f);

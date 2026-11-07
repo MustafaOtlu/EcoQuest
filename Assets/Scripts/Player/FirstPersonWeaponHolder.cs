@@ -13,7 +13,8 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
     [Min(0.1f)] public float poseResponse = 12f;
     public bool IsHandMounted => rightHand != null && transform.parent == rightHand;
     public Transform EquippedWeapon => equippedWeapon;
-    public Vector3 MuzzlePosition => IsHandMounted && equippedWeapon != null ? transform.TransformPoint(muzzleLocal) : transform.position;
+    public Vector3 MuzzlePosition => !IsHandMounted || equippedWeapon == null ? transform.position
+        : authoredMuzzle != null ? authoredMuzzle.position : transform.TransformPoint(muzzleLocal);
     public Vector3 ToolForward => transform.forward;
 
     private PlayerController player;
@@ -23,10 +24,12 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
     private Transform rightMiddle, rightIndex, rightPinky, leftMiddle, leftIndex, leftPinky;
     private Quaternion rightPalmFrame, leftPalmFrame;
     private Vector3 muzzleLocal = new Vector3(0, .06f, .32f);
-    private float weight;
+    private Transform authoredMuzzle, authoredSupport;
+    private float weight, handInteraction;
     private int toolIndex;
     private readonly Dictionary<Transform, Grip> grips = new Dictionary<Transform, Grip>();
     private readonly List<Finger> fingers = new List<Finger>();
+    private readonly List<Object> gloveAssets = new List<Object>();
 
     private sealed class Grip { public Vector3 position, scale, muzzle; public Quaternion rotation; }
     private sealed class Finger { public Transform bone; public Quaternion rest; public float curl; }
@@ -59,6 +62,11 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         rightPalmFrame = PalmFrame(rightHand, rightMiddle, rightIndex, rightPinky, true);
         if (leftHand != null) leftPalmFrame = PalmFrame(leftHand, leftMiddle, leftIndex, leftPinky, false);
         CacheFingers();
+        if (gloveAssets.Count == 0)
+        {
+            EcoFieldGloves.Fit(rightHand, rightMiddle, rightIndex, rightPinky, rightPalmFrame, gloveAssets);
+            EcoFieldGloves.Fit(leftHand, leftMiddle, leftIndex, leftPinky, leftPalmFrame, gloveAssets);
+        }
         transform.SetParent(rightHand, false);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
@@ -110,6 +118,7 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
     {
         if (equippedWeapon != null) equippedWeapon.gameObject.SetActive(false);
         equippedWeapon = null;
+        authoredMuzzle = authoredSupport = null;
     }
 
     public void Equip(Transform weapon) => Equip(weapon, weapons != null ? (int)weapons.Selected : 0);
@@ -120,6 +129,18 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         if (equippedWeapon != null && equippedWeapon != weapon) equippedWeapon.gameObject.SetActive(false);
         equippedWeapon = weapon; toolIndex = Mathf.Clamp(index, 0, PlayerWeaponSystem.ToolCount - 1);
         weapon.SetParent(transform, false);
+        handInteraction = 0;
+        authoredMuzzle = authoredSupport = null;
+        if (weapon.TryGetComponent<EcoCatalogueToolVisual>(out var authored))
+        {
+            weapon.localRotation = Quaternion.identity;
+            weapon.localScale = Vector3.one;
+            weapon.localPosition = -authored.Palm.localPosition;
+            authoredMuzzle = authored.Muzzle;
+            authoredSupport = authored.Support;
+            weapon.gameObject.SetActive(true);
+            return;
+        }
         if (!grips.TryGetValue(weapon, out var grip))
         {
             weapon.localPosition = Vector3.zero;
@@ -130,8 +151,7 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
             float length = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .26f : toolIndex == 3 ? .21f : toolIndex == 2 ? .30f : toolIndex == 1 ? .40f : .46f;
             weapon.localScale *= length / Mathf.Max(.001f, Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z));
             TryLocalBounds(weapon, out bounds);
-            // Place the palm on the rear lower handle, rather than on the model's geometric centre.
-            // The vacuum (EcoVacuumTool) is held by its rear carry handle, level with the nozzle.
+            // Legacy preview assets do not carry hand anchors.
             float gripHeight = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .5f : toolIndex == 0 ? .44f : toolIndex == 1 ? .10f : toolIndex == 2 ? .80f : .18f;
             float gripDepth = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? .28f : toolIndex == 0 ? .05f : toolIndex == 1 ? .58f : toolIndex == 2 ? .45f : toolIndex == 3 ? .35f : .24f;
             var palm = new Vector3(bounds.center.x, Mathf.Lerp(bounds.min.y, bounds.max.y, gripHeight),
@@ -167,6 +187,17 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
 
     private void LateUpdate() => UpdateGrip(Time.deltaTime);
 
+    public void PlayHandInteraction()
+    {
+        if (equippedWeapon == null) handInteraction = .52f;
+    }
+
+    private void OnDestroy()
+    {
+        foreach (var asset in gloveAssets)
+            if (asset != null) { if (Application.isPlaying) Destroy(asset); else DestroyImmediate(asset); }
+    }
+
     // Also used by the editor pose preview; does not start the game or advance world simulation.
     public void UpdateGrip(float seconds)
     {
@@ -174,6 +205,11 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         bool holding = equippedWeapon != null && equippedWeapon.gameObject.activeInHierarchy
             && (weapons == null || weapons.CanOperate);
         weight = Mathf.MoveTowards(weight, holding ? gripWeight : 0, Mathf.Max(0, seconds) * poseResponse);
+        if (!holding && handInteraction > 0f)
+        {
+            ReachWithHand(seconds);
+            return;
+        }
         if (weight <= .001f) return;
         float scale = Mathf.Max(.01f, player.transform.lossyScale.y);
         Vector3 forward = player.transform.forward;
@@ -195,17 +231,29 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         }
         Quaternion aim = Quaternion.LookRotation(forward, Vector3.up);
         Vector3 middle = leftArm != null ? (rightArm.position + leftArm.position) * .5f : rightArm.position - player.transform.right * .1f * scale;
-        Vector3 target = middle + aim * new Vector3(.10f, -.095f, .14f) * scale;
+        var gripPose = (PlayerWeaponSystem.Tool)toolIndex switch
+        {
+            PlayerWeaponSystem.Tool.Vacuum => new Vector3(.13f, -.125f, .18f),
+            PlayerWeaponSystem.Tool.SeedGun => new Vector3(.12f, -.090f, .19f),
+            PlayerWeaponSystem.Tool.Recycler => new Vector3(.13f, -.065f, .18f),
+            PlayerWeaponSystem.Tool.Scanner => new Vector3(.17f, -.12f, .18f),
+            _ => new Vector3(.15f, -.15f, .17f)
+        };
+        Vector3 target = middle + aim * gripPose * scale;
         SolveArm(rightArm, rightForearm, rightHand, target,
             middle + aim * new Vector3(.28f, -.20f, -.04f) * scale, weight);
-        Quaternion rightRotation = Quaternion.LookRotation(-Vector3.up, -(aim * Vector3.right)) * Quaternion.Inverse(rightPalmFrame);
+        Vector3 fingerDirection = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight
+            ? (-Vector3.up - aim * Vector3.right * .46f).normalized : -Vector3.up;
+        Quaternion rightRotation = Quaternion.LookRotation(fingerDirection, -(aim * Vector3.right)) * Quaternion.Inverse(rightPalmFrame);
         rightHand.rotation = Quaternion.Slerp(rightHand.rotation, rightRotation, weight);
-        transform.SetPositionAndRotation(rightHand.position + aim * new Vector3(0, -.025f, .015f) * scale, aim);
+        Quaternion heldDirection = toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight ? aim * Quaternion.Euler(8f, 0, 0) : aim;
+        transform.SetPositionAndRotation(rightHand.position + aim * new Vector3(0, -.025f, .015f) * scale, heldDirection);
         // Compact utility tools leave the other arm in its normal walking animation.
         bool oneHanded = toolIndex == 3 || toolIndex == (int)PlayerWeaponSystem.Tool.Flashlight;
         if (!oneHanded && leftArm != null && leftForearm != null && leftHand != null)
         {
-            var support = transform.TransformPoint(toolIndex == 2 ? new Vector3(-.07f, -.06f, .06f) : new Vector3(-.07f, .015f, .085f));
+            var support = authoredSupport != null ? authoredSupport.position
+                : transform.TransformPoint(toolIndex == 2 ? new Vector3(-.07f, -.06f, .06f) : new Vector3(-.07f, .015f, .085f));
             SolveArm(leftArm, leftForearm, leftHand, support,
                 middle + aim * new Vector3(-.28f, -.20f, -.04f) * scale, weight);
             var leftRotation = Quaternion.LookRotation(aim * Vector3.right, Vector3.up) * Quaternion.Inverse(leftPalmFrame);
@@ -217,6 +265,20 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
             finger.bone.localRotation = Quaternion.Slerp(finger.bone.localRotation,
                 finger.rest * Quaternion.AngleAxis(finger.curl, Vector3.right), weight);
         }
+    }
+
+    private void ReachWithHand(float seconds)
+    {
+        handInteraction = Mathf.Max(0f, handInteraction - Mathf.Max(0f, seconds));
+        float t = 1f - handInteraction / .52f;
+        float reach = Mathf.Sin(t * Mathf.PI);
+        float scale = Mathf.Max(.01f, player.transform.lossyScale.y);
+        Quaternion facing = Quaternion.LookRotation(player.transform.forward, Vector3.up);
+        Vector3 shoulder = rightArm.position;
+        SolveArm(rightArm, rightForearm, rightHand, shoulder + facing * new Vector3(-.08f, -.22f, .41f) * scale,
+            shoulder + facing * new Vector3(.19f, -.29f, .04f) * scale, reach);
+        Quaternion palmDown = Quaternion.LookRotation(facing * new Vector3(-.14f, -.23f, 1f), -Vector3.up);
+        rightHand.rotation = Quaternion.Slerp(rightHand.rotation, palmDown * Quaternion.Inverse(rightPalmFrame), reach);
     }
 
     private static void SolveArm(Transform upper, Transform lower, Transform hand, Vector3 target, Vector3 hint, float amount)

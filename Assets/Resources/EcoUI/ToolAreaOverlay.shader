@@ -3,6 +3,7 @@ Shader "EcoQuest/Tools/AreaOverlay"
     Properties
     {
         [MainColor] _BaseColor ("Tint", Color) = (0.3, 0.9, 0.65, 0.1)
+        _Feather ("Use vertex opacity", Range(0, 1)) = 0
     }
     SubShader
     {
@@ -23,17 +24,19 @@ Shader "EcoQuest/Tools/AreaOverlay"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
+                half _Feather;
             CBUFFER_END
 
-            struct Attributes { float4 positionOS : POSITION; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
+            struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; };
+            struct Varyings { float4 positionCS : SV_POSITION; half opacity : TEXCOORD0; };
             Varyings Vert(Attributes input)
             {
                 Varyings output;
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.opacity = lerp(1.0h, input.color.a, _Feather);
                 return output;
             }
-            half4 Frag(Varyings input) : SV_Target { return _BaseColor; }
+            half4 Frag(Varyings input) : SV_Target { return half4(_BaseColor.rgb, _BaseColor.a * input.opacity); }
             ENDHLSL
         }
     }

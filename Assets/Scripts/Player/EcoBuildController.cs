@@ -12,6 +12,7 @@ public sealed class EcoBuildController : MonoBehaviour
     public int Page => Selection / 5;
     public int PageCount => (EcoBuildingCatalog.Entries.Length + 6) / 5;
     public int CableIndex => EcoBuildingCatalog.Entries.Length;
+    internal EcoPowerNode CableStart => cableStart;
     public int PipeIndex => CableIndex + 1;
     public EcoWaterNode.Fluid PipeFluid { get; private set; }
     public string SelectedName => Selection == CableIndex ? "Elektrik kablosu" : Selection == PipeIndex ? (PipeFluid == EcoWaterNode.Fluid.Clean ? "Temiz su borusu" : "Kirli su borusu") : EcoBuildingCatalog.Entries[Selection].Name;

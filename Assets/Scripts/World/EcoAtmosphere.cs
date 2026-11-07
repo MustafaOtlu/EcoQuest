@@ -22,6 +22,7 @@ public sealed class EcoAtmosphere : MonoBehaviour
     private float originalFogStart, originalFogEnd, originalFogDensity;
     private readonly Dictionary<Camera, float> originalCameraDistances = new Dictionary<Camera, float>();
     private ParticleSystem rain;
+    private Transform rainFocus;
     private PlantedSeed[] crops = System.Array.Empty<PlantedSeed>();
     private EcoFire[] fires = System.Array.Empty<EcoFire>();
     private float rainStep, nextCache;
@@ -74,14 +75,18 @@ public sealed class EcoAtmosphere : MonoBehaviour
             sky.SetFloat("_Wind", clock != null ? clock.windStrength : 0.5f);
         }
         if (rain == null) return;
-        if (viewCamera != null) rain.transform.position = viewCamera.transform.position + Vector3.up * 9;
-        // High ceilings can sit above the local emitter; collision alone cannot keep those interiors dry.
-        bool exposed = viewCamera != null && Outdoors(viewCamera.transform.position, viewCamera.transform);
-        var emission = rain.emission; emission.rateOverTime = exposed ? Rain * 850 : 0;
+        if (rainFocus == null && viewCamera != null)
+        {
+            var iso = viewCamera.GetComponent<EcoIsoCamera>();
+            rainFocus = iso != null && iso.target != null ? iso.target : viewCamera.transform;
+        }
+        if (rainFocus != null) rain.transform.position = rainFocus.position + Vector3.up * 10f;
+        // Keep the rain in world space near the scene the player sees, including under an orthographic camera.
+        bool exposed = rainFocus != null && (Rain <= 0f || Outdoors(rainFocus.position + Vector3.up * 0.9f, rainFocus));
+        var emission = rain.emission; emission.rateOverTime = exposed ? Rain * 655 : 0;
         if (!exposed) rain.Clear();
         var velocity = rain.velocityOverLifetime; velocity.enabled = true;
-        velocity.x = clock != null ? clock.windStrength * 3 : 0; velocity.y = -15; velocity.z = 0.6f;
-        var main = rain.main; main.startColor = new Color(0.65f, 0.82f, 0.9f, 0.5f);
+        velocity.x = clock != null ? clock.windStrength * 3 : 0; velocity.y = -14; velocity.z = 0.6f;
     }
     public void Simulate(float seconds)
     {
@@ -116,12 +121,15 @@ public sealed class EcoAtmosphere : MonoBehaviour
     {
         var go = new GameObject("Local rainfall"); go.transform.SetParent(transform, false);
         rain = go.AddComponent<ParticleSystem>(); rain.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        var main = rain.main; main.startLifetime = 1.5f; main.startSpeed = 0; main.startSize = 0.045f;
+        var main = rain.main; main.startLifetime = new ParticleSystem.MinMaxCurve(1.15f, 1.4f); main.startSpeed = 0;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.028f, 0.046f);
+        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.57f, 0.76f, 0.84f, 0.37f), new Color(0.78f, 0.89f, 0.91f, 0.58f));
         main.maxParticles = 1800; main.simulationSpace = ParticleSystemSimulationSpace.World;
-        var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(24, 0.5f, 24);
+        var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(30, 0.5f, 30);
         var emission = rain.emission; emission.rateOverTime = 0;
         var renderer = go.GetComponent<ParticleSystemRenderer>(); renderer.renderMode = ParticleSystemRenderMode.Stretch;
-        renderer.lengthScale = 1.5f; renderer.velocityScale = 0.02f;
+        renderer.lengthScale = 1.7f; renderer.velocityScale = 0.014f;
+        renderer.minParticleSize = 0f; renderer.maxParticleSize = 0.012f;
         var source = Resources.Load<Material>("EcoEnvironment/Particle");
         if (source != null) { rainMaterial = new Material(source) { name = "Rain droplets" }; renderer.sharedMaterial = rainMaterial; }
         // Rain is local and uses collision to keep droplets out of buildings without thousands of objects.

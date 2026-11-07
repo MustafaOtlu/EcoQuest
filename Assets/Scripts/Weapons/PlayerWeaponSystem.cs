@@ -60,7 +60,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     [SerializeField] private int[] cleanProduce = new int[3];
     public int CountProduce(EcoCropCatalog.Kind kind) => (int)kind >= 0 && (int)kind < 3 ? cleanProduce[(int)kind] : 0;
     public bool HasCareFood => Food >= 2 || CleanFish >= 1;
-    public bool HasFinaleTools => holder != null && modelPrefabs.Length > 1 && modelPrefabs[1] != null;
+    public bool HasFinaleTools => holder != null && models[(int)Tool.SeedGun] != null;
     public bool TrySpendElectricity(float amount)
     { if (!CanOperate || !EcoRegion.Valid(amount) || Energy < amount) return false; Energy -= amount; Changed?.Invoke(); return true; }
     public bool TryTakeCleanWater(float amount)
@@ -215,19 +215,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         maximumWater = 50f; baseWaterCapacity = maximumWater; ApplyEquipmentCapacity();
         Energy = maximumEnergy; Water = 20f; Seeds = 5;
         Metal = 50; Plastic = 40;
-        // The vacuum is the friendly EcoVacuumTool, not the scene's old gun model (kept hidden for scene references).
         if (holder.EquippedWeapon != null) holder.EquippedWeapon.gameObject.SetActive(false);
-        models[0] = EcoVacuumTool.Create(this, holder.transform).transform;
-        for (int i = 1; i < models.Length; i++)
-        {
-            if (i == (int)Tool.Hands || i == (int)Tool.Flashlight || modelPrefabs == null || i >= modelPrefabs.Length || modelPrefabs[i] == null) continue;
-            var model = Instantiate(modelPrefabs[i], holder.transform).transform;
-            model.localRotation = Quaternion.Euler(-90f, -90f, 0f);
-            model.localPosition = Vector3.zero;
-            model.localScale = Vector3.one;
-            FitModel(model, i == 3 ? 0.25f : i == 2 ? 0.4f : 0.46f);
-            models[i] = model; model.gameObject.SetActive(false);
-        }
+        for (int i = 0; i < (int)Tool.Hands; i++)
+            models[i] = EcoCatalogueToolVisual.Create((Tool)i, this, holder.transform).transform;
         flashlight = PlayerFlashlight.Create(this, holder.transform);
         models[(int)Tool.Flashlight] = flashlight.transform;
         if (holder.BindToCharacter(owner.GetComponent<PlayerController>(), this)) holder.Equip(models[0], 0);
@@ -239,27 +229,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         }
         var fx = new GameObject("Weapon particles"); fx.transform.SetParent(transform, false);
         streamEffects = fx.AddComponent<WeaponVisualEffects>();
+        streamEffects.BindMuzzle(holder);
         areaIndicator = ToolAreaIndicator.Create(owner);
-    }
-    private void FitModel(Transform model, float length)
-    {
-        var renderers = model.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return;
-        Bounds bounds = new Bounds(); bool first = true;
-        foreach (var renderer in renderers)
-        {
-            var matrix = holder.transform.worldToLocalMatrix * renderer.transform.localToWorldMatrix;
-            var b = renderer.localBounds;
-            for (int k = 0; k < 8; k++)
-            {
-                Vector3 p = matrix.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents,
-                    new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1)));
-                if (first) { bounds = new Bounds(p, Vector3.zero); first = false; } else bounds.Encapsulate(p);
-            }
-        }
-        float scale = length / Mathf.Max(0.01f, Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z)));
-        model.localScale *= scale;
-        model.localPosition = new Vector3(0, 0, 0.08f) - bounds.center * scale;
     }
     public void SelectTool(int index)
     {
@@ -506,7 +477,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             Notify(Selected == Tool.Recycler
                 ? "Geri dönüştürüldü • +" + recoveredMetal + " metal • +" + recoveredPlastic + " plastik • " + recoveredOrganic + " organik"
                 : "Ham kaynak toplandı • R ile işle");
-            ResetProcessing(); Changed?.Invoke();
+            processing = null; progress = 0f; Changed?.Invoke();
         }
     }
 
@@ -924,6 +895,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         if (EcoUIFlow.InputBlocked || EcoMarketUI.BlocksGameplay || (vitals != null && vitals.IsRecovering)) return;
         CancelAutomaticCombat();
+        if (Selected == Tool.Hands) holder?.PlayHandInteraction();
+        if (EcoTutorialLesson.Current != null && EcoTutorialLesson.Current.TryUseTrainingCharger(this)) return;
         if (EcoFinale.Current != null && EcoFinale.Current.TryInteractAtTerminal(this)) return;
         if (EcoStory.Current != null && EcoStory.Current.TryInteract(this)) return;
         if (EcoHomeSaving.Current != null && EcoHomeSaving.Current.TryInteract(this)) return;

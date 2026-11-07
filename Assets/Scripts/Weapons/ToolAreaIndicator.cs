@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 public sealed class ToolAreaIndicator : MonoBehaviour
 {
     private const int Segments = 40, RingSegments = 32;
-    private const float Lift = 0.045f, EdgeWidth = 0.035f;
+    private const float Lift = 0.045f, EdgeWidth = 0.022f;
     private Mesh fill, edge, ring;
     private MeshRenderer fillRenderer, edgeRenderer, ringRenderer;
     private Material fillMaterial, edgeMaterial;
@@ -44,6 +44,15 @@ public sealed class ToolAreaIndicator : MonoBehaviour
         fill = Part("Area fill", fillPoints, fan, fillMaterial, out fillRenderer);
         edge = Part("Area edge", edgePoints, outline, edgeMaterial, out edgeRenderer);
         ring = Part("Selected target", ringPoints, circle, edgeMaterial, out ringRenderer);
+        var tint = new Color32[fillPoints.Length];
+        tint[0] = new Color32(255, 255, 255, 8);
+        for (int i = 0; i <= Segments; i++)
+        {
+            float falloff = Mathf.Sin(Mathf.PI * i / Segments);
+            tint[i + 1] = new Color32(255, 255, 255, (byte)Mathf.Lerp(50, 255, falloff));
+        }
+        fill.colors32 = tint;
+        fillMaterial.SetFloat("_Feather", 1f);
     }
 
     public void Show(Vector3 at, Vector3 forward, float range, float halfAngle, Color tint, Vector3? targetPoint, bool active)
@@ -62,7 +71,7 @@ public sealed class ToolAreaIndicator : MonoBehaviour
         range = Mathf.Max(0.1f, range); halfAngle = Mathf.Clamp(halfAngle, 1f, 85f);
         shown = true; ApplyPose(); fillRenderer.enabled = edgeRenderer.enabled = true;
         ringRenderer.enabled = targetPoint.HasValue;
-        Paint(fillMaterial, tint, active ? 0.10f : 0.07f); Paint(edgeMaterial, tint, active ? 0.55f : 0.32f);
+        Paint(fillMaterial, tint, active ? 0.075f : 0.044f); Paint(edgeMaterial, tint, active ? 0.38f : 0.24f);
         Vector3 target = targetPoint.GetValueOrDefault();
         if ((at - previousOrigin).sqrMagnitude < 0.0004f && (direction - previousDirection).sqrMagnitude < 0.0004f
             && Mathf.Abs(range - previousRange) < 0.01f && Mathf.Abs(halfAngle - previousAngle) < 0.1f

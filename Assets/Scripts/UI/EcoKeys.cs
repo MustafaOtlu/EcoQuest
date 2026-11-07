@@ -36,7 +36,11 @@ public static class EcoKeys
     public static Key Get(Action action) { Load(); return keys[(int)action]; }
     public static string Label(Action action) => Get(action).ToString();
     public static string Tag(Action action) => "[" + Label(action) + "]";
-    public static bool Pressed(Action action) { var board = Keyboard.current; return board != null && board[Get(action)].wasPressedThisFrame; }
+    public static bool Pressed(Action action)
+    {
+        var board = Keyboard.current;
+        return !EcoUIFlow.PanelFreezesWorld && board != null && board[Get(action)].wasPressedThisFrame;
+    }
     public static bool Held(Action action) { var board = Keyboard.current; return board != null && board[Get(action)].isPressed; }
 
     /// <summary>Binds an action to a key; if another action already uses it the two swap so nothing is lost.</summary>
