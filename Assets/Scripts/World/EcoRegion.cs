@@ -68,7 +68,7 @@ public sealed class EcoRegion : MonoBehaviour
     {
         if (!Valid(seconds)) return;
         // Recovery remains gradual even after an emission source has been filtered.
-        float recovery = Mathf.Lerp(0.015f, 0.06f, vegetation) * EcoSpecialization.Recovery;
+        float recovery = Mathf.Lerp(0.015f, 0.06f, vegetation) * EcoSpecialization.Recovery * EcoRun.RecoveryFactor;
         AddPollution(-recovery * seconds, -recovery * 0.22f * seconds, -recovery * 0.12f * seconds, -recovery * 0.4f * seconds, EcoCarbonFootprint.Source.Nature);
     }
     public void AddPollution(float air, float water, float soil, float carbonAdded, EcoCarbonFootprint.Source source = EcoCarbonFootprint.Source.None)

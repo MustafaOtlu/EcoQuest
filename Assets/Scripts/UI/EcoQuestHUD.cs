@@ -21,6 +21,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
     public static float DockWidth { get; private set; } = 414f;
     /// <summary>Bottom of the objective card in screen pixels from the top (IMGUI overlays stack below it).</summary>
     public static float ObjectiveBottomPixels { get; private set; } = 90f;
+    /// <summary>Bottom of the right HUD column (map + resources) in screen pixels.</summary>
+    public static float RightColumnBottomPixels { get; private set; } = 300f;
     public const float LeftColumnWidth = 284f;
     internal const float CompactLeftWidth = 218f;
     private float uiScale = 1f;
@@ -532,7 +534,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             text = tracked.title + " · " + tracked.detail;
             goal = tracked.target; goalName = tracked.title;
         }
-        else if (readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness)
+        else if (EcoRun.Current != null && EcoRun.Current.Active ? EcoRun.Current.FinaleOpen && (finale == null || !finale.Won)
+            : readiness != null && readiness.Readiness >= EcoFinale.MinimumReadiness)
         {
             text = "Final hazır · buzul terminalinde " + EcoKeys.Tag(EcoKeys.Action.Finale);
             if (EcoGlacierStation.Current != null) { goal = EcoGlacierStation.Current.transform.position; goalName = "Buzul terminali"; }
@@ -557,7 +560,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
             }
             var projects = EcoProjects.Current;
             int open = -1;
-            if (projects != null) for (int i = 0; i < projects.All.Count; i++) if (!projects.All[i].done) { open = i; break; }
+            // In a run the next step follows the valley's goals (required first); otherwise the first open project.
+            if (projects != null && EcoRun.Current != null && EcoRun.Current.Active) open = EcoRun.Current.FocusProject(projects);
+            else if (projects != null) for (int i = 0; i < projects.All.Count; i++) if (!projects.All[i].done) { open = i; break; }
             if (!living)
             {
                 text = "Ekim alanına tohum ek · [2] tohum aracı, sol tık";
@@ -723,6 +728,8 @@ public sealed class EcoQuestHUD : MonoBehaviour
             resourcesCard.root.sizeDelta = new Vector2(EcoWorldHUD.CompactMapWidth, 34f);
         }
         EcoUI.Place(resourceNotice, new Vector2(-margin, -ry - 40f), new Vector2(EcoWorldHUD.CompactMapWidth, 26f));
+        // The run chip (EcoRunUI) stacks under the right column: map, then resources.
+        RightColumnBottomPixels = (hidden ? margin : ry + (resourcesCard.root.gameObject.activeSelf ? resourcesCard.root.sizeDelta.y : 0f)) * uiScale;
         EcoUI.Layout(resourceNoticeText, new Vector2(8f, -2f), new Vector2(EcoWorldHUD.CompactMapWidth - 18f, 20f));
 
         // A quest symbol and a short line, rather than a second window across the scene.

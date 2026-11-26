@@ -27,6 +27,8 @@ public sealed class EcoGameMenu : MonoBehaviour
     private void OpenTitle()
     {
         if (opened) return; opened = true;
+        // "Yeni vadi" on a run's result screen reloads the scene straight into the next briefing.
+        if (EcoRun.ConsumeAutoStart() && EcoRun.Current != null) { EcoRun.Current.RequestNewRun(); return; }
         screen = Screen_.Main; PlayerController.SetPaused(true);
     }
 
@@ -89,7 +91,11 @@ public sealed class EcoGameMenu : MonoBehaviour
         bool main = screen == Screen_.Main;
         var origin = screen;
         if (EcoTheme.IconButton(new Rect(area.x, area.y, area.width, 46f), main ? "Yeni oyun" : "Devam et", "player", EcoTheme.PrimaryButton))
+        {
             PlayerController.SetPaused(false);
+            // A new game is a new run: roll a valley and show its briefing (the world changes only when it starts).
+            if (main && EcoRun.Current != null && !EcoRun.Current.Active) EcoRun.Current.RequestNewRun();
+        }
         GUI.Label(new Rect(area.x, area.y + 57f, area.width, 22f), main ? "Oyun seçenekleri" : "Oturum seçenekleri", EcoTheme.Muted);
 
         const float gap = 5f;

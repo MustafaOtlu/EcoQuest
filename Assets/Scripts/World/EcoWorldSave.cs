@@ -85,6 +85,7 @@ public sealed class EcoWorldSave : MonoBehaviour
     private readonly Dictionary<string, GameObject> initialTemplates = new Dictionary<string, GameObject>();
     private readonly Queue<string> deferredSlots = new Queue<string>();
     private Transform templateBank;
+    private GameObject fireTemplate;
     private bool loading, writing, initialized, autosaveRequested;
     private float activeSeconds, statusUntil;
     private int nextAuto;
@@ -110,6 +111,13 @@ public sealed class EcoWorldSave : MonoBehaviour
             var prototype = Instantiate(go, templateBank);
             prototype.name = go.name; prototype.SetActive(false);
             initialTemplates[identity.Id] = prototype;
+        }
+        // Runs light new fires (scenario, evening crises); a load rebuilds them from this inactive copy.
+        var fire = FindObjectsByType<EcoFire>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID).FirstOrDefault();
+        if (fire != null)
+        {
+            fireTemplate = Instantiate(fire.gameObject, templateBank);
+            fireTemplate.name = fire.name; fireTemplate.SetActive(false);
         }
         string newest = "";
         for (int i = 0; i < 3; i++)
@@ -318,7 +326,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         data.market = CaptureMarket();
         data.rewards = InvokeCaptureStrings(weapons.Progression, "CaptureRewards");
         data.discoveries = InvokeCaptureStaticStrings("EcoDiscoveries", "Capture");
-        data.globalHooks = CaptureHooks(FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Where(c => c != null && (c.GetType().Name == "EcoStory" || c.GetType().Name == "EcoFinale" || c.GetType().Name == "EcoGlacierStation")));
+        data.globalHooks = CaptureHooks(FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Where(c => c != null && (c.GetType().Name == "EcoStory" || c.GetType().Name == "EcoFinale" || c.GetType().Name == "EcoGlacierStation" || c.GetType().Name == "EcoRun")));
         return data;
     }
     private Entity CaptureEntity(GameObject go)
@@ -406,6 +414,7 @@ public sealed class EcoWorldSave : MonoBehaviour
                 lesson.RestoreAfterLoad(savedLesson, data.projectDone != null && data.projectDone.Length > 0 && data.projectDone[0]);
             }
             EcoNavigation.MarkDirty();
+            EcoRun.Current?.AfterLoad();
         }
         catch (Exception error) { failure = error.Message; }
         yield return null; // finish deferred destruction with world simulation frozen
@@ -445,6 +454,11 @@ public sealed class EcoWorldSave : MonoBehaviour
             if (index < 0) return null;
             var prefab = Resources.Load<GameObject>("EcoInfrastructure/" + EcoBuildingCatalog.Entries[index].Prefab);
             return prefab != null ? Instantiate(prefab, entity.position, entity.rotation) : null;
+        }
+        if (entity.kind == "fire" && fireTemplate != null)
+        {
+            var clone = Instantiate(fireTemplate, entity.position, entity.rotation);
+            clone.name = "Run fire"; clone.hideFlags = HideFlags.None; clone.SetActive(true); return clone;
         }
         if (entity.kind == "plant" && int.TryParse(entity.template, out int kind))
             return PlantedSeed.Create(entity.position, (EcoCropCatalog.Kind)kind)?.gameObject;
@@ -505,9 +519,13 @@ public sealed class EcoWorldSave : MonoBehaviour
         return false;
     }
     private static bool MutableEntity(GameObject go) => go.GetComponent<EnemyBrain>() != null || go.GetComponent<PlantedSeed>() != null
-        || go.GetComponent<RecyclableResource>() != null || go.GetComponent<EcoVegetation>() != null || (go.GetComponent<EcoStructure>() != null && go.GetComponent<EcoStructure>().playerBuilt);
+        || go.GetComponent<RecyclableResource>() != null || go.GetComponent<EcoVegetation>() != null || (go.GetComponent<EcoStructure>() != null && go.GetComponent<EcoStructure>().playerBuilt)
+        || RunFire(go);
+    // Fires lit during a run are save entities of their own; the authored brush fire stays a scene object.
+    private static bool RunFire(GameObject go) => go.GetComponent<EcoFire>() != null && go.TryGetComponent<EcoSaveIdentity>(out var identity) && !identity.InitialObject;
     private static string KindOf(GameObject go) => go.GetComponent<EcoStructure>() != null ? "structure" : go.GetComponent<EnemyBrain>() != null ? "enemy"
-        : go.GetComponent<PlantedSeed>() != null ? "plant" : go.GetComponent<EcoVegetation>() != null ? "vegetation" : go.GetComponent<RecyclableResource>() != null ? "waste" : "scene";
+        : go.GetComponent<PlantedSeed>() != null ? "plant" : go.GetComponent<EcoVegetation>() != null ? "vegetation" : go.GetComponent<RecyclableResource>() != null ? "waste"
+        : RunFire(go) ? "fire" : "scene";
     private static Hook[] CaptureHooks(IEnumerable<MonoBehaviour> components)
     {
         var result = new List<Hook>();

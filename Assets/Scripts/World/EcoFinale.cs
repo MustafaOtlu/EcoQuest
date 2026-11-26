@@ -137,12 +137,24 @@ public sealed class EcoFinale : MonoBehaviour
         var station = EcoGlacierStation.Current;
         if (station == null || !station.Active) { Say("Final terminali buzul istasyonunda: önce istasyonu çalıştır " + EcoKeys.Tag(EcoKeys.Action.Interact) + "."); return; }
         if ((weapons.transform.position - TerminalPosition).sqrMagnitude > TerminalReach * TerminalReach) { Say("Final için buzul terminaline yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Finale) + "'ye bas."); return; }
-        if (projects.Readiness < MinimumReadiness) { Say("Final için hazırlık yetersiz: en az " + Mathf.CeilToInt(MinimumReadiness * 6f) + " proje bitmeli (" + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük)."); return; }
+        var run = EcoRun.Current;
+        bool inRun = run != null && run.Active;
+        if (inRun && !run.FinaleOpen) { Say(run.Ended ? "Bu vadinin run'ı bitti; fırtına artık gelmeyecek." : "Fırtına " + EcoRun.Days + ". gün gelir. Şimdi gün " + run.RunDay + ": hedeflerine çalış."); return; }
+        if (!inRun && projects.Readiness < MinimumReadiness) { Say("Final için hazırlık yetersiz: en az " + Mathf.CeilToInt(MinimumReadiness * projects.All.Count) + " proje bitmeli (" + EcoKeys.Tag(EcoKeys.Action.Journal) + " günlük)."); return; }
         if (TerminalEnergy < 40f || TerminalWater < 30f)
         { Say("Terminal rezervi yetersiz: " + TerminalEnergy.ToString("0") + "/40 EB, " + TerminalWater.ToString("0") + "/30 SB. Terminalde " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile araçtan rezerv yükle.", 7f); return; }
         if (weapons.Energy < 40f || weapons.Water < 15f || weapons.MetalAmmo < 5)
         { Say("Araç hazır değil: en az 40 EB (" + weapons.Energy.ToString("0") + "), 15 SB (" + weapons.Water.ToString("0") + "), 5 demir top (" + weapons.MetalAmmo + ").", 7f); return; }
-        Begin(projects.Readiness);
+        Begin(StormLevel(projects));
+    }
+
+    /// <summary>0.5 (strong monster) .. 1 (weak). In a run the storm feeds on what pollution is left in the valley;
+    /// outside a run the old project readiness still decides.</summary>
+    private static float StormLevel(EcoProjects projects)
+    {
+        var run = EcoRun.Current;
+        if (run != null && run.Active) return Mathf.Lerp(0.5f, 1f, Mathf.InverseLerp(25f, 85f, EcoRun.ValleyHealth()));
+        return projects.Readiness;
     }
 
     private void Begin(float level)
@@ -267,6 +279,7 @@ public sealed class EcoFinale : MonoBehaviour
     {
         ClearEncounter();
         Won = true;
+        EcoRun.Current?.FinaleWon();
         Say("İklim Canavarı yatıştı! Yerleşim ve çocuk nefes alıyor. KAZANDIN!\nSerbest oyun sürüyor: siparişler, çevre ve yerleşim seninle.", 25f);
         EcoWorldSave.Current?.RequestAutosave();
     }
@@ -363,7 +376,11 @@ public sealed class EcoFinale : MonoBehaviour
     {
         float cw = Mathf.Min(520f, w - 40f);
         string heading = "Final terminali · " + EcoKeys.Tag(EcoKeys.Action.Finale) + " başlat";
-        string readiness = "Hazırlık %" + Mathf.RoundToInt(projects.Readiness * 100f) + " / %50";
+        var run = EcoRun.Current;
+        bool inRun = run != null && run.Active;
+        string readiness = inRun ? (run.FinaleOpen ? "Fırtına gecesi · canavarın gücü vadideki kirliliğe bağlı (sağlık %" + EcoRun.ValleyHealth().ToString("0") + ")"
+                : "Fırtına " + EcoRun.Days + ". gün · şimdi gün " + run.RunDay)
+            : "Hazırlık %" + Mathf.RoundToInt(projects.Readiness * 100f) + " / %50";
         string reserves = "Terminal " + TerminalEnergy.ToString("0") + "/40 EB · " + TerminalWater.ToString("0") + "/30 SB  (" + EcoKeys.Tag(EcoKeys.Action.Interact) + " yükle)";
         string vehicle = "Araç " + weapons.Energy.ToString("0") + "/40 EB · " + weapons.Water.ToString("0") + "/15 SB · " + weapons.MetalAmmo + "/5 top";
         float headingHeight = Mathf.Max(30f, EcoTheme.Subtitle.CalcHeight(new GUIContent(heading), cw - 84f));
@@ -373,7 +390,7 @@ public sealed class EcoFinale : MonoBehaviour
         EcoTheme.Panel(card);
         EcoTheme.Icon(new Rect(card.x + 22f, card.y + 24f, 30f, 30f), "poi_finale");
         GUI.Label(new Rect(card.x + 62f, card.y + 22f, card.width - 84f, headingHeight), heading, EcoTheme.Subtitle);
-        start = Row(card, start, "level", readiness, projects.Readiness >= MinimumReadiness);
+        start = Row(card, start, "level", readiness, inRun ? run.FinaleOpen : projects.Readiness >= MinimumReadiness);
         start = Row(card, start, "electricity", reserves, TerminalEnergy >= 40f && TerminalWater >= 30f);
         Row(card, start, "ammo", vehicle, weapons.Energy >= 40f && weapons.Water >= 15f && weapons.MetalAmmo >= 5);
         return card.yMax;

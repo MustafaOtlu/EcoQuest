@@ -61,6 +61,7 @@ public sealed class EcoProjects : MonoBehaviour
         if (GetComponent<EcoTransformationMoment>() == null) gameObject.AddComponent<EcoTransformationMoment>();
         if (GetComponent<EcoExpertDemo>() == null) gameObject.AddComponent<EcoExpertDemo>();
         if (FindFirstObjectByType<EcoGameMenu>() == null) gameObject.AddComponent<EcoGameMenu>();
+        if (GetComponent<EcoRun>() == null) gameObject.AddComponent<EcoRun>();
         Add("Mahalleye ilk enerji", "Üretim, kablo ve şarj",
             "Kendi güneş panelini, bataryanı ve şarj istasyonunu kur; iki kabloyu bağla, 10 EB şarj al ve ağı çalışır tut.",
             "Araç elektriği kısıtlı; hazırlık için yerel bir şebeke gerekiyor.",
@@ -153,9 +154,10 @@ public sealed class EcoProjects : MonoBehaviour
         }
     }
     public void ResetChargeObservation() { chargeObserved.Clear(); foreach (var station in FindObjectsByType<EcoChargingStation>(FindObjectsSortMode.None)) chargeObserved[station.GetInstanceID()] = station.TotalDeliveredEnergy; }
-    private EcoRegion Region(string name) => regions.FirstOrDefault(r => r != null && r.Key.Contains(name));
-    public EcoRegion GroveRegion => Region("Koruluk") ?? regions.FirstOrDefault(r => r != null && r.TryGetComponent<EcoRegionInfo>(out var info) && info.kind == EcoRegionInfo.Kind.Wind)
-        ?? Region("Rüzg");
+    // Regions are found by kind, not by name, so a rolled or reshuffled valley still resolves its goals. With two
+    // regions of a kind (two lakes) the most polluted one is the one a project is about.
+    private static EcoRegion Region(EcoRegionInfo.Kind kind) => EcoRun.RegionOf(kind);
+    public EcoRegion GroveRegion => Region(EcoRegionInfo.Kind.Grove) ?? Region(EcoRegionInfo.Kind.Wind);
     private static bool Generator(EcoPowerNode node) => node.kind == EcoPowerNode.Kind.Solar || node.kind == EcoPowerNode.Kind.Wind || node.kind == EcoPowerNode.Kind.Hydro;
     private static bool Supported(EcoPowerNode node, float demand) => node != null && node.Operational
         && (node.NetworkGeneration >= demand || node.NetworkStored >= Mathf.Max(1f, demand));
@@ -184,7 +186,7 @@ public sealed class EcoProjects : MonoBehaviour
     }
     private bool LakeCheck(out string status)
     {
-        var lake = Region("Doğu Göl");
+        var lake = Region(EcoRegionInfo.Kind.Lake);
         if (lake == null) { status = "Fabrika Gölü bulunamadı"; return false; }
         if (!EcoDiscoveries.InletRemediated(lake)) { status = "Doğu kıyısındaki kirletici girişi kapat " + EcoKeys.Tag(EcoKeys.Action.Interact) + ""; return false; }
         foreach (var intake in water)
@@ -223,7 +225,7 @@ public sealed class EcoProjects : MonoBehaviour
     }
     private bool IndustryCheck(out string status)
     {
-        var region = Region("Sanayi");
+        var region = Region(EcoRegionInfo.Kind.Industry);
         if (region == null) { status = "Fabrikalar bölgesi bulunamadı"; return false; }
         var factories = FindObjectsByType<EcoFactory>(FindObjectsSortMode.None).Where(f => region.Contains(f.transform.position)).ToArray();
         int ready = factories.Count(f => f.Filtered && f.Converted && Supported(f.GetComponent<EcoPowerNode>(), 2f));
@@ -328,7 +330,7 @@ public sealed class EcoProjects : MonoBehaviour
                 break;
             case 1:
             {
-                var lake = Region("Doğu Göl");
+                var lake = Region(EcoRegionInfo.Kind.Lake);
                 bool intake = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Intake && n.SourceRegion == lake);
                 bool purifier = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Purifier && n.SourceRegion == lake);
                 bool tank = water.Any(n => n != null && n.Operational && n.kind == EcoWaterNode.Kind.Tank);
@@ -340,7 +342,7 @@ public sealed class EcoProjects : MonoBehaviour
             }
             case 3:
             {
-                var region = Region("Sanayi");
+                var region = Region(EcoRegionInfo.Kind.Industry);
                 var factories = FindObjectsByType<EcoFactory>(FindObjectsSortMode.None).Where(f => region != null && region.Contains(f.transform.position)).ToArray();
                 int filters = Mathf.Max(0, factories.Count(f => !f.Filtered) - (player != null ? player.LargeFilters : 0));
                 int conversions = factories.Count(f => !f.Converted);
@@ -389,7 +391,7 @@ public sealed class EcoProjects : MonoBehaviour
         if (project.met) return verifying;
         if (index == 1)
         {
-            var lake = Region("Doğu Göl");
+            var lake = Region(EcoRegionInfo.Kind.Lake);
             if (lake != null && !EcoDiscoveries.InletRemediated(lake)) return "Gölü canlandır · kirletici girişi kapat, yanında " + EcoKeys.Tag(EcoKeys.Action.Interact);
         }
         var (metal, plastic) = MaterialShortfall(index);
@@ -419,21 +421,21 @@ public sealed class EcoProjects : MonoBehaviour
                 if (lesson != null && lesson.Active) return (lesson.Target, lesson.TargetName);
                 var charger = ReadyCharger(player != null ? player.transform.position : Vector3.zero);
                 if (charger != null) return (charger.transform.position, "Şarj istasyonu");
-                var r = Region("Güneş"); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası");
+                var r = Region(EcoRegionInfo.Kind.Sun); return (r != null ? r.transform.position : (Vector3?)null, "Güneş Ovası");
             }
             case 1:
                 foreach (var inlet in FindObjectsByType<EcoPollutionInlet>(FindObjectsSortMode.None))
                     if (!inlet.Remediated) return (inlet.transform.position, "Kirletici giriş");
-                { var r = Region("Doğu Göl"); return (r != null ? r.transform.position : (Vector3?)null, "Fabrika Gölü"); }
+                { var r = Region(EcoRegionInfo.Kind.Lake); return (r != null ? r.transform.position : (Vector3?)null, "Fabrika Gölü"); }
             case 2: { var r = GroveRegion; return (r != null ? r.transform.position : (Vector3?)null, "Orman"); }
             case 3:
                 foreach (var factory in FindObjectsByType<EcoFactory>(FindObjectsSortMode.None))
                     if (!factory.Filtered) return (factory.transform.position, "Filtresiz fabrika");
-                { var r = Region("Sanayi"); return (r != null ? r.transform.position : (Vector3?)null, "Fabrikalar"); }
+                { var r = Region(EcoRegionInfo.Kind.Industry); return (r != null ? r.transform.position : (Vector3?)null, "Fabrikalar"); }
             case 5:
                 if (EcoGlacierStation.Current != null) return (EcoGlacierStation.Current.transform.position, "Buzul istasyonu");
-                { var r = Region("Buzul"); return (r != null ? r.transform.position : (Vector3?)null, "Buzul Dağı"); }
-            default: { var r = Region("Şehir"); return (r != null ? r.transform.position : (Vector3?)null, "Şehir"); }
+                { var r = Region(EcoRegionInfo.Kind.Glacier); return (r != null ? r.transform.position : (Vector3?)null, "Buzul Dağı"); }
+            default: { var r = Region(EcoRegionInfo.Kind.City); return (r != null ? r.transform.position : (Vector3?)null, "Şehir"); }
         }
     }
 
@@ -445,8 +447,8 @@ public sealed class EcoProjects : MonoBehaviour
         string text = HintLevels[index] == 1 ? project.symptom : HintLevels[index] == 2 ? project.cause : project.action;
         if (HintLevels[index] == 3)
         {
-            var target = index == 1 ? Region("Doğu Göl") : index == 2 ? GroveRegion : index == 3 ? Region("Sanayi")
-                : index == 5 ? Region("Buzul") : Region("Güneş") ?? Region("Şehir");
+            var target = index == 1 ? Region(EcoRegionInfo.Kind.Lake) : index == 2 ? GroveRegion : index == 3 ? Region(EcoRegionInfo.Kind.Industry)
+                : index == 5 ? Region(EcoRegionInfo.Kind.Glacier) : Region(EcoRegionInfo.Kind.Sun) ?? Region(EcoRegionInfo.Kind.City);
             if (target != null) { HintPosition = target.transform.position; HintUntil = Time.unscaledTime + 18f; }
         }
         player?.ShowFeedback(text); return text;
