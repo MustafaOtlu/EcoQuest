@@ -108,15 +108,16 @@ public sealed class EcoRunUI : MonoBehaviour
         float py = y + 32f, ph = H(EcoTheme.Body, s.ProblemText, column);
         GUI.Label(new Rect(x, py, column, ph), s.ProblemText, EcoTheme.Body);
         py += ph + 14f;
-        GUI.Label(new Rect(x, py, column, 26f), "Bölgelerin başlangıç durumu", EcoTheme.Subtitle);
+        GUI.Label(new Rect(x, py, column, 26f), "Vadinin haritası ve bölgeler", EcoTheme.Subtitle);
         py += 32f;
-        foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID).OrderBy(g => g.regionName))
+        // The valley is assembled only when the run starts, so its regions come from the layout, not the scene.
+        foreach (var row in EcoValley.Rows(EcoValley.Layout(s)))
         {
-            if (!region.TryGetComponent<EcoRegionInfo>(out var info) || py > footer - 70f) continue;
-            float pollution = (s.Pollution(info.kind, region.airPollution) + s.Pollution(info.kind, region.waterPollution) + s.Pollution(info.kind, region.soilPollution)) / 3f;
-            if (s.training) pollution = (region.airPollution + region.waterPollution + region.soilPollution) / 3f;
-            EcoTheme.Icon(new Rect(x, py + 1f, 22f, 22f), RegionIcon(info.kind));
-            GUI.Label(new Rect(x + 30f, py, column * 0.45f, 24f), region.regionName, EcoTheme.Muted);
+            if (py > footer - 70f) continue;
+            var a = row.pollution;
+            float pollution = s.training ? (a.x + a.y + a.z) / 3f : (s.Pollution(row.kind, a.x) + s.Pollution(row.kind, a.y) + s.Pollution(row.kind, a.z)) / 3f;
+            EcoTheme.Icon(new Rect(x, py + 1f, 22f, 22f), RegionIcon(row.kind));
+            GUI.Label(new Rect(x + 30f, py, column * 0.45f, 24f), row.name + " · " + row.place, EcoTheme.Muted);
             Bar(new Rect(x + 30f + column * 0.47f, py + 9f, column * 0.35f, 7f), pollution / 100f, pollution >= 45f ? EcoSettings.Bad : pollution >= 20f ? EcoUI.Amber : EcoSettings.Good);
             GUI.Label(new Rect(x + column - 50f, py, 50f, 24f), "%" + pollution.ToString("0"), EcoTheme.Muted);
             py += 27f;

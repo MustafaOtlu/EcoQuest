@@ -323,7 +323,7 @@ public static partial class BuildEcoWorldMap
             var mesh = new Mesh { name = building.name + " facade" };
             mesh.CombineMeshes(combined.ToArray(), mergeSubMeshes: false, useMatrices: false);
             foreach (var temporary in temporaryMeshes) Object.DestroyImmediate(temporary);
-            var path = AssetDatabase.GenerateUniqueAssetPath(Folder + "Meshes/Facade_" + building.parent.name + "_" + building.GetSiblingIndex() + ".asset");
+            var path = AssetDatabase.GenerateUniqueAssetPath(MeshDir + "Facade_" + building.parent.name + "_" + building.GetSiblingIndex() + ".asset");
             AssetDatabase.CreateAsset(mesh, path);
             Root.gameObject.AddComponent<MeshFilter>().sharedMesh = mesh;
             Root.gameObject.AddComponent<MeshRenderer>().sharedMaterials = materials.ToArray();

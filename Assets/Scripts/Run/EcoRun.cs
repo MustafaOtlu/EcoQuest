@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -81,31 +82,55 @@ public sealed class EcoRun : MonoBehaviour
     {
         bool first = EcoMeta.Current.runs == 0;
         Pending = first ? EcoScenario.Training() : EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal);
-        PendingGoals = EcoGoalCatalog.Pick(Pending, PresentKinds());
+        PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
         ui.ShowBriefing();
     }
     public void SetPendingDifficulty(EcoDifficulty difficulty)
     {
         if (Pending == null || Pending.training) return;
-        Pending = EcoScenario.Roll(Pending.seed, difficulty); PendingGoals = EcoGoalCatalog.Pick(Pending, PresentKinds());
+        Pending = EcoScenario.Roll(Pending.seed, difficulty); PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
     }
     public void RerollPending()
     {
         if (Pending == null || Pending.training) return;
-        Pending = EcoScenario.Roll(NewSeed(), Pending.difficulty); PendingGoals = EcoGoalCatalog.Pick(Pending, PresentKinds());
+        Pending = EcoScenario.Roll(NewSeed(), Pending.difficulty); PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
     }
     /// <summary>Lets a returning player skip the training valley.</summary>
     public void SkipTraining()
     {
-        Pending = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal); PendingGoals = EcoGoalCatalog.Pick(Pending, PresentKinds());
+        Pending = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal); PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
     }
     private static int NewSeed() => (int)(DateTime.UtcNow.Ticks % 2000000000L) ^ UnityEngine.Random.Range(1, 99999);
+
+    /// <summary>Goals are picked from the regions the pending valley will have, not the one on screen.</summary>
+    private HashSet<EcoRegionInfo.Kind> PendingKinds() => EcoValleyAssembler.Current != null ? EcoValley.Kinds(EcoValley.Layout(Pending)) : PresentKinds();
 
     public void BeginPending()
     {
         if (Pending == null) return;
+        // Another valley layout: reload the scene into it; the run starts there as soon as the world exists.
+        var assembler = EcoValleyAssembler.Current;
+        var layout = EcoValley.Layout(Pending);
+        if (assembler != null && EcoValley.Code(layout) != assembler.Code)
+        {
+            pendingStart = Pending; Pending = null;
+            EcoValley.Request(layout); EcoValley.SkipTitle = true;
+            PlayerController.SetPaused(false);
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
+            return;
+        }
         Begin(Pending, PendingGoals, true);
         Pending = null;
+    }
+
+    private static EcoScenario pendingStart;
+    private IEnumerator Start()
+    {
+        if (pendingStart == null) yield break;
+        var scenario = pendingStart; pendingStart = null;
+        yield return null; yield return null; // regions, clock and the save system finish starting first
+        Begin(scenario, EcoGoalCatalog.Pick(scenario, PresentKinds()), true);
     }
 
     private void Begin(EcoScenario scenario, List<EcoGoalState> goals, bool applyWorld)
@@ -459,7 +484,7 @@ public sealed class EcoRun : MonoBehaviour
     }
     private static readonly Dictionary<EcoRegionInfo.Kind, EcoRegion> regionCache = new Dictionary<EcoRegionInfo.Kind, EcoRegion>();
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { regionCache.Clear(); autoStart = false; }
+    private static void ResetStatics() { regionCache.Clear(); autoStart = false; pendingStart = null; }
 
     private System.Random spawnRandom;
     private System.Random SpawnRandom => spawnRandom ??= new System.Random(State.seed ^ 0x5bd1e995);

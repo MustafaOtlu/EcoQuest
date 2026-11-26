@@ -1,0 +1,129 @@
+EcoValley karo raporu
+== Tile_Border
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1764, eğim/su 0
+Bitki örtüsü: 0 ağaç, 1475 sınır ormanı ağacı, 0 kaya, 0 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 0 renderer URP Lit'e çevrildi (0 malzeme).
+Doğa paleti: 1475 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Glacier
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 0 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 3 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 3 toprak patika, 2 dere; ızgara yok
+Bölge: Buzul Dağı merkez=(75.00, 125.00) boyut=(150.00, 50.00) hava=2 su=2 toprak=0 karbon=6
+Buzul: 31 buz bloğu (karbonla küçülür), izleme istasyonu, kar yağışı
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1304, eğim/su 0
+Bitki örtüsü: 23 ağaç, 0 sınır ormanı ağacı, 33 kaya, 0 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 12 renderer URP Lit'e çevrildi (16 malzeme).
+Doğa paleti: 56 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Sun
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 3 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 6 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 1 toprak patika, 2 dere; ızgara yok
+Bölge: Güneş Ovası merkez=(75.00, 25.00) boyut=(50.00, 50.00) hava=5 su=8 toprak=10 karbon=10
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1706, eğim/su 0
+Bitki örtüsü: 3 ağaç, 0 sınır ormanı ağacı, 0 kaya, 4 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 0 renderer URP Lit'e çevrildi (0 malzeme).
+Doğa paleti: 5 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_City
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 4
+Kavşak: 0 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 13 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 0 toprak patika, 2 dere; ızgara yok
+Bölge: Şehir merkez=(75.00, 75.00) boyut=(50.00, 50.00) hava=20 su=22 toprak=20 karbon=28
+Model [apartman] = Assets/Zipler ve Modeller/Apartman/apartment+building+3d+model.fbx
+Model [modern] = Assets/Zipler ve Modeller/Modern ev/modern+house+3d+model.fbx
+Model [trafik] = Assets/Zipler ve Modeller/Trafik ısıgı/traffic+light+3d+model.fbx
+Model [cop] = Assets/Zipler ve Modeller/Cop kutusu/industrial+trash+can+3d+model.fbx
+Model [lamba] = Assets/Zipler ve Modeller/gece lambası/street+lamp+3d+model.fbx
+Şehir: göbekli kavşak, 4 kamu yapısı, sokak kenarlarına 0 bina (ızgara blok yok; elenen aday: alan 8, yol 8, çakışma 4)
+Şehir: 6 iç parsel evi (en yakın sokağa bakar; elenen: yola yakın 481, uzak 0, çakışma 78, KeepOut 12)
+Şehir: 0 cadde ağacı
+Şehir: 8 sokak lambası
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1761, eğim/su 0
+Bitki örtüsü: 1 ağaç, 0 sınır ormanı ağacı, 0 kaya, 1 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 1 renderer URP Lit'e çevrildi (1 malzeme).
+Doğa paleti: 2 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Lake
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 4 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 5 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 0 toprak patika, 2 dere; ızgara yok
+Bölge: Balık Gölü merkez=(25.00, 25.00) boyut=(50.00, 50.00) hava=4 su=8 toprak=6 karbon=6
+Göl: Balık Gölü (temiz) merkez=(25.00, 25.00) yarıçap=9,5
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1712, eğim/su 1
+Bitki örtüsü: 24 ağaç, 0 sınır ormanı ağacı, 0 kaya, 9 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 4 renderer URP Lit'e çevrildi (7 malzeme).
+Doğa paleti: 32 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_DirtyLake
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 4 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 5 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 0 toprak patika, 2 dere; ızgara yok
+Bölge: Fabrika Gölü merkez=(125.00, 25.00) boyut=(50.00, 50.00) hava=22 su=64 toprak=35 karbon=22
+Göl: Fabrika Gölü (kirli) merkez=(125.00, 25.00) yarıçap=9
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1714, eğim/su 4
+Bitki örtüsü: 12 ağaç, 0 sınır ormanı ağacı, 3 kaya, 0 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 2 renderer URP Lit'e çevrildi (2 malzeme).
+Doğa paleti: 15 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Industry
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 5 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 7 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 0 toprak patika, 2 dere; ızgara yok
+Bölge: Fabrikalar merkez=(125.00, 75.00) boyut=(50.00, 50.00) hava=66 su=55 toprak=58 karbon=58
+Sanayi karosu: 2 fabrika + depo, tanklar, konteynerler, atık sahası
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1738, eğim/su 0
+Bitki örtüsü: 2 ağaç, 0 sınır ormanı ağacı, 0 kaya, 0 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 0 renderer URP Lit'e çevrildi (0 malzeme).
+Doğa paleti: 2 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Wind
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 5 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 6 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 0 toprak patika, 2 dere; ızgara yok
+Bölge: Rüzgâr Tepeleri merkez=(25.00, 75.00) boyut=(50.00, 50.00) hava=6 su=6 toprak=6 karbon=8
+Rüzgâr karosu: 4 dekoratif türbin
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1679, eğim/su 9
+Bitki örtüsü: 15 ağaç, 0 sınır ormanı ağacı, 3 kaya, 4 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 4 renderer URP Lit'e çevrildi (6 malzeme).
+Doğa paleti: 21 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+== Tile_Grove
+Zemin ızgarası: 171×171 köşe, hücre 1,470588 m, oynanabilir alan 150×150 m
+Zemin: Unity Terrain yerine 25 parça alçak poligon mesh (köşe renkli, MeshCollider)
+Dönüş cebi: 0
+Kavşak: 0 birleşik kavşak (dolgu asfalt + kavisli köşe kaldırımı), çıkmazlarda dönüş cebi
+Yollar: 4 asfalt yol (bordür, kaldırım, şerit, yaya geçidi), 1 toprak patika, 2 dere; ızgara yok
+Bölge: Orman merkez=(25.00, 75.00) boyut=(50.00, 50.00) hava=8 su=8 toprak=22 karbon=14
+Bitki modelleri: yapraklı=16 çam=22 kuru=7 kaya=196 bitki=71
+Ağaç adayları: yer uygun değil 1659, eğim/su 0
+Bitki örtüsü: 75 ağaç, 0 sınır ormanı ağacı, 2 kaya, 6 küçük bitki. EcoVegetation (kuş/kelebek için canlı ağaç) yalnız bölge başına en çok 3 ağaçta; diğerleri dekor.
+Malzeme düzeltme: 2 renderer URP Lit'e çevrildi (4 malzeme).
+Doğa paleti: 82 renderer (yaprak, kabuk, taş, çimen) oyunun renklerine uyarlandı
+Model dokuları: 0 renderer klasöründeki *_texture.png ile boyandı
+Süre: 17 sn

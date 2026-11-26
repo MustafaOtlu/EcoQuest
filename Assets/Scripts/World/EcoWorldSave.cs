@@ -55,7 +55,7 @@ public sealed class EcoWorldSave : MonoBehaviour
     [Serializable] private sealed class Snapshot
     {
         public int version = SchemaVersion;
-        public string session, scene;
+        public string session, scene, layout;
         public Vector3 player;
         public Quaternion playerRotation;
         public int day;
@@ -124,7 +124,11 @@ public sealed class EcoWorldSave : MonoBehaviour
             if (TryRead("auto-" + (i + 1), out var envelope, out _, out _) && string.CompareOrdinal(envelope.savedAt, newest) > 0)
             { newest = envelope.savedAt; nextAuto = (i + 1) % 3; }
         initialized = true;
+        if (reloadSlot != null) { string slot = reloadSlot; reloadSlot = null; LoadSlot(slot); }
     }
+    private static string reloadSlot;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetReload() => reloadSlot = null;
     private void OnDestroy()
     {
         if (Current == this) Current = null;
@@ -215,6 +219,7 @@ public sealed class EcoWorldSave : MonoBehaviour
             var info = new SlotInfo { Id = id, Name = SlotName(id), Exists = File.Exists(PathFor(id)) || File.Exists(PathFor(id) + ".bak"), Detail = "Boş slot", SavedAt = "" };
             if (!info.Exists) return info;
             if (!TryRead(id, out var envelope, out var snapshot, out var reason)) { info.Detail = reason; return info; }
+            if (EcoValleyAssembler.Current != null && string.IsNullOrEmpty(snapshot.layout)) { info.Detail = "Eski sabit harita kaydı · açılamaz"; return info; }
             info.CanLoad = true; info.Day = snapshot.day; info.SavedAt = envelope.savedAt;
             info.IsBackup = reason.Length > 0;
             info.Detail = "Gün " + snapshot.day + " • " + (snapshot.entities?.Count(e => e.kind == "structure") ?? 0) + " yapı" + (info.IsBackup ? " • sağlam yedek" : "");
@@ -253,6 +258,21 @@ public sealed class EcoWorldSave : MonoBehaviour
         if (!TryRead(slot, out _, out var snapshot, out var reason)) { Say(reason); return false; }
         if (!string.IsNullOrEmpty(snapshot.scene) && snapshot.scene != SceneManager.GetActiveScene().path)
         { Say("Bu kayıt farklı bir haritaya ait: " + snapshot.scene); return false; }
+        var valley = EcoValleyAssembler.Current;
+        if (valley != null)
+        {
+            if (string.IsNullOrEmpty(snapshot.layout)) { Say("Bu kayıt eski sabit haritaya ait; karolu vadide açılamaz."); return false; }
+            if (snapshot.layout != valley.Code)
+            {
+                // The save belongs to another valley layout: rebuild that valley first, then load into it.
+                var layout = EcoValley.Parse(snapshot.layout);
+                if (layout == null) { Say("Kayıttaki vadi düzeni okunamadı."); return false; }
+                EcoValley.Request(layout); EcoValley.SkipTitle = true; reloadSlot = slot;
+                PlayerController.SetPaused(false);
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                return true;
+            }
+        }
         if (BossActive) FindFirstObjectByType<EcoFinale>()?.RestoreState(false);
         StartCoroutine(Restore(snapshot, reason.Length > 0));
         return true;
@@ -290,7 +310,7 @@ public sealed class EcoWorldSave : MonoBehaviour
         foreach (var go in objects) EcoSaveIdentity.Ensure(go);
         var weapons = FindFirstObjectByType<PlayerWeaponSystem>();
         if (weapons == null) throw new InvalidOperationException("Oyuncu envanteri hazır değil.");
-        var data = new Snapshot { session = weapons.CaptureSessionJson(), scene = SceneManager.GetActiveScene().path,
+        var data = new Snapshot { session = weapons.CaptureSessionJson(), scene = SceneManager.GetActiveScene().path, layout = EcoValleyAssembler.Current != null ? EcoValleyAssembler.Current.Code : "",
             player = weapons.transform.position, playerRotation = weapons.transform.rotation, day = EcoWorldClock.Current != null ? EcoWorldClock.Current.day : 1 };
         var controller = FindFirstObjectByType<PlayerController>();
         if (controller != null) { data.player = controller.transform.position; data.playerRotation = controller.transform.rotation; }

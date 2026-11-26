@@ -29,24 +29,25 @@ public static partial class BuildEcoWorldMap
     // Playable edge length in metres. Every position below is authored for 150 m and multiplied by L.
     private const float Size = 150f;
     private const float L = Size / 150f;
-    private const float Border = 25.5f;   // hills/forest outside the walls, visual only
-    private const float Cell = 1.5f;      // ground mesh resolution
+    private static float Border = 25.5f;   // hills/forest outside the walls, visual only
+    private static float Cell = 1.5f;      // ground mesh resolution
     private const float Pave = 1.6f;      // pavement width beside urban streets
     private const float LakeApproachPavementLength = 32f;
     private const int ChunkCells = 34;
     private const float Ground0 = 22f;
     private const float WaterY = 20.6f;
-    private static readonly Vector2 Base = new Vector2(75f * L, 16f * L);
-    private static readonly Vector2 Roundabout = new Vector2(75f * L, 80f * L);
-    private const float RoundaboutR = 8f;
-    private static readonly Vector2 LakeA = new Vector2(24f * L, 30f * L);
-    private static readonly Vector2 LakeB = new Vector2(127f * L, 30f * L);
-    private const float LakeAR = 11f, LakeBR = 10f;
-    private static readonly Vector2 StationPad = new Vector2(96f * L, 133f * L);
+    private static Vector2 Base = new Vector2(75f * L, 16f * L);
+    private static Vector2 Roundabout = new Vector2(75f * L, 80f * L);
+    private static float RoundaboutR = 8f;
+    private static Vector2 LakeA = new Vector2(24f * L, 30f * L);
+    private static Vector2 LakeB = new Vector2(127f * L, 30f * L);
+    private static float LakeAR = 11f, LakeBR = 10f;
+    private static Vector2 StationPad = new Vector2(96f * L, 133f * L);
     // The tank farm in Fabrikalar; reserved before the town is built so no house lands among the tanks.
-    private static readonly Rect TankFarm = new Rect(102f * L, 86f * L, 14f, 15f);
+    private static Rect TankFarm = new Rect(102f * L, 86f * L, 14f, 15f);
     // GDD §9: level ground beside the Dağ Deresi mouth so the small hydro plant (6×6 m) can actually be placed.
-    private static readonly Vector2 HydroPad = new Vector2(6.5f * L, 24.5f * L);
+    private static Vector2 HydroPad = new Vector2(6.5f * L, 24.5f * L);
+    private static string MeshDir = Folder + "Meshes/";
     private static Vector2 P(float x, float z) => new Vector2(x * L, z * L);
 
     // ---------------------------------------------------------------- definitions
@@ -242,11 +243,12 @@ public static partial class BuildEcoWorldMap
         return Mathf.Lerp(h, Mathf.Min(h, bottom), bowl);
     }
 
-    private static float GlacierRise(float z) => Smooth(110f * L, 150f * L, z);
+    private static float GlacierRise(float z) => Smooth((tileMode ? 104f : 110f) * L, 150f * L, z);
 
     /// <summary>Height before roads are cut in.</summary>
     private static float RawHeight(float x, float z)
     {
+        if (tileMode) return TileRawHeight(x, z);
         float h = Ground0 + (Fbm(x * 0.035f, z * 0.035f, 3) - 0.5f) * 1.4f;
         // Rolling windy hills in the west (crests for turbines).
         float wm = RectMask(x, z, 22f * L, 74f * L, 16f * L, 18f * L, 12f);
@@ -308,6 +310,18 @@ public static partial class BuildEcoWorldMap
                 best = Mathf.Min(best, DistToSegment(p, road.pos[i], road.pos[i + 1]) - margin);
         }
         return best;
+    }
+
+    private static string NearestRoadName(Vector2 p)
+    {
+        float best = float.MaxValue; string name = "";
+        foreach (var road in Roads)
+            for (int i = 0; i + 1 < road.pos.Count; i++)
+            {
+                float d = DistToSegment(p, road.pos[i], road.pos[i + 1]) - road.Width * 0.5f - (road.Urban ? Pave + 0.4f : 0f);
+                if (d < best) { best = d; name = road.name + "/" + road.kind + "/w" + road.Width; }
+            }
+        return name;
     }
 
     private static bool OnPavedRoad(Vector2 p)
@@ -860,6 +874,7 @@ public static partial class BuildEcoWorldMap
         // Roads follow a blurred copy of the land so crossing roads share one height and slopes stay gentle.
         roadField = (float[,])heights.Clone();
         for (int pass = 0; pass < 4; pass++) roadField = Blur(roadField, 3);
+        if (tileMode) PinRoadField();
 
         foreach (var road in Roads) SampleRoad(road);
     }
@@ -1023,7 +1038,7 @@ public static partial class BuildEcoWorldMap
         if (kind == EcoRegionInfo.Kind.Grove) c = Color.Lerp(c, Color.Lerp(GrassDark, Dirt, 0.35f), 0.55f);
         if (kind == EcoRegionInfo.Kind.Industry)
         {
-            float industry = RectMask(x, z, 128f * L, 80f * L, 21f * L, 25f * L, 6f);
+            float industry = RectMask(x, z, IndustryCenter.x, IndustryCenter.y, IndustryHalf.x, IndustryHalf.y, 6f);
             c = Color.Lerp(c, Color.Lerp(IndustrialGround, Dirt, n2), industry * 0.85f);
         }
         // The east lake shore is muddy, the west one sandy.
@@ -1046,7 +1061,8 @@ public static partial class BuildEcoWorldMap
         c = Color.Lerp(c, Color.Lerp(c, Dirt, 0.45f), 1f - Smooth(-0.5f, 2.5f, rd));
         // Hand-painted variation: a tiny per-vertex jitter breaks up flat colour without looking noisy.
         float jitter = (Mathf.PerlinNoise(x * 0.9f, z * 0.9f) - 0.5f) * 0.06f;
-        return new Color(Mathf.Clamp01(c.r + jitter), Mathf.Clamp01(c.g + jitter), Mathf.Clamp01(c.b + jitter * 0.6f), 1f);
+        var final = new Color(Mathf.Clamp01(c.r + jitter), Mathf.Clamp01(c.g + jitter), Mathf.Clamp01(c.b + jitter * 0.6f), 1f);
+        return tileMode ? TileSeamColor(x, z, final) : final;
     }
 
     private static float SlopeAt(int i, int j)
@@ -1068,15 +1084,19 @@ public static partial class BuildEcoWorldMap
         var material = VertexMat("EcoGround", true, 0.04f);
         SetDetail(material, 3.2f, 0.9f);
         material.SetFloat("_PollutionStrength", 1f); // polluted regions fade the ground (EcoPollutionField)
-        var field = Groups["Ground"].gameObject.GetComponent<EcoPollutionField>();
-        if (field == null) field = Groups["Ground"].gameObject.AddComponent<EcoPollutionField>();
-        field.area = new Rect(0f, 0f, Size, Size);
+        if (!tileMode)
+        {
+            var field = Groups["Ground"].gameObject.GetComponent<EcoPollutionField>();
+            if (field == null) field = Groups["Ground"].gameObject.AddComponent<EcoPollutionField>();
+            field.area = new Rect(0f, 0f, Size, Size);
+        }
         var colors = new Color[N + 1, N + 1];
         for (int i = 0; i <= N; i++) for (int j = 0; j <= N; j++) colors[i, j] = GroundColor(i, j);
         int chunks = Mathf.CeilToInt(N / (float)ChunkCells);
         for (int cx = 0; cx < chunks; cx++)
             for (int cz = 0; cz < chunks; cz++)
             {
+                if (tileMode && !TileOwnsChunk(cx, cz)) continue;
                 int i0 = cx * ChunkCells, j0 = cz * ChunkCells, i1 = Mathf.Min(N, i0 + ChunkCells), j1 = Mathf.Min(N, j0 + ChunkCells);
                 int w = i1 - i0 + 1, d = j1 - j0 + 1;
                 var vertices = new Vector3[w * d]; var normals = new Vector3[w * d]; var vcolors = new Color[w * d];
@@ -1098,7 +1118,7 @@ public static partial class BuildEcoWorldMap
                 var mesh = new Mesh { name = "EcoGround_" + cx + "_" + cz };
                 mesh.vertices = vertices; mesh.normals = normals; mesh.colors = vcolors; mesh.triangles = triangles;
                 mesh.RecalculateBounds();
-                AssetDatabase.CreateAsset(mesh, Folder + "Meshes/" + mesh.name + ".asset");
+                AssetDatabase.CreateAsset(mesh, MeshDir + "" + mesh.name + ".asset");
                 var go = new GameObject("Ground " + cx + "," + cz, typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
                 go.transform.SetParent(Groups["Ground"], false);
                 go.GetComponent<MeshFilter>().sharedMesh = mesh;
@@ -1243,7 +1263,7 @@ public static partial class BuildEcoWorldMap
                 if (crossing.road == road) AddCrossing(details, road, crossing.k, crossing.dir, hw);
 
             var mesh = surface.ToMesh(road.name.Replace(" ", "_") + "_surface");
-            AssetDatabase.CreateAsset(mesh, Folder + "Meshes/Road_" + Roads.IndexOf(road) + "_surface.asset");
+            AssetDatabase.CreateAsset(mesh, MeshDir + "Road_" + Roads.IndexOf(road) + "_surface.asset");
             var go = new GameObject("Surface", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
             go.transform.SetParent(group, false);
             go.GetComponent<MeshFilter>().sharedMesh = mesh; go.GetComponent<MeshRenderer>().sharedMaterial = roadMat;
@@ -1254,7 +1274,7 @@ public static partial class BuildEcoWorldMap
             if (details.v.Count > 0)
             {
                 var dm = details.ToMesh(road.name.Replace(" ", "_") + "_details");
-                AssetDatabase.CreateAsset(dm, Folder + "Meshes/Road_" + Roads.IndexOf(road) + "_details.asset");
+                AssetDatabase.CreateAsset(dm, MeshDir + "Road_" + Roads.IndexOf(road) + "_details.asset");
                 var dgo = new GameObject("Markings", typeof(MeshFilter), typeof(MeshRenderer));
                 dgo.transform.SetParent(group, false);
                 dgo.GetComponent<MeshFilter>().sharedMesh = dm; dgo.GetComponent<MeshRenderer>().sharedMaterial = roadMat;
@@ -1330,7 +1350,7 @@ public static partial class BuildEcoWorldMap
             if (!road.Urban && road.kind != RoadKind.Country) continue;
             var route = roads.Find(road.name);
             if (route == null || route.Find("Surface") == null) continue;
-            float limit = road.Urban ? float.PositiveInfinity : LakeApproachPavementLength;
+            float limit = road.Urban ? float.PositiveInfinity : tileMode ? 0f : LakeApproachPavementLength;
             float halfWidth = road.Width * 0.5f;
             var matrix = roads.worldToLocalMatrix * route.localToWorldMatrix;
             for (int i = 0; i + 1 < road.pos.Count && road.dist[i] < limit; i++)
@@ -1486,7 +1506,7 @@ public static partial class BuildEcoWorldMap
             return;
         }
         var generated = builder.ToMesh(meshName);
-        string path = Folder + "Meshes/" + meshName + ".asset";
+        string path = MeshDir + "" + meshName + ".asset";
         var asset = AssetDatabase.LoadAssetAtPath<Mesh>(path);
         if (asset == null)
         {
@@ -1666,7 +1686,7 @@ public static partial class BuildEcoWorldMap
             foreach (int end in new[] { 0, road.pos.Count - 1 })
             {
                 Vector2 p = road.pos[end];
-                if (road.nearJunction[end] || Outside(p.x, p.y) > -2f) continue;
+                if (road.nearJunction[end] || Outside(p.x, p.y) > -2f || tileMode && NearTileEdge(p)) continue;
                 if (Roads.Any(o => o != road && !o.Water && o.Paved && o.pos.Any(q => Vector2.Distance(q, p) < o.Width * 0.5f + road.Width))) continue;
                 Vector2 dir = end == 0 ? -road.tan[0] : road.tan[end];
                 AddTurningCircle(fill, kerbs, p + dir * 1.2f, road.Width * 0.5f + 1.6f, road.Urban);
@@ -1684,7 +1704,7 @@ public static partial class BuildEcoWorldMap
     private static void JunctionObject(Transform parent, MeshBuilder mb, string meshName, string objectName, Material material, EcoGround.Surface surface)
     {
         var mesh = mb.ToMesh(meshName);
-        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/" + meshName + ".asset");
+        AssetDatabase.CreateAsset(mesh, MeshDir + "" + meshName + ".asset");
         var go = new GameObject(objectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
         go.transform.SetParent(parent, false);
         go.GetComponent<MeshFilter>().sharedMesh = mesh; go.GetComponent<MeshRenderer>().sharedMaterial = material;
@@ -1770,7 +1790,7 @@ public static partial class BuildEcoWorldMap
                 new Vector3(p0.x - n0.x * hw, y0, p0.y - n0.y * hw), new Vector3(p1.x - n1.x * hw, y1, p1.y - n1.y * hw), Color.white);
         }
         var mesh = mb.ToMesh(road.name.Replace(" ", "_"));
-        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/Stream_" + Roads.IndexOf(road) + ".asset");
+        AssetDatabase.CreateAsset(mesh, MeshDir + "Stream_" + Roads.IndexOf(road) + ".asset");
         var go = new GameObject("Water", typeof(MeshFilter), typeof(MeshRenderer));
         go.transform.SetParent(group, false);
         go.GetComponent<MeshFilter>().sharedMesh = mesh; go.GetComponent<MeshRenderer>().sharedMaterial = water;
@@ -1806,7 +1826,7 @@ public static partial class BuildEcoWorldMap
             mb.Quad(d1 * (inner - 0.9f) + up, d0 * (inner - 0.9f) + up, Vector3.up * 0.22f, Vector3.up * 0.22f, Lawn, Lawn, GrassB, GrassB);
         }
         var mesh = mb.ToMesh("Roundabout_island");
-        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/Roundabout_island.asset");
+        AssetDatabase.CreateAsset(mesh, MeshDir + "Roundabout_island.asset");
         var island = new GameObject("Island", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
         island.transform.SetParent(plaza, false);
         island.GetComponent<MeshFilter>().sharedMesh = mesh; island.GetComponent<MeshRenderer>().sharedMaterial = VertexMat("EcoRoad", false, 0.18f);
@@ -1892,7 +1912,7 @@ public static partial class BuildEcoWorldMap
         var mesh = new Mesh { name = name };
         mesh.SetVertices(vertices); mesh.SetUVs(0, uvs); mesh.SetTriangles(triangles, 0);
         mesh.RecalculateNormals(); mesh.RecalculateBounds();
-        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/" + name + ".asset");
+        AssetDatabase.CreateAsset(mesh, MeshDir + "" + name + ".asset");
         return mesh;
     }
 
@@ -1962,7 +1982,7 @@ public static partial class BuildEcoWorldMap
         if (polluted)
         {
             // GDD §7/§18: the lake project needs a real polluted inlet on the east shore that the player must close.
-            Vector2 ip = new Vector2(135.4f * L, 31.4f * L);
+            Vector2 ip = InletPoint;
             var inlet = new GameObject("Kirletici giriş"); inlet.transform.SetParent(root, true);
             inlet.transform.position = new Vector3(ip.x, Mathf.Max(GroundY(ip.x, ip.y), WaterY) + 0.05f, ip.y);
             var inletComponent = inlet.AddComponent<EcoPollutionInlet>(); inletComponent.CreateVisual();
@@ -2111,6 +2131,8 @@ public static partial class BuildEcoWorldMap
         var cityRect = new Rect(city.center - city.size * 0.5f, city.size);
         // Houses may spill a little past the district edge (village outskirts) but never onto the glacier slope.
         var houseRect = Rect.MinMaxRect(cityRect.xMin - 5f, cityRect.yMin - 4f, cityRect.xMax + 4f, cityRect.yMax - 1f);
+        // A town tile must stay inside its 50 m square: its neighbours change from run to run.
+        if (tileMode) houseRect = Rect.MinMaxRect(cityRect.xMin + 1.5f, cityRect.yMin + 1.5f, cityRect.xMax - 1.5f, cityRect.yMax - 1.5f);
 
         // Civic buildings stand on the first plot of each main road out of the roundabout, facing their street.
         var civic = new (GameObject model, string name, string road, Vector2 side, bool fromEnd, float height, string icon, string detail)[]
@@ -2125,7 +2147,7 @@ public static partial class BuildEcoWorldMap
         foreach (var plot in civic)
         {
             var road = Roads.First(r => r.name == plot.road);
-            float along = plot.fromEnd ? road.dist[road.dist.Count - 1] - 9f : 9f;
+            float along = plot.fromEnd ? road.dist[road.dist.Count - 1] - CivicAlong : CivicAlong;
             int k = road.dist.FindIndex(d => d >= along);
             Vector2 n = new Vector2(-road.tan[k].y, road.tan[k].x);
             float side = Vector2.Dot(n, plot.side) >= 0f ? 1f : -1f;
@@ -2163,8 +2185,10 @@ public static partial class BuildEcoWorldMap
                     float centreDist = Vector2.Distance(p, Roundabout);
                     bool tall = centreDist < 26f;
                     float width = tall ? F(8f, 9.5f) : F(5.5f, 7f), depth = tall ? F(7.5f, 9f) : F(5.5f, 6.5f);
+                    // A town tile is a third of the old district: smaller lots, low houses only.
+                    if (tileMode) { tall = false; width = F(4.2f, 5.2f); depth = F(4f, 4.8f); }
                     Vector2 c = p + n * side * (road.Width * 0.5f + Pave + 1.2f + depth * 0.5f);
-                    if (!houseRect.Contains(c) || Vector2.Distance(c, Roundabout) < RoundaboutR + 9f) { rejectArea++; continue; }
+                    if (!houseRect.Contains(c) || Vector2.Distance(c, Roundabout) < RoundaboutR + (tileMode ? 3.5f : 9f)) { rejectArea++; continue; }
                     // On curves the nearest kerb is a little closer than the setback measured along the normal.
                     if (RoadEdgeDistance(c.x, c.y, true, true) < depth * 0.5f - 0.6f) { rejectRoad++; continue; }
                     float reach = Mathf.Max(width, depth) * 0.5f;
@@ -2190,17 +2214,19 @@ public static partial class BuildEcoWorldMap
             + rejectArea + ", yol " + rejectRoad + ", çakışma " + rejectOverlap + ")");
 
         // Infill: the second row of smaller houses inside each block, each facing its nearest street (as real lots do).
-        int infill = 0;
+        int infill = 0, inNear = 0, inFar = 0, inOverlap = 0;
         var urban = Roads.Where(r => r.Urban).ToList();
-        for (float x = houseRect.xMin + 3f; x < houseRect.xMax - 3f; x += 3f)
-            for (float z = houseRect.yMin + 3f; z < houseRect.yMax - 3f; z += 3f)
+        float lot = tileMode ? 1.6f : 3f;
+        for (float x = houseRect.xMin + 2f; x < houseRect.xMax - 2f; x += lot)
+            for (float z = houseRect.yMin + 2f; z < houseRect.yMax - 2f; z += lot)
             {
-                var c = new Vector2(x + F(-1f, 1f), z + F(-1f, 1f));
-                if (Vector2.Distance(c, Roundabout) < RoundaboutR + 9f) continue;
-                float w = F(5f, 6.5f), d = F(5f, 6f), reach = Mathf.Max(w, d) * 0.5f + 0.4f;
+                var c = new Vector2(x + F(-1f, 1f) * lot / 3f, z + F(-1f, 1f) * lot / 3f);
+                if (Vector2.Distance(c, Roundabout) < RoundaboutR + (tileMode ? 3.5f : 9f)) continue;
+                float w = tileMode ? F(3.8f, 4.6f) : F(5f, 6.5f), d = tileMode ? F(3.6f, 4.4f) : F(5f, 6f), reach = Mathf.Max(w, d) * 0.5f + (tileMode ? 0.1f : 0.4f);
                 float edge = RoadEdgeDistance(c.x, c.y, true, true);
-                if (edge < reach || edge > 13f) continue;
-                if (Overlaps(new Rect(c.x - reach, c.y - reach, reach * 2f, reach * 2f))) continue;
+                if (edge < reach) { inNear++; continue; }
+                if (edge > 13f) { inFar++; continue; }
+                if (Overlaps(new Rect(c.x - reach, c.y - reach, reach * 2f, reach * 2f))) { inOverlap++; continue; }
                 Vector2 nearest = c; float bestD = float.MaxValue;
                 foreach (var r in urban)
                     foreach (var q in r.pos) { float dd = (q - c).sqrMagnitude; if (dd < bestD) { bestD = dd; nearest = q; } }
@@ -2216,7 +2242,7 @@ public static partial class BuildEcoWorldMap
                 else KeepOut.Add(new Rect(c.x - reach, c.y - reach, reach * 2f, reach * 2f));
                 infill++;
             }
-        report.AppendLine("Şehir: " + infill + " iç parsel evi (en yakın sokağa bakar)");
+        report.AppendLine("Şehir: " + infill + " iç parsel evi (en yakın sokağa bakar; elenen: yola yakın " + inNear + ", uzak " + inFar + ", çakışma " + inOverlap + ", KeepOut " + KeepOut.Count + ")");
 
         // Street trees stand on the outer edge of the avenue and boulevard pavements.
         var streetTrees = BuildLeafyTrees(street: true);
@@ -2754,7 +2780,7 @@ public static partial class BuildEcoWorldMap
         }
         for (int i = 0; i < 140 && tongue.Count < 15; i++)
         {
-            float x = F(10f, Size - 10f), z = F(122f * L, Size - 6f);
+            float x = F(10f, Size - 10f), z = F(GlacierFloeStart, Size - 6f);
             var p = new Vector2(x, z);
             if (RoadEdgeDistance(x, z) < 6f || Vector2.Distance(p, StationPad) < 13f || tongue.Any(o => Vector2.Distance(o, p) < 12f)) continue;
             tongue.Add(p);
@@ -2821,7 +2847,7 @@ public static partial class BuildEcoWorldMap
             mb.Quad(top[s], top[n], crown, crown, snowTop, snowTop, snowTop, snowTop, Vector3.up);
         }
         var mesh = mb.ToMesh("IceFloe_" + seed);
-        AssetDatabase.CreateAsset(mesh, Folder + "Meshes/IceFloe_" + seed + ".asset");
+        AssetDatabase.CreateAsset(mesh, MeshDir + "IceFloe_" + seed + ".asset");
         return mesh;
     }
 
@@ -2841,7 +2867,8 @@ public static partial class BuildEcoWorldMap
         var trees = Group("Trees", root); var stones = Group("Rocks", root); var small = Group("Plants", root); var forest = Group("Border forest", root);
         var heritageCount = new Dictionary<int, int>();
         int treeCount = 0, rockCount = 0, plantCount = 0, borderCount = 0, treeRejectPlant = 0, treeRejectSlope = 0;
-        float glacierStart = Def(EcoRegionInfo.Kind.Glacier).center.y - Def(EcoRegionInfo.Kind.Glacier).size.y * 0.5f;
+        var glacierDef = Defs.FirstOrDefault(d => d.kind == EcoRegionInfo.Kind.Glacier);
+        float glacierStart = glacierDef != null ? glacierDef.center.y - glacierDef.size.y * 0.5f : 1000f;
 
         for (float x = 3f; x < Size - 3f && treeCount < 360; x += 3.5f)
             for (float z = 3f; z < Size - 3f && treeCount < 360; z += 3.5f)
@@ -2858,7 +2885,7 @@ public static partial class BuildEcoWorldMap
                     EcoRegionInfo.Kind.Glacier => pz < glacierStart + 10f ? 0.24f : 0f,
                     EcoRegionInfo.Kind.Lake => Defs[ri].water < 30f ? 0.38f : 0.14f, _ => 0f,
                 };
-                float edge = Mathf.Min(Mathf.Min(px, pz), Mathf.Min(Size - px, Size - pz));
+                float edge = tileMode ? 99f : Mathf.Min(Mathf.Min(px, pz), Mathf.Min(Size - px, Size - pz));
                 density += (1f - Smooth(0f, 10f, edge)) * 0.3f;
                 density *= 0.4f + 1.6f * Fbm(px * 0.07f, pz * 0.07f, 3);
                 if (rng.NextDouble() > density) continue;
@@ -2898,6 +2925,7 @@ public static partial class BuildEcoWorldMap
         }
 
         // A dense forest on the hills beyond the walls hides the map edge.
+        if (!tileMode || TileIsBorder)
         for (float x = -Border + 2f; x < Size + Border - 2f; x += 3.2f)
             for (float z = -Border + 2f; z < Size + Border - 2f; z += 3.2f)
             {
@@ -2921,7 +2949,7 @@ public static partial class BuildEcoWorldMap
                 float h = GroundY(px, pz);
                 if (h < WaterY - 1f) continue;
                 int ri = RegionIndexAt(px, pz);
-                float edge = Mathf.Min(Mathf.Min(px, pz), Mathf.Min(Size - px, Size - pz));
+                float edge = tileMode ? 99f : Mathf.Min(Mathf.Min(px, pz), Mathf.Min(Size - px, Size - pz));
                 float prob = ri < 0 ? 0f : Defs[ri].kind switch
                 {
                     EcoRegionInfo.Kind.Glacier => 0.14f, EcoRegionInfo.Kind.Wind => 0.08f, EcoRegionInfo.Kind.Lake => 0.08f, EcoRegionInfo.Kind.Grove => 0.06f,
@@ -2969,7 +2997,7 @@ public static partial class BuildEcoWorldMap
 
     private static bool CanPlant(float x, float z, float roadMargin, bool allowCity = false)
     {
-        if (x < 2f || z < 2f || x > Size - 2f || z > Size - 2f) return false;
+        if (tileMode ? !InTile(x, z, 2f) : x < 2f || z < 2f || x > Size - 2f || z > Size - 2f) return false;
         if (RoadEdgeDistance(x, z) < roadMargin) return false;
         if (Vector2.Distance(new Vector2(x, z), Base) < 20f) return false;
         var p = new Vector2(x, z);
@@ -3260,7 +3288,7 @@ public static partial class BuildEcoWorldMap
         var water = new GameObject("Water", typeof(MeshFilter), typeof(MeshRenderer)); water.transform.SetParent(pond, false);
         water.transform.localPosition = new Vector3(0f, 0.05f, 0f);
         // Re-creating the disc asset would orphan the mesh the other pond already uses.
-        water.GetComponent<MeshFilter>().sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(Folder + "Meshes/StarterPond_Disc.asset") ?? DiscMesh("StarterPond_Disc", 2.3f, 4, 20);
+        water.GetComponent<MeshFilter>().sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(MeshDir + "StarterPond_Disc.asset") ?? DiscMesh("StarterPond_Disc", 2.3f, 4, 20);
         water.GetComponent<MeshRenderer>().sharedMaterial = dirty
             ? WaterMaterial("EcoLakeDirty", new Color(0.42f, 0.46f, 0.24f, 0.78f))
             : WaterMaterial("EcoLakeClean", new Color(0.30f, 0.74f, 0.82f, 0.62f));

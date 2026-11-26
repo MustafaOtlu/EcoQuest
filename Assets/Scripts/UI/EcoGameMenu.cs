@@ -27,6 +27,8 @@ public sealed class EcoGameMenu : MonoBehaviour
     private void OpenTitle()
     {
         if (opened) return; opened = true;
+        // A reload into another valley (run start or loading a save from it) continues without the title screen.
+        if (EcoValley.SkipTitle) { EcoValley.SkipTitle = false; return; }
         // "Yeni vadi" on a run's result screen reloads the scene straight into the next briefing.
         if (EcoRun.ConsumeAutoStart() && EcoRun.Current != null) { EcoRun.Current.RequestNewRun(); return; }
         screen = Screen_.Main; PlayerController.SetPaused(true);
