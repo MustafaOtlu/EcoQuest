@@ -30,6 +30,7 @@ Etiketler v4 ile aynıdır: **Karar**, **Tasarım başlangıcı**, **Denge tasla
 7. [Kayıt](#kayit)
 8. [Açık sorular ve riskler](#acik)
 9. [Kod haritası](#kod)
+10. [Çevrenin görünüşü](#gorunus)
 21. [Değişiklik günlüğü](#gunluk)
 
 ---
@@ -86,6 +87,7 @@ Vadi 150 × 150 m'dir ve 50 m'lik 3 × 3 karodan kurulur.
 - **Üretim (editör):** `EcoQuest/Valley/Build region tiles` mevcut harita üreticisinin karo kipiyle 9 prefab (`Assets/Resources/EcoTiles/`), mesh'leri (`Assets/EcoTiles/Meshes/`) ve her karonun yukarıdan harita görüntüsünü üretir (≈20 sn). `Switch scene to tile valley` sahneyi karolu vadiye geçirir.
 - **Kurulum (oyun):** `EcoValleyAssembler` her şeyden önce (Awake, yürütme sırası −32000) karoları yerine koyar ve döndürür, dış yol ağızlarını kapatır, kirlilik alanını ekler, minimapi karo görüntülerinden birleştirir (dönüşlerle birlikte), başlangıç tabelasını yazar ve oyuncuyu üs patikasına koyar. NavMesh, düşman bölgeleri, projeler ve kayıt hazır dünyayı bulur.
 - **Şehir karosu** eski şehirden küçüktür: göbekli kavşak, 4 kamu yapısı, 6 küçük ev.
+- **Yol temizliği (Uygulandı):** karolar kurulduktan sonra sahnede kalan eski sabit harita eşyaları (pazar tezgâhı, su varili, saha istasyonunun ağaç ve kayaları) ve karo tabelaları yol yüzeyine basıyorsa en yakın boş, kuru zemine taşınır (çatı, su ve başka yapı kabul edilmez). İlk prototipin "PowerStarter" demo köşesi (filtresiz fabrika, iki mini bölge, balık göleti, çalı yangını, üç ağaç) her vadide aynı yerde duruyordu, fabrikası yola basıyordu; artık kapatılıyor (yangın, şablon olarak sahnede pasif kalır).
 
 <a id="icerik"></a>
 ## 4. Hedefler, sabah kartları, akşam krizleri
@@ -221,6 +223,23 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 | `Editor/BuildEcoValleyTiles.cs` | Karo prefablarını ve haritalarını üretir |
 | `World/EcoSpecialization.cs` | Uzmanlık (dallar meta açılımına bağlı) |
 | `UI/EcoPlaytestLog.cs` | Oturum günlüğü ve `runs.csv` |
+| `World/EcoEnvironmentMood.cs` | Bölge durumunu ekranda gösterir (duman, renk, gökyüzü, polen) |
+
+<a id="gorunus"></a>
+## 10. Çevrenin görünüşü
+
+**Karar:** göstergeler panelde kalmaz, oyuncunun durduğu bölgede ekranda görülür. Her panel satırının kendi işareti var; bölge sınırı geçilince 3–4 saniyede yumuşakça değişir (`EcoEnvironmentMood`, yalnız görsel).
+
+| Gösterge | Ekranda | Eşik (Denge taslağı) |
+| --- | --- | --- |
+| Hava kalitesi (AQI) | Duman: sis oyuncunun çevresine kapanır, sarı-kahveye döner, havada toz uçuşur, güneş zayıflar. İlk girişte "hava kirli: duman görüşü kapatıyor" bildirimi | AQI 50'ye kadar yok, 200'de tam |
+| Karbon yükü (vadi) | Gökyüzü ve ufuk ılık bir pusa, güneş ışığı sarıya kayar | 12'ye kadar yok, 40'ta tam |
+| Ekosistem sağlığı | Renk: hasta bölge grileşir, kontrast ve ışık düşer, kenarlar kararır | 70 ve üstü tam renk, 25'te gri |
+| Biyoçeşitlilik | Gündüz havada polen ve tohumlar uçuşur (kuş ve kelebekler `EcoHabitat`'ten) | 45'te başlar, 90'da tam |
+| Su kalitesi | Göl rengi berraktan bulanık yeşile (`EcoLakeTint`, v4) | — |
+| Toprak kalitesi | Zemin yeşilden tozlu kahveye (`EcoPollutionField`, v4) | — |
+
+İzometrik kamera oyuncuya ≈70 m uzaktan baktığı için duman bandı oyuncunun çevresine yerleştirilir: tam dumanda oyuncu okunur kalır (≈%25 sis), ekranın uzak kenarı kaybolur. Renk ayarı için kamerada son işleme açılır; sahnede başka hacim yoktur.
 
 <a id="gunluk"></a>
 ## 21. Değişiklik günlüğü
@@ -229,3 +248,4 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 | --- | --- | --- |
 | 26 Kasım | **Rastgele vadi run'ları, Aşama 3 (meta, içerik, denge).** **Karo dönüşleri:** yan karolar tohumla 0/90/180/270° döner; vadi kodu dönüşü rakamla taşır (`Grove1-DirtyLake-Industry-Wind3`, rakamsız eski kodlar 0° sayılır), minimap karoları da döndürür, dışa bakan 6 yol ağzı haritada zeminle örtülür. **Açılım ağacı (§5):** 4 grup (Başlangıç, Uzmanlık, Sabah ve kriz, Zorluk), 11 açılım, toplam 515 kredi, iki seviyeli ön koşullar; yeni açılımlar: Planlar (su tarifi baştan açık), Verimli aletler (enerji kullanımı ×0,85), Su/Ekoloji dalı, Uzman (uzmanlık 3. kademe), Kart yenileme, Erken uyarı, 4. kart, Kriz zorluğu. Uzmanlık dalları ve 3. kademe artık meta açılımına bağlı (Enerji hep açık). Sonuç ekranından ve brifingden açılan 4 sütunlu ağaç ekranı. **İçerik:** 6 yeni sabah kartı (toplam 19: fidanlık, dere temizliği, yeşil çatılar, karbon vergisi, gece devriyesi, hurda mezadı), 3 yeni kriz (toplam 10: sel, sıcaklık terslemesi, istilacı tür; aynı kriz üst üste gelmez), 2 yeni hedef (rüzgâr çiftliği yalnız Rüzgâr Tepeleri olan vadide, ağaçlandırma: büyüyen dikili ağaç sayısı); boşta tutan `city_air` çıkarıldı. Günde bir kez kart yenileme. **Denge (§6):** zarlanan vadide doğal toparlanma ×0,35, yabani ağaçların emmesi ×0,12 ve örtü büyümesi başlangıç örtüsüyle sınırlı; ölçülen hedef eşikleri vadinin başlangıç değerine göre sıkılaştırılıyor; brifing bunu söylüyor. `runs.csv` run başına bir satır; editörde `EcoBalanceProbe` boşta oyuncu sondası. **Doğrulama:** EditMode 18/18 (yeni `EcoMetaTests`: ağaç yapısı, kart/kriz kimlikleri, kriz tekrar etmez, rüzgâr hedefi yalnız rüzgâr karosuyla; dönüş kodu gidiş-dönüş testleri). Play Mode'da 5 sondalı run: son ayarla boşta run Başarısız 12 puan, vadi çökmeden; açılım ağacı ekranı ve kart yenileme görüntüyle kontrol edildi. Kayıtlar test öncesi yedeklenip geri yüklendi | Yapıldı |
 | 26 Kasım | **Aşama 3 eksik taraması ve düzeltmeler.** (1) **Ağaçlandırma hedefi** yalnız fidanları sayıyordu; olgunlaşan fidan ağaca dönüşüp `PlantedSeed`'i bıraktığı için sayaç oyuncu ilerledikçe düşüyordu. Artık oyuncunun diktiği büyümüş ağaçlar da sayılıyor (`EcoRun.PlantedTrees`, `EcoVegetation.planted`). (2) **Plandaki bina açılımı eksikti:** rüzgâr türbini "Mahalleye ilk enerji", hidro "Gölü canlandır" projesine bağlıydı. Yeni düğüm **Enerji planları** (Uzmanlık, 45 kredi) ikisini run başından açıyor; ağaç 12 düğüm / 560 kredi. (3) **Yabani ağaç örtü tavanı** kayda yazılmıyordu (yüklemede o anki örtü sayılıyordu); başlangıç örtüsü bölge anahtarıyla run durumuna yazılıyor, eski kayıtlarda eski davranış sürüyor. Taranıp sorun bulunmayanlar: karo bölgelerinin anahtarları keşif ve tarif aramalarıyla uyumlu (Koruluk, Doğu Gölü…), bir vadide aynı karo iki kez çıkmıyor, büyümüş ağaçlar kayıttan dikili olarak dönüyor, sıkılaştırılmış eşikler kayda yazılıyor. Bilinçli olarak açık kalanlar: karo başına ikinci tasarım (V1), run başı yükleme ekranı, gerçek oyuncuyla denge. **Doğrulama:** EditMode 19/19 (yeni: Enerji planları rüzgâr ve hidroyu açar). Play Mode'da tohum 198: büyütülen dikili ağaç sayaçta 1, 7 bölgenin başlangıç örtüsü JSON gidiş-dönüşünde korunuyor, açılım ağacı ekranında 4. Uzmanlık kartı sığıyor. Kayıtlar değişmedi | Yapıldı |
+| 26 Kasım | **Çevre görünüşü ve vadi yerleşimi.** (1) **Göstergeler ekranda (§10):** kirli havada duman ve toz, yüksek karbonda ılık pus ve sarı güneş, hasta bölgede grileşen renk, sağlıklı bölgede polen; su ve toprak v4'teki göl ve zemin renkleriyle. (2) **Yolda duran yapılar (§3):** pazar tezgâhı ve su varili şehir göbeğindeki kavşağın, saha istasyonunun ağaç ve kayaları yolun üstündeydi; kurulumdan sonra en yakın boş zemine taşınıyor. Aynı tarama karo tabelalarını da düzeltiyor. (3) **Her vadide aynı yerde duran köşe:** ilk prototipin PowerStarter demo seti (filtresiz fabrika yolda, mini bölgeler, gölet, yangın) kapatıldı; ayrıca karo bölgeleriyle çakışan iki fazla bölge ölçümden çıktı. **Doğrulama:** EditMode 20/20 (yeni: görünüş eşikleri panelle tutarlı). Play Mode'da tohum 777: yolda duran nesne 30'dan 2'ye indi (kalanlar bir bölge etiketi ve Fabrika Gölü'nün atık su çıkışı, ikisi de karonun kendi tasarımı); Güneş Ovası temiz (AQI 41) ve kirli (AQI 191, sağlık düşük, karbon yüksek) hâlde ekran görüntüsüyle karşılaştırıldı. Kayıtlar geri yüklendi | Yapıldı |

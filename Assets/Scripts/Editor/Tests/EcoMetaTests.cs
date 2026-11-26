@@ -73,6 +73,23 @@ public sealed class EcoMetaTests
     }
 
     [Test]
+    public void EnvironmentMoodFollowsThePanel()
+    {
+        // Clean values show nothing; the worst values show the full effect; worse never looks better.
+        Assert.AreEqual(0f, EcoEnvironmentMood.SmogFor(36f), 1e-4f, "good air (AQI 36) is clear");
+        Assert.AreEqual(1f, EcoEnvironmentMood.SmogFor(250f), 1e-4f);
+        Assert.AreEqual(0f, EcoEnvironmentMood.HeatFor(11f), 1e-4f, "carbon load 11 gives no haze");
+        Assert.AreEqual(0f, EcoEnvironmentMood.GloomFor(84f), 1e-4f, "health 84 keeps full colour");
+        Assert.AreEqual(1f, EcoEnvironmentMood.GloomFor(20f), 1e-4f);
+        for (float v = 0f; v < 300f; v += 5f)
+        {
+            Assert.LessOrEqual(EcoEnvironmentMood.SmogFor(v), EcoEnvironmentMood.SmogFor(v + 5f));
+            Assert.LessOrEqual(EcoEnvironmentMood.HeatFor(v / 5f), EcoEnvironmentMood.HeatFor(v / 5f + 1f));
+            Assert.GreaterOrEqual(EcoEnvironmentMood.GloomFor(v / 3f), EcoEnvironmentMood.GloomFor(v / 3f + 1f));
+        }
+    }
+
+    [Test]
     public void WindValleysCanRollTheWindGoal()
     {
         bool seen = false;

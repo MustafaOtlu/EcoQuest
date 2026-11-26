@@ -80,7 +80,118 @@ public sealed class EcoValleyAssembler : MonoBehaviour
         var hud = FindFirstObjectByType<EcoWorldHUD>(FindObjectsInactive.Include);
         if (hud != null && Minimap != null) hud.minimapTexture = Minimap;
         LabelStartSign();
+        RetireDemoSet();
         PlacePlayer();
+        ClearRoads();
+    }
+
+    // The first prototype's demo corner (a factory, two mini regions, a pond, a brush fire and three trees inside
+    // PowerStarter) sits at fixed coordinates, so it showed up in the same spot of every valley and its factory stood
+    // on a road. The tiles carry the real regions now. It is switched off before anything in it wakes up; the brush
+    // fire stays in the scene (inactive) because runs and saves clone it as the fire template.
+    private static readonly string[] DemoSet = { "Regional ecology", "Clean fishing pond" };
+    private void RetireDemoSet()
+    {
+        foreach (var root in gameObject.scene.GetRootGameObjects())
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (System.Array.IndexOf(DemoSet, t.name) >= 0 && t.parent != null && t.parent.name.StartsWith("PowerStarter"))
+                    t.gameObject.SetActive(false);
+    }
+
+    // Scene props were placed for the old fixed map, and a few tile props sit where a turned neighbour's road now runs.
+    // Anything small that stands on a road surface moves to the nearest free, dry spot (GDD v5 §3).
+    private static readonly string[] KeepInPlace = { "Player", "Cam's", "Enemys", "PowerStarter" };
+    private void ClearRoads()
+    {
+        Physics.SyncTransforms();
+        var roads = new HashSet<Collider>();
+        foreach (var c in Root.GetComponentsInChildren<Collider>())
+            if (c.transform.parent != null && IsRoad(c.transform)) roads.Add(c);
+        if (roads.Count == 0) return;
+        var movable = new List<Transform>();
+        foreach (var root in gameObject.scene.GetRootGameObjects())
+        {
+            if (root.transform == Root || !root.activeInHierarchy) continue;
+            foreach (Transform child in root.transform)
+            {
+                if (!child.gameObject.activeInHierarchy || KeepInPlace.Any(k => child.name.StartsWith(k))) continue;
+                if (child.name.StartsWith("Eco Field Station")) { foreach (Transform part in child) movable.Add(part); }
+                else movable.Add(child);
+            }
+        }
+        foreach (Transform tile in Root)
+        {
+            var props = tile.Find("Props");
+            if (props != null) foreach (Transform prop in props) movable.Add(prop);
+        }
+        int moved = 0;
+        foreach (var t in movable)
+        {
+            if (!Footprint(t, out var bounds) || bounds.size.x > 12f || bounds.size.z > 12f) continue;
+            if (!OnRoad(bounds.center, bounds.extents, roads)) continue;
+            if (!FreeSpot(t, bounds, roads, out var target)) continue;
+            float lift = t.position.y - bounds.min.y;
+            t.position = new Vector3(target.x + (t.position.x - bounds.center.x), target.y + lift, target.z + (t.position.z - bounds.center.z));
+            moved++;
+        }
+        if (moved > 0) Physics.SyncTransforms();
+    }
+
+    private static bool IsRoad(Transform t) => Under(t, "Roads");
+    private static bool Under(Transform t, string group)
+    {
+        for (var p = t.parent; p != null; p = p.parent) if (p.name == group) return true;
+        return false;
+    }
+
+    private static bool Footprint(Transform t, out Bounds bounds)
+    {
+        bounds = default; bool any = false;
+        foreach (var r in t.GetComponentsInChildren<Renderer>())
+        {
+            if (r is ParticleSystemRenderer || !r.enabled) continue;
+            if (!any) { bounds = r.bounds; any = true; } else bounds.Encapsulate(r.bounds);
+        }
+        return any;
+    }
+
+    // A 3×3 sample of the footprint (shrunk a little so a prop that only touches a kerb counts as clear).
+    private static bool OnRoad(Vector3 center, Vector3 extents, HashSet<Collider> roads)
+    {
+        for (int i = -1; i <= 1; i++)
+            for (int j = -1; j <= 1; j++)
+            {
+                var p = new Vector3(center.x + i * extents.x * 0.8f, 120f, center.z + j * extents.z * 0.8f);
+                foreach (var hit in Physics.RaycastAll(p, Vector3.down, 240f, ~0, QueryTriggerInteraction.Ignore))
+                    if (roads.Contains(hit.collider)) return true;
+            }
+        return false;
+    }
+
+    private static bool FreeSpot(Transform self, Bounds bounds, HashSet<Collider> roads, out Vector3 target)
+    {
+        target = default;
+        var half = new Vector3(bounds.extents.x + 0.4f, Mathf.Max(0.5f, bounds.extents.y), bounds.extents.z + 0.4f);
+        for (float radius = 1.5f; radius <= 18f; radius += 1.5f)
+            for (int a = 0; a < 16; a++)
+            {
+                float angle = a * Mathf.PI / 8f;
+                var c = bounds.center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                if (c.x < 2f || c.z < 2f || c.x > 148f || c.z > 98f) continue; // stay in the valley, below the glacier
+                if (OnRoad(c, half, roads)) continue;
+                // The first thing below the spot must be the tile's own ground, not a roof, a rock or water.
+                if (!Physics.Raycast(new Vector3(c.x, 120f, c.z), Vector3.down, out var ground, 240f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                if (ground.transform.IsChildOf(self)) continue;
+                if (!Under(ground.transform, "Ground") || ground.collider.GetComponentInParent<EcoPondBasin>() != null || ground.collider.name.Contains("Water")) continue;
+                var box = new Vector3(c.x, ground.point.y + half.y + 0.15f, c.z);
+                bool blocked = false;
+                foreach (var other in Physics.OverlapBox(box, half, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+                    if (!other.transform.IsChildOf(self) && other.GetComponent<EcoGround>() == null && !roads.Contains(other)) { blocked = true; break; }
+                if (blocked) continue;
+                target = new Vector3(c.x, ground.point.y, c.z);
+                return true;
+            }
+        return false;
     }
 
     /// <summary>Where a fresh valley puts the player: on the base path, just north of the solar field.</summary>

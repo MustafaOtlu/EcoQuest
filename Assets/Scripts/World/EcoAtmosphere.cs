@@ -39,6 +39,7 @@ public sealed class EcoAtmosphere : MonoBehaviour
         var shader = Resources.Load<Shader>("EcoAtmosphere/Sky");
         if (shader != null) { sky = new Material(shader) { name = "EcoQuest living sky" }; RenderSettings.skybox = sky; }
         CreateRain();
+        if (GetComponent<EcoEnvironmentMood>() == null) gameObject.AddComponent<EcoEnvironmentMood>();
     }
     private void LateUpdate()
     {
@@ -56,9 +57,25 @@ public sealed class EcoAtmosphere : MonoBehaviour
         float cloud = clock != null ? Mathf.Clamp01(clock.cloudCover) : 0.2f;
         var horizon = Color.Lerp(new Color(0.055f, 0.075f, 0.13f), new Color(0.69f, 0.8f, 0.84f), daylight);
         horizon = Color.Lerp(horizon, new Color(0.36f, 0.43f, 0.47f), Rain * daylight * 0.65f);
+        // GDD v5 §10: carbon load hazes the sky warm; dirty air at the player turns the fog into smog and pulls it in.
+        float smog = EcoEnvironmentMood.Smog, heat = EcoEnvironmentMood.Heat;
+        float light = Mathf.Lerp(0.25f, 1f, daylight);
+        horizon = Color.Lerp(horizon, EcoEnvironmentMood.HeatColor * light, heat * 0.35f);
+        horizon = Color.Lerp(horizon, EcoEnvironmentMood.SmogColor * light, smog * 0.8f);
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Linear; RenderSettings.fogColor = horizon;
-        RenderSettings.fogEndDistance = far * Mathf.Lerp(0.96f, 0.8f, Rain);
-        RenderSettings.fogStartDistance = Mathf.Clamp(fogStart * Mathf.Lerp(1, 0.5f, Rain), 10, RenderSettings.fogEndDistance - 10);
+        float end = far * Mathf.Lerp(0.96f, 0.8f, Rain);
+        float start = Mathf.Clamp(fogStart * Mathf.Lerp(1, 0.5f, Rain), 10, end - 10);
+        if (smog > 0f)
+        {
+            // Distances are measured from the camera, so the smog band is placed around the player: the iso camera
+            // looks from ~70 m away, the first-person camera from 0 m.
+            float reach = viewCamera != null && rainFocus != null ? Vector3.Distance(viewCamera.transform.position, rainFocus.position) : 0f;
+            // At full smog the player is still readable (about a quarter fogged); the far side of the screen is not.
+            end = Mathf.Lerp(end, reach + 50f, smog);
+            start = Mathf.Lerp(start, Mathf.Max(0f, reach - 22f), smog);
+        }
+        RenderSettings.fogEndDistance = end;
+        RenderSettings.fogStartDistance = Mathf.Min(start, end - 5f);
         // A physical far plane stops draw submissions beyond the fog, including Cinemachine lens updates.
         if (viewCamera != null)
         {
@@ -68,7 +85,8 @@ public sealed class EcoAtmosphere : MonoBehaviour
         if (sky != null)
         {
             sky.SetColor("_Horizon", horizon);
-            sky.SetColor("_Zenith", Color.Lerp(new Color(0.012f, 0.022f, 0.065f), new Color(0.12f, 0.39f, 0.66f), daylight));
+            var zenith = Color.Lerp(new Color(0.012f, 0.022f, 0.065f), new Color(0.12f, 0.39f, 0.66f), daylight);
+            sky.SetColor("_Zenith", Color.Lerp(zenith, horizon, Mathf.Clamp01(smog * 0.6f + heat * 0.25f)));
             sky.SetColor("_CloudColor", Color.Lerp(new Color(0.09f, 0.12f, 0.19f), Color.Lerp(new Color(0.97f, 0.96f, 0.91f), new Color(0.34f, 0.39f, 0.43f), Rain), daylight));
             sky.SetVector("_SunDirection", clock != null ? clock.SunDirection : Vector3.up);
             sky.SetFloat("_CloudCover", cloud); sky.SetFloat("_Daylight", daylight);
