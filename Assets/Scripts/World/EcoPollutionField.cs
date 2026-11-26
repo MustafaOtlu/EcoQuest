@@ -45,7 +45,8 @@ public sealed class EcoPollutionField : MonoBehaviour
     {
         if (region == null) return 0f;
         float load = (region.soilPollution * 0.5f + region.airPollution * 0.3f + region.waterPollution * 0.1f) / 100f + (0.5f - region.vegetation) * 0.18f;
-        return Mathf.SmoothStep(0f, 0.8f, Mathf.InverseLerp(0.14f, 0.62f, load));
+        // GDD v5 §10: moderate pollution already shows (soil quality 50 is a visible tint); clean ground stays green.
+        return Mathf.SmoothStep(0f, 0.8f, Mathf.InverseLerp(0.06f, 0.42f, load));
     }
 
     private void Rebuild()

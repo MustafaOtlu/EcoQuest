@@ -21,6 +21,17 @@ public sealed class EcoPollutionInlet : MonoBehaviour
         sign = board.GetComponent<Renderer>();
         material = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard")); sign.sharedMaterial = material;
     }
+    // An inlet baked into a tile prefab keeps its valve board but not the runtime material (it was never an asset), so
+    // the board rendered magenta. The material is made again here whenever it is missing.
+    private void Awake()
+    {
+        if (sign == null) { var board = transform.Find("Giriş vanası"); if (board != null) sign = board.GetComponent<Renderer>(); }
+        if (sign != null && (material == null || sign.sharedMaterial == null))
+        {
+            material = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard")) { name = "Inlet valve" };
+            sign.sharedMaterial = material;
+        }
+    }
     private void Update()
     {
         if (region == null) region = EcoRegion.At(transform.position);

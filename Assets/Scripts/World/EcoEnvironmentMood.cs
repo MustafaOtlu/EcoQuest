@@ -65,8 +65,8 @@ public sealed class EcoEnvironmentMood : MonoBehaviour
         if (Current != null && Current != this) { enabled = false; return; }
         Current = this;
         CreateGrade();
-        dust = CreateParticles("Smog dust", new Color(0.52f, 0.46f, 0.36f, 0.5f), new Color(0.38f, 0.34f, 0.3f, 0.7f), 0.05f, 0.14f, out dustMaterial);
-        pollen = CreateParticles("Pollen and seeds", new Color(1f, 0.95f, 0.62f, 0.75f), new Color(0.9f, 1f, 0.8f, 0.9f), 0.04f, 0.08f, out pollenMaterial);
+        dust = CreateParticles("Smog dust", new Color(0.52f, 0.46f, 0.36f, 0.5f), new Color(0.38f, 0.34f, 0.3f, 0.7f), 0.09f, 0.22f, out dustMaterial);
+        pollen = CreateParticles("Pollen and seeds", new Color(1f, 0.95f, 0.62f, 0.75f), new Color(0.9f, 1f, 0.8f, 0.9f), 0.09f, 0.18f, out pollenMaterial);
     }
 
     private void OnDisable()
