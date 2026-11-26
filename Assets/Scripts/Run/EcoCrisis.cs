@@ -19,6 +19,9 @@ public static class EcoCrisis
         new Crisis { id = "factory_leak", title = "Fabrika kaçağı", text = "Filtresiz bacalardan yoğun duman çıktı. Filtreli fabrikalar etkiyi azaltır.", icon = "poi_factory", favoured = EcoProblem.Smog },
         new Crisis { id = "slime_migration", title = "Balçık göçü", text = "Kirlilik yeni tehditleri çekiyor; bu gece daha çok düşman doğabilir.", icon = "poi_enemy", favoured = EcoProblem.Waste },
         new Crisis { id = "acid_rain", title = "Asit yağmuru", text = "Kirli bulutlar toprağı ve suyu asitlendirdi. Bitki örtüsü etkiyi azaltır.", icon = "w_rain", favoured = EcoProblem.Smog },
+        new Crisis { id = "flash_flood", title = "Sel baskını", text = "Dereler taştı; göllere çamur ve atık indi. Bitki örtüsü güçlü kıyılar etkiyi azaltır.", icon = "w_rain", favoured = EcoProblem.DirtyLake },
+        new Crisis { id = "inversion", title = "Sıcaklık terslenmesi", text = "Soğuk hava dumanı vadiye hapsetti. Filtreli fabrikalar ve şehir yeşili etkiyi azaltır.", icon = "carbon", favoured = EcoProblem.Smog },
+        new Crisis { id = "invasive_species", title = "İstilacı tür", text = "Göllere yabancı bir tür yayıldı; balık stoku düşüyor. Oksijeni yüksek göller dayanır.", icon = "fish", favoured = EcoProblem.Warming },
         new Crisis { id = "illegal_dump", title = "Kaçak döküm", text = "Gece birileri vadiye atık döktü. Yığınları topla ve işle.", icon = "scrap", favoured = EcoProblem.Waste },
     };
 
@@ -94,6 +97,42 @@ public static class EcoCrisis
                     region.AddPollution(0f, 5f * s * guard, 6f * s * guard, 0f);
                 }
                 return "Toprak ve su asitlendi; ormanlık bölgeler daha az etkilendi";
+            case "flash_flood":
+            {
+                int lakes = 0;
+                foreach (var info in Object.FindObjectsByType<EcoRegionInfo>(FindObjectsSortMode.None))
+                {
+                    if (info.kind != EcoRegionInfo.Kind.Lake || !info.TryGetComponent<EcoRegion>(out var lake)) continue;
+                    float guard = 1f - 0.5f * lake.vegetation;
+                    lake.AddPollution(0f, 6f * s * guard, 4f * s * guard, 0f); lakes++;
+                }
+                int piles = run.SpawnWaste(Mathf.RoundToInt(2f * s), EcoRegionInfo.Kind.Lake);
+                return lakes == 0 ? "Sel vadiye zarar vermeden geçti" : lakes + " gölde su bulandı; " + piles + " atık yığını kıyıya vurdu";
+            }
+            case "inversion":
+            {
+                var industry = EcoRun.RegionOf(EcoRegionInfo.Kind.Industry);
+                var factories = Object.FindObjectsByType<EcoFactory>(FindObjectsSortMode.None).Where(f => industry != null && industry.Contains(f.transform.position)).ToArray();
+                float open = factories.Length == 0 ? 1f : factories.Count(f => !f.Filtered) / (float)factories.Length;
+                var city = EcoRun.RegionOf(EcoRegionInfo.Kind.City);
+                float green = city != null ? 1f - 0.6f * city.vegetation : 1f;
+                float air = 9f * s * (0.35f + 0.65f * open) * green;
+                city?.AddPollution(air, 0f, 0f, 0f);
+                industry?.AddPollution(air * 0.6f, 0f, 0f, 0f);
+                return "Şehirde hava kirliliği +" + air.ToString("0");
+            }
+            case "invasive_species":
+            {
+                float lost = 0f; int spots = 0;
+                foreach (var spot in Object.FindObjectsByType<EcoFishingSpot>(FindObjectsSortMode.None))
+                {
+                    var lake = EcoRegion.At(spot.transform.position);
+                    float guard = lake != null && lake.DissolvedOxygen >= 7f ? 0.4f : 1f;
+                    float loss = Mathf.Min(spot.population, 1.6f * s * guard);
+                    spot.population -= loss; lost += loss; spots++;
+                }
+                return spots == 0 ? "Göllerde balık olmadığı için tür tutunamadı" : "Balık stoku toplam " + lost.ToString("0.0") + " düştü";
+            }
             case "illegal_dump":
             {
                 int piles = run.SpawnWaste(Mathf.RoundToInt(3f * s), EcoRegionInfo.Kind.City, EcoRegionInfo.Kind.Sun, EcoRegionInfo.Kind.Industry);

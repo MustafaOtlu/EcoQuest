@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 /// panel, plus the small run chip on the HUD. Modal screens freeze the world through EcoUIFlow.</summary>
 public sealed class EcoRunUI : MonoBehaviour
 {
-    public enum View { None, Briefing, Cards, Crisis, Result, Goals }
+    public enum View { None, Briefing, Cards, Crisis, Result, Goals, Unlocks }
     public View Current { get; private set; }
     public bool Busy => Current != View.None && Current != View.Goals;
     public static bool ChipVisible { get; private set; }
@@ -14,6 +14,7 @@ public sealed class EcoRunUI : MonoBehaviour
     public static float ChipBottomPixels { get; private set; }
 
     private EcoRun run;
+    private View unlocksReturn = View.Briefing;
     private Vector2 scroll;
     private GUIStyle big, small, tag, cost;
 
@@ -76,6 +77,7 @@ public sealed class EcoRunUI : MonoBehaviour
             case View.Crisis: DrawCrisis(); break;
             case View.Result: DrawResult(); break;
             case View.Goals: DrawGoals(); break;
+            case View.Unlocks: DrawUnlocks(); break;
         }
         DrawChip();
         EcoTheme.End();
@@ -141,6 +143,7 @@ public sealed class EcoRunUI : MonoBehaviour
             GUI.Label(new Rect(right + 42f, gy + 32f, column - 52f, dh), detail, small);
             gy += dh + 48f;
         }
+        if (!s.training) { GUI.Label(new Rect(right, gy - 4f, column, 20f), "Ölçülen hedefler, vadinin başlangıç durumundan daha iyisini ister.", small); gy += 18f; }
         gy += 6f;
         if (!s.training)
         {
@@ -168,21 +171,54 @@ public sealed class EcoRunUI : MonoBehaviour
         { Close(); run.BeginPending(); }
     }
 
+    // A compact credit line and the way into the unlock tree (the tree itself has its own screen).
     private void DrawShop(Rect area)
     {
         var profile = EcoMeta.Current;
         GUI.Label(new Rect(area.x, area.y, area.width, 26f), "Yeşil kredi: " + profile.credits + (profile.runs > 0 ? "  ·  en iyi not " + (profile.bestGrade.Length > 0 ? profile.bestGrade : "—") : ""), EcoTheme.Subtitle);
-        float y = area.y + 30f;
-        foreach (var unlock in EcoMeta.Unlocks)
+        int owned = EcoMeta.Unlocks.Count(u => EcoMeta.Has(u.id));
+        int buyable = EcoMeta.Unlocks.Count(u => !EcoMeta.Has(u.id) && EcoMeta.Available(u) && profile.credits >= u.cost);
+        GUI.Label(new Rect(area.x, area.y + 28f, area.width, 22f), owned + "/" + EcoMeta.Unlocks.Length + " açılım" + (buyable > 0 ? " · " + buyable + " tanesi şimdi alınabilir" : ""), small);
+        if (area.height >= 90f && EcoTheme.IconButton(new Rect(area.x, area.y + 54f, Mathf.Min(area.width, 300f), 36f), "Açılım ağacı", "ui_skills"))
+        { unlocksReturn = Current; Current = View.Unlocks; scroll = Vector2.zero; }
+    }
+
+    private void DrawUnlocks()
+    {
+        var profile = EcoMeta.Current;
+        var r = EcoTheme.Window(1120f, 760f, "Açılım ağacı", "Yeşil kredi: " + profile.credits + " · run'lar arasında kalıcıdır. Derin açılımlar aynı daldan birini ister.", "ui_skills");
+        float x = r.x + 32f, y = r.y + 112f, w = r.width - 64f, gap = 14f;
+        int columns = EcoMeta.Groups.Length;
+        float cw = (w - gap * (columns - 1)) / columns, bottom = r.yMax - 72f;
+        for (int c = 0; c < columns; c++)
         {
-            if (y + 34f > area.yMax) break;
-            bool owned = EcoMeta.Has(unlock.id);
-            GUI.enabled = !owned && profile.credits >= unlock.cost;
-            string label = unlock.title + (owned ? " ✓" : " · " + unlock.cost + " kredi");
-            if (EcoTheme.IconButton(new Rect(area.x, y, area.width, 32f), label, unlock.icon)) EcoMeta.Buy(unlock.id);
-            GUI.enabled = true;
-            y += 36f;
+            float cx = x + c * (cw + gap), cy = y;
+            GUI.Label(new Rect(cx, cy, cw, 26f), EcoMeta.Groups[c], EcoTheme.Subtitle);
+            cy += 30f;
+            foreach (var unlock in EcoMeta.Unlocks.Where(u => u.group == EcoMeta.Groups[c]))
+            {
+                bool owned = EcoMeta.Has(unlock.id), open = EcoMeta.Available(unlock);
+                float th = H(small, unlock.text, cw - 24f);
+                string needs = open || owned ? "" : "Önce: " + string.Join(" ya da ", unlock.requires.Select(id => EcoMeta.Unlocks.First(u => u.id == id).title));
+                float nh = needs.Length > 0 ? H(tag, needs, cw - 24f) : 0f;
+                float h = 44f + th + nh + 40f;
+                if (cy + h > bottom) break;
+                var box = new Rect(cx, cy, cw, h);
+                GUI.Box(box, GUIContent.none, EcoTheme.Card);
+                EcoTheme.Icon(new Rect(box.x + 12f, box.y + 12f, 26f, 26f), unlock.icon);
+                GUI.Label(new Rect(box.x + 46f, box.y + 12f, cw - 56f, 26f), unlock.title + (owned ? " ✓" : ""), EcoTheme.Body);
+                GUI.Label(new Rect(box.x + 12f, box.y + 40f, cw - 24f, th), unlock.text, small);
+                if (nh > 0f) GUI.Label(new Rect(box.x + 12f, box.y + 42f + th, cw - 24f, nh), needs, tag);
+                GUI.enabled = !owned && open && profile.credits >= unlock.cost;
+                string label = owned ? "Açık" : unlock.cost + " kredi";
+                if (GUI.Button(new Rect(box.x + 12f, box.yMax - 36f, cw - 24f, 28f), label, owned ? EcoTheme.Button : EcoTheme.PrimaryButton)) EcoMeta.Buy(unlock.id);
+                GUI.enabled = true;
+                cy += h + 8f;
+            }
         }
+        if (profile.runs > 0 && profile.history.Count > 0)
+            GUI.Label(new Rect(x, r.yMax - 64f, w - 260f, 44f), "Son run: " + profile.history[profile.history.Count - 1] + " · toplam " + profile.runs + " run, " + profile.wins + " başarı", small);
+        if (GUI.Button(new Rect(r.xMax - 32f - 220f, r.yMax - 62f, 220f, 42f), "Geri", EcoTheme.PrimaryButton)) { Current = unlocksReturn; scroll = Vector2.zero; }
     }
 
     private void DrawCards()
@@ -221,7 +257,14 @@ public sealed class EcoRunUI : MonoBehaviour
             }
         }
         string footer = run.CardFeedback.Length > 0 ? run.CardFeedback : "Kartlar " + (EcoRun.Days - day + 1) + " gün daha gelecek. Akşam 18:00'de bir kriz olur; gece 5'te fırtına gelir.";
-        GUI.Label(new Rect(x, r.yMax - 76f, w, 50f), footer, small);
+        bool reroll = EcoMeta.Has("card_reroll");
+        GUI.Label(new Rect(x, r.yMax - 76f, w - (reroll ? 230f : 0f), 50f), footer, small);
+        if (reroll)
+        {
+            GUI.enabled = run.CanReroll;
+            if (GUI.Button(new Rect(r.xMax - 36f - 210f, r.yMax - 78f, 210f, 40f), run.CanReroll ? "Kartları yenile" : "Bugün yenilendi", EcoTheme.Button)) run.RerollCards();
+            GUI.enabled = true;
+        }
     }
 
     private void DrawCrisis()
@@ -282,6 +325,7 @@ public sealed class EcoRunUI : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
         }
         if (GUI.Button(new Rect(r.xMax - 40f - 220f - 230f, footer, 220f, 42f), "Vadide kal", EcoTheme.Button)) Close();
+        if (EcoTheme.IconButton(new Rect(x, footer, 220f, 42f), "Açılım ağacı", "ui_skills")) { unlocksReturn = View.Result; Current = View.Unlocks; scroll = Vector2.zero; }
     }
 
     private void DrawGoals()

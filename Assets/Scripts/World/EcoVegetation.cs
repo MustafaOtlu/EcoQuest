@@ -4,7 +4,8 @@ using System.Collections.Generic;
 public sealed class EcoVegetation : MonoBehaviour
 {
     private static readonly HashSet<EcoVegetation> Active = new HashSet<EcoVegetation>();
-    private void OnEnable() { Active.Add(this); EcoNavigation.MarkDirty(); }
+    [System.NonSerialized] public bool planted;
+    private void OnEnable() { Active.Add(this); EcoNavigation.MarkDirty(); planted |= GetComponent<PlantedSeed>() != null; }
     private void OnDisable() { Active.Remove(this); EcoNavigation.MarkDirty(); }
     public static int HealthyTreesIn(EcoRegion region)
     {
@@ -25,8 +26,13 @@ public sealed class EcoVegetation : MonoBehaviour
     {
         if (health > 0 && EcoRegion.At(transform.position) is EcoRegion region)
         {
-            region.AddPollution(-0.003f * health * Time.deltaTime, -0.001f * health * Time.deltaTime, -0.002f * health * Time.deltaTime, -0.004f * health * Time.deltaTime, EcoCarbonFootprint.Source.Trees);
-            region.vegetation = Mathf.Min(1, region.vegetation + health * Time.deltaTime * 0.0001f);
+            // GDD v5 §6: in a rolled run the valley's own (wild) trees clean far less and only hold cover at the starting
+            // level (EcoRegion.wildCover), so an idle player cannot pass the carbon or cover goals. Trees the player
+            // planted work at full strength. In the Training Valley the factor is 1 and the cap stays at 1.
+            float rate = health * Time.deltaTime, factor = planted ? 1f : EcoRun.RecoveryFactor, sink = rate * factor * factor;
+            region.AddPollution(-0.003f * sink, -0.001f * sink, -0.002f * sink, -0.004f * sink, EcoCarbonFootprint.Source.Trees);
+            float cap = planted ? 1f : region.wildCover;
+            if (region.vegetation < cap) region.vegetation = Mathf.Min(cap, region.vegetation + rate * factor * 0.0001f);
         }
     }
     public void Burn(float damage)

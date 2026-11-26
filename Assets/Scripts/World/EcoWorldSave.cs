@@ -267,7 +267,7 @@ public sealed class EcoWorldSave : MonoBehaviour
                 // The save belongs to another valley layout: rebuild that valley first, then load into it.
                 var layout = EcoValley.Parse(snapshot.layout);
                 if (layout == null) { Say("Kayıttaki vadi düzeni okunamadı."); return false; }
-                EcoValley.Request(layout); EcoValley.SkipTitle = true; reloadSlot = slot;
+                EcoValley.Request(snapshot.layout); EcoValley.SkipTitle = true; reloadSlot = slot;
                 PlayerController.SetPaused(false);
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
                 return true;

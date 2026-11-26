@@ -37,11 +37,27 @@ public sealed class EcoValleyTests
         for (int seed = 0; seed < 50; seed++)
         {
             var layout = EcoValley.Layout(seed, false);
-            CollectionAssert.AreEqual(layout, EcoValley.Parse(EcoValley.Code(layout)));
+            var turns = EcoValley.Turns(seed, false);
+            CollectionAssert.AreEqual(layout, EcoValley.Parse(EcoValley.Code(layout, turns), out var parsed));
+            CollectionAssert.AreEqual(turns, parsed);
         }
+        // Codes saved before tiles could turn have no digits: they read as unturned.
+        CollectionAssert.AreEqual(new[] { 0, 0, 0, 0 }, ParsedTurns("Lake-DirtyLake-Grove-Industry"));
+        CollectionAssert.AreEqual(new[] { 2, 0, 1, 3 }, ParsedTurns("Lake2-DirtyLake-Grove1-Industry3"));
         Assert.IsNull(EcoValley.Parse(""));
         Assert.IsNull(EcoValley.Parse("Lake-Grove"));
         Assert.IsNull(EcoValley.Parse("Lake-Grove-Volcano-Industry"));
+    }
+
+    private static int[] ParsedTurns(string code) { EcoValley.Parse(code, out var turns); return turns; }
+
+    [Test]
+    public void TurnsVaryButTrainingNeverTurns()
+    {
+        var turned = Enumerable.Range(0, 100).SelectMany(s => EcoValley.Turns(s, false)).ToArray();
+        for (int t = 0; t < 4; t++) Assert.Greater(turned.Count(x => x == t), 40, "turn " + t);
+        CollectionAssert.AreEqual(new[] { 0, 0, 0, 0 }, EcoValley.Turns(99, true));
+        Assert.AreEqual(EcoValley.Code(EcoValley.TrainingLayout), EcoValley.PlanCode(EcoScenario.Training()));
     }
 
     [Test]

@@ -18,7 +18,9 @@ public sealed class EcoRun : MonoBehaviour
     public sealed class RunState
     {
         public bool active, training, finaleWon;
-        public int seed, difficulty, startDay = 1, lastMorningDay, lastCrisisDay, lastWarningDay, lowHealthDays, fireGuardDay = -1;
+        public int seed, difficulty, startDay = 1, lastMorningDay, lastCrisisDay, lastWarningDay, lowHealthDays, fireGuardDay = -1, rerollDay = -1;
+        public bool patrol;
+        public float playSeconds;
         public int result, score, credits;
         public string grade = "";
         public float solarBoost = 1f, windBoost = 1f, recoveryBoost = 1f;
@@ -53,7 +55,10 @@ public sealed class EcoRun : MonoBehaviour
 
     public static float SolarFactor => Current != null && Current.Active && Current.Scenario != null ? Current.State.solarBoost * Current.Scenario.solarYield : 1f;
     public static float WindFactor => Current != null && Current.Active && Current.Scenario != null ? Current.State.windBoost * Current.Scenario.windYield : 1f;
-    public static float RecoveryFactor => Current != null && Current.Active ? Current.State.recoveryBoost : 1f;
+    /// <summary>GDD v5 §6: in a rolled valley nature heals at about a third of the v4 rate, so a valley left alone does
+    /// not fix itself in five days; the training valley keeps the gentle v4 rate.</summary>
+    public const float NaturalRecovery = 0.35f;
+    public static float RecoveryFactor => Current != null && Current.Active ? Current.State.recoveryBoost * (Current.State.training ? 1f : NaturalRecovery) : 1f;
 
     private static bool autoStart;
     /// <summary>"Yeni vadi" from the result screen reloads the scene and skips the title straight into a briefing.</summary>
@@ -110,11 +115,11 @@ public sealed class EcoRun : MonoBehaviour
         if (Pending == null) return;
         // Another valley layout: reload the scene into it; the run starts there as soon as the world exists.
         var assembler = EcoValleyAssembler.Current;
-        var layout = EcoValley.Layout(Pending);
-        if (assembler != null && EcoValley.Code(layout) != assembler.Code)
+        string code = EcoValley.PlanCode(Pending);
+        if (assembler != null && code != assembler.Code)
         {
             pendingStart = Pending; Pending = null;
-            EcoValley.Request(layout); EcoValley.SkipTitle = true;
+            EcoValley.Request(code); EcoValley.SkipTitle = true;
             PlayerController.SetPaused(false);
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
@@ -143,10 +148,54 @@ public sealed class EcoRun : MonoBehaviour
             if (applyWorld) { Clock.day = 1; Clock.hour = 7f; }
             State.startDay = Clock.day; State.lastMorningDay = Clock.day;
         }
-        if (applyWorld) ApplyScenario(scenario);
+        if (applyWorld) { ApplyScenario(scenario); TightenGoals(scenario); }
         EcoPlaytestLog.Objective("Run başladı: " + scenario.valleyName + " · " + EcoScenario.DifficultyNames[(int)scenario.difficulty] + " · tohum " + scenario.seed);
         RunStarted?.Invoke();
         OfferCards();
+    }
+
+    // A target the valley already meets on arrival is no goal. Once the rolled values are in the world, each measured
+    // goal is set to at least a fixed step better than where this valley starts (never easier than the catalogue).
+    private void TightenGoals(EcoScenario scenario)
+    {
+        if (scenario.training) return;
+        int level = (int)scenario.difficulty;
+        float share = new[] { 0.8f, 0.7f, 0.6f }[level];
+        foreach (var goal in State.goals)
+        {
+            var spec = goal.Spec;
+            if (spec == null) continue;
+            float before = goal.threshold;
+            switch (spec.metric)
+            {
+                case EcoGoalMetric.WorldCarbon:
+                    goal.threshold = Mathf.Min(goal.threshold, Mathf.Max(3f, Mathf.Round(EcoRegion.WorldCarbon(true) * share)));
+                    break;
+                case EcoGoalMetric.IndustryAqi:
+                {
+                    var region = RegionOf(EcoRegionInfo.Kind.Industry);
+                    if (region != null) goal.threshold = Mathf.Min(goal.threshold, Mathf.Max(25f, Mathf.Round(region.AQI * share / 5f) * 5f));
+                    break;
+                }
+                case EcoGoalMetric.ValleyHealth:
+                    goal.threshold = Mathf.Max(goal.threshold, Mathf.Min(90f, Mathf.Round(ValleyHealth() + 8f + 4f * level)));
+                    break;
+                case EcoGoalMetric.LakeOxygen:
+                {
+                    var lake = RegionOf(EcoRegionInfo.Kind.Lake);
+                    if (lake != null) goal.threshold = Mathf.Max(goal.threshold, Mathf.Min(9f, Mathf.Round((lake.DissolvedOxygen + 1f + 0.5f * level) * 2f) / 2f));
+                    break;
+                }
+                case EcoGoalMetric.GroveCover:
+                {
+                    var grove = RegionOf(EcoRegionInfo.Kind.Grove) ?? RegionOf(EcoRegionInfo.Kind.Wind);
+                    if (grove != null) goal.threshold = Mathf.Max(goal.threshold, Mathf.Min(0.9f, Mathf.Round((grove.vegetation + 0.16f + 0.04f * level) * 20f) / 20f));
+                    break;
+                }
+            }
+            if (!Mathf.Approximately(before, goal.threshold))
+                EcoPlaytestLog.Objective("Hedef eşiği vadiye göre ayarlandı: " + spec.title + " " + before.ToString("0.##") + " → " + goal.threshold.ToString("0.##"));
+        }
     }
 
     private void ApplyScenario(EcoScenario scenario)
@@ -160,6 +209,7 @@ public sealed class EcoRun : MonoBehaviour
                 region.soilPollution = scenario.Pollution(info.kind, region.soilPollution);
                 region.carbon = scenario.Pollution(info.kind, region.carbon);
                 region.vegetation = scenario.Vegetation(info.kind, region.vegetation);
+                region.wildCover = region.vegetation;
             }
         SpawnFires(scenario.fires, EcoRegionInfo.Kind.Grove, EcoRegionInfo.Kind.Wind);
         SpawnWaste(scenario.wastePiles, EcoRegionInfo.Kind.City, EcoRegionInfo.Kind.Sun, EcoRegionInfo.Kind.Industry, EcoRegionInfo.Kind.Lake);
@@ -169,6 +219,7 @@ public sealed class EcoRun : MonoBehaviour
             int grant = EcoMeta.Has("start_grant") ? 20 : 0;
             player.ReturnMaterials(scenario.startMetal + grant, scenario.startPlastic + grant);
             if (EcoMeta.Has("seed_bank")) player.AddSeeds(EcoCropCatalog.Kind.Tree, 10);
+            if (EcoMeta.Has("blueprints")) EcoDiscoveries.Remember("recipe.water");
         }
     }
 
@@ -180,6 +231,7 @@ public sealed class EcoRun : MonoBehaviour
         var save = EcoWorldSave.Current;
         if (save != null && save.IsLoading) return;
         accumulated += Time.deltaTime;
+        if (!PlayerController.Paused) State.playSeconds += Time.unscaledDeltaTime;
         if (Time.unscaledTime >= nextScan)
         {
             nextScan = Time.unscaledTime + 0.5f;
@@ -242,6 +294,20 @@ public sealed class EcoRun : MonoBehaviour
         State.offerOpen = State.offer.Length > 0;
         CardFeedback = "";
         if (State.offerOpen) ui.ShowCards();
+    }
+
+    public bool CanReroll => State.offerOpen && EcoMeta.Has("card_reroll") && State.rerollDay != RunDay;
+
+    /// <summary>Meta unlock: once a day the morning hand can be swapped for a fresh one (deterministic per seed and day).</summary>
+    public bool RerollCards()
+    {
+        if (!CanReroll) return false;
+        State.rerollDay = RunDay;
+        var taken = new List<string>(State.cards); taken.AddRange(State.offer.Where(id => !(EcoDayCards.Find(id)?.repeatable ?? true)));
+        var fresh = EcoDayCards.Draw(unchecked(State.seed * 7 + 4099), RunDay, Scenario.problem, taken, State.offer.Length);
+        if (fresh.Length == 0) return false;
+        State.offer = fresh; CardFeedback = "Kartlar yenilendi.";
+        return true;
     }
 
     /// <summary>Morning pick. Returns false when the card cannot be paid for.</summary>
@@ -346,6 +412,20 @@ public sealed class EcoRun : MonoBehaviour
                 status = "Kalan yığın " + left + " / en çok " + t.ToString("0");
                 progress = left <= t ? 1f : Mathf.Clamp01(1f - (left - t) / 12f); return left <= t;
             }
+            case EcoGoalMetric.TreesGrowing:
+            {
+                int count = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None).Count(p => p.kind == EcoCropCatalog.Kind.Tree && !p.IsWithered && p.growth >= 0.5f);
+                status = "Ağaç " + count + " / " + t.ToString("0");
+                progress = Mathf.Clamp01(count / Mathf.Max(1f, t)); return count >= t;
+            }
+            case EcoGoalMetric.WindGenerators:
+            {
+                var hills = RegionOf(EcoRegionInfo.Kind.Wind);
+                int count = FindObjectsByType<EcoPowerNode>(FindObjectsSortMode.None).Count(n => n.Operational && n.kind == EcoPowerNode.Kind.Wind
+                    && n.TryGetComponent<EcoStructure>(out var s) && s.playerBuilt && (hills == null || hills.Contains(n.transform.position)));
+                status = "Türbin " + count + " / " + t.ToString("0");
+                progress = Mathf.Clamp01(count / Mathf.Max(1f, t)); return count >= t;
+            }
             case EcoGoalMetric.ValleyHealth:
             {
                 float health = ValleyHealth();
@@ -428,10 +508,26 @@ public sealed class EcoRun : MonoBehaviour
         }
         State.credits = credits;
         EcoMeta.RecordRun(Scenario.valleyName, State.grade, State.score, credits, success);
+        LogRun(result);
         EcoPlaytestLog.Objective("Run bitti: " + result + " · not " + State.grade + " · puan " + State.score + " · +" + credits + " kredi");
         RunEnded?.Invoke();
         ui.ShowResult();
         EcoWorldSave.Current?.RequestAutosave();
+    }
+
+    private void LogRun(Result result)
+    {
+        string Q(string v) => "\"" + (v ?? "").Replace("\"", "'") + "\"";
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        string row = string.Join(",", new[]
+        {
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm", inv), Q(Scenario.valleyName), EcoValleyAssembler.Current != null ? EcoValleyAssembler.Current.Code : "",
+            State.seed.ToString(inv), EcoScenario.DifficultyNames[State.difficulty], Scenario.problem.ToString(), result.ToString(), State.grade, State.score.ToString(inv),
+            State.credits.ToString(inv), (State.playSeconds / 60f).ToString("0.0", inv), State.goals.Count(g => g.done).ToString(inv),
+            Q(string.Join(" ", State.goals.Select(g => g.id + (g.done ? "+" : "-")))), Q(string.Join(" ", State.cards)), Q(string.Join(" ", State.crises)),
+            Q(string.Join(" ", State.health.Select(h => h.ToString("0", inv)))),
+        });
+        EcoPlaytestLog.Run(row);
     }
 
     // ================================================================== save hook
@@ -453,7 +549,15 @@ public sealed class EcoRun : MonoBehaviour
     public void AfterLoad()
     {
         Pending = null;
-        if (restored) { restored = false; ui.AfterLoad(); return; }
+        if (restored)
+        {
+            restored = false;
+            // Enemy zone budgets live in the scene; a patrol card bought earlier in the run applies again.
+            if (State.patrol) foreach (var zone in FindObjectsByType<EcoEnemySpawnZone>(FindObjectsSortMode.None)) zone.dailyBudget = Mathf.Max(1, zone.dailyBudget - 2);
+            // The start cover is not saved; the loaded cover is the closest stand-in for the wild-tree cap.
+            if (!State.training) foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None)) region.wildCover = region.vegetation;
+            ui.AfterLoad(); return;
+        }
         var scenario = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal);
         Begin(scenario, EcoGoalCatalog.Pick(scenario, PresentKinds()), false);
     }

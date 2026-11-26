@@ -15,7 +15,8 @@ public sealed class EcoValleyAssembler : MonoBehaviour
     public const string TileFolder = "EcoTiles/";
     public static EcoValleyAssembler Current { get; private set; }
     public EcoTile[] Layout { get; private set; }
-    public string Code => EcoValley.Code(Layout);
+    public int[] Turns { get; private set; } = new int[4];
+    public string Code => EcoValley.Code(Layout, Turns);
     public Transform Root { get; private set; }
     public Texture2D Minimap { get; private set; }
 
@@ -24,7 +25,9 @@ public sealed class EcoValleyAssembler : MonoBehaviour
     private void Awake()
     {
         Current = this;
-        Layout = EcoValley.ConsumeRequest() ?? (EcoTile[])EcoValley.TrainingLayout.Clone();
+        var layout = EcoValley.Parse(EcoValley.ConsumeRequest(), out var turns);
+        Layout = layout ?? (EcoTile[])EcoValley.TrainingLayout.Clone();
+        Turns = layout != null ? turns : new int[EcoValley.SlotOrigins.Length];
         Assemble();
     }
     private void OnDestroy() { if (Current == this) Current = null; if (Minimap != null) Destroy(Minimap); }
@@ -63,7 +66,7 @@ public sealed class EcoValleyAssembler : MonoBehaviour
         {
             var kind = Layout[slot];
             Vector2 origin = EcoValley.SlotOrigins[slot];
-            var tile = Spawn("Tile_" + kind, origin - EcoValley.HomeOrigin(kind));
+            var tile = Spawn("Tile_" + kind, origin - EcoValley.HomeOrigin(kind), origin + Vector2.one * (EcoValley.TileSize * 0.5f), Turns[slot]);
             if (tile == null) continue;
             tile.name = EcoValley.TileName(kind) + " (" + EcoValley.SlotNames[slot] + ")";
             placed.Add((tile, new Rect(origin, Vector2.one * EcoValley.TileSize)));
@@ -101,13 +104,16 @@ public sealed class EcoValleyAssembler : MonoBehaviour
         Physics.SyncTransforms();
     }
 
-    private Transform Spawn(string id, Vector2 offset)
+    // A turned tile spins about the centre of its slot: world = centre + q · (authored + offset − centre).
+    private Transform Spawn(string id, Vector2 offset, Vector2 pivot = default, int turn = 0)
     {
         var prefab = Resources.Load<GameObject>(TileFolder + id);
         if (prefab == null) { Debug.LogError("EcoValley: karo bulunamadı: Resources/" + TileFolder + id); return null; }
         var instance = Instantiate(prefab, Root);
         instance.name = id;
-        instance.transform.SetPositionAndRotation(new Vector3(offset.x, 0f, offset.y), Quaternion.identity);
+        var q = Quaternion.Euler(0f, 90f * (turn & 3), 0f);
+        var c = new Vector3(pivot.x, 0f, pivot.y);
+        instance.transform.SetPositionAndRotation(c + q * (new Vector3(offset.x, 0f, offset.y) - c), q);
         return instance.transform;
     }
 
@@ -151,24 +157,70 @@ public sealed class EcoValleyAssembler : MonoBehaviour
         for (int i = 0; i < fill.Length; i++) fill[i] = ground;
         map.SetPixels32(fill);
         bool any = false;
-        void Blit(string id, Vector2 origin)
+        void Blit(string id, Vector2 origin, int turn)
         {
             var tex = Resources.Load<Texture2D>(TileFolder + "Maps/" + id);
             if (tex == null || !tex.isReadable) return;
             int x0 = Mathf.RoundToInt(origin.x * ppm), y0 = Mathf.RoundToInt(origin.y * ppm);
             int w = Mathf.Min(tex.width, size - x0), h = Mathf.Min(tex.height, size - y0);
             if (w <= 0 || h <= 0) return;
-            map.SetPixels(x0, y0, w, h, tex.GetPixels(0, 0, w, h));
+            var pixels = tex.GetPixels(0, 0, w, h);
+            if ((turn & 3) != 0 && w == h) pixels = Turn(pixels, w, turn & 3);
+            map.SetPixels(x0, y0, w, h, pixels);
             any = true;
         }
-        Blit("Tile_Glacier", new Vector2(0f, 100f));
-        Blit("Tile_Sun", new Vector2(50f, 0f));
-        Blit("Tile_City", new Vector2(50f, 50f));
+        Blit("Tile_Glacier", new Vector2(0f, 100f), 0);
+        Blit("Tile_Sun", new Vector2(50f, 0f), 0);
+        Blit("Tile_City", new Vector2(50f, 50f), 0);
         for (int slot = 0; slot < Layout.Length && slot < EcoValley.SlotOrigins.Length; slot++)
-            Blit("Tile_" + Layout[slot], EcoValley.SlotOrigins[slot]);
+            Blit("Tile_" + Layout[slot], EcoValley.SlotOrigins[slot], Turns[slot]);
         if (!any) { Destroy(map); return null; }
+        CoverOuterMouths(map, size, ppm);
         map.Apply(true, true);
         return map;
+    }
+
+    // The road mouths on the valley's outer wall are hidden in the world; on the map they are painted over with the
+    // ground beside them (the strip 13 m along the wall), so no road seems to run off the edge.
+    private static void CoverOuterMouths(Texture2D map, int size, float ppm)
+    {
+        var mouths = new[]
+        {
+            (new Vector2(0f, 25f), Vector2.right), (new Vector2(0f, 75f), Vector2.right),
+            (new Vector2(150f, 25f), Vector2.left), (new Vector2(150f, 75f), Vector2.left),
+            (new Vector2(25f, 0f), Vector2.up), (new Vector2(125f, 0f), Vector2.up),
+        };
+        var pixels = map.GetPixels32();
+        foreach (var (mid, inward) in mouths)
+        {
+            var along = new Vector2(inward.y, -inward.x);
+            for (float d = 0f; d < 5.2f; d += 0.5f / ppm)
+                for (float a = -6.5f; a <= 6.5f; a += 0.5f / ppm)
+                {
+                    Vector2 p = mid + inward * d + along * a;
+                    Vector2 q = mid + inward * d + along * (a + (a < 0f ? -13f : 13f));
+                    int px = Mathf.Clamp(Mathf.FloorToInt(p.x * ppm), 0, size - 1), py = Mathf.Clamp(Mathf.FloorToInt(p.y * ppm), 0, size - 1);
+                    int qx = Mathf.Clamp(Mathf.FloorToInt(q.x * ppm), 0, size - 1), qy = Mathf.Clamp(Mathf.FloorToInt(q.y * ppm), 0, size - 1);
+                    pixels[py * size + px] = pixels[qy * size + qx];
+                }
+        }
+        map.SetPixels32(pixels);
+    }
+
+    // Pixel x is world x and pixel y is world z. A clockwise quarter turn (Unity +90° about Y) sends local (x, z)
+    // to (z, −x), so the destination pixel (u, v) reads the source at (n−1−v, u) for each turn.
+    private static Color[] Turn(Color[] source, int n, int turns)
+    {
+        var result = source;
+        for (int t = 0; t < turns; t++)
+        {
+            var next = new Color[n * n];
+            for (int v = 0; v < n; v++)
+                for (int u = 0; u < n; u++)
+                    next[v * n + u] = result[u * n + (n - 1 - v)];
+            result = next;
+        }
+        return result;
     }
 
     private void LabelStartSign()

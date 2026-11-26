@@ -146,7 +146,7 @@ public sealed class PlantedSeed : MonoBehaviour
         if (harvested) return;
         harvested = true;
         CleanupIndicatorObjects();
-        var tree = gameObject.AddComponent<EcoVegetation>(); tree.health = health; tree.foliage = cropRenderers;
+        var tree = gameObject.AddComponent<EcoVegetation>(); tree.health = health; tree.foliage = cropRenderers; tree.planted = true;
         if (TryGetComponent<Unity.AI.Navigation.NavMeshModifier>(out var navigation)) navigation.ignoreFromBuild = false;
         var collider = GetComponent<CapsuleCollider>(); collider.height = 3.4f; collider.radius = 0.3f; collider.center = Vector3.up * 1.7f;
         gameObject.name = "Grown tree"; Destroy(this);

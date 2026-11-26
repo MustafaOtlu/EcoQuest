@@ -50,8 +50,16 @@ public static class EcoValley
 
     private static readonly EcoTile[] Optional = { EcoTile.Lake, EcoTile.Wind, EcoTile.Grove };
 
-    public static EcoTile[] Layout(int seed, bool training)
+    public static EcoTile[] Layout(int seed, bool training) => Roll(seed, training, out _);
+
+    /// <summary>Quarter turns (0–3, clockwise seen from above) of the four side tiles. Every side tile has flat edges
+    /// and a road mouth in the middle of each edge, so any turn still meets its neighbours. The training valley is
+    /// never turned.</summary>
+    public static int[] Turns(int seed, bool training) { Roll(seed, training, out var turns); return turns; }
+
+    private static EcoTile[] Roll(int seed, bool training, out int[] turns)
     {
+        turns = new int[SlotOrigins.Length];
         if (training) return (EcoTile[])TrainingLayout.Clone();
         var rng = new System.Random(unchecked(seed * 6151 + 29));
         var left = Optional[rng.Next(Optional.Length)];
@@ -62,10 +70,14 @@ public static class EcoValley
             int j = rng.Next(i + 1);
             (tiles[i], tiles[j]) = (tiles[j], tiles[i]);
         }
+        for (int i = 0; i < turns.Length; i++) turns[i] = rng.Next(4);
         return tiles.ToArray();
     }
 
     public static EcoTile[] Layout(EcoScenario scenario) => scenario == null ? (EcoTile[])TrainingLayout.Clone() : Layout(scenario.seed, scenario.training);
+    public static int[] Turns(EcoScenario scenario) => scenario == null ? new int[SlotOrigins.Length] : Turns(scenario.seed, scenario.training);
+    /// <summary>The full valley code of a scenario: tiles and their turns ("Lake2-DirtyLake-Grove1-Industry3").</summary>
+    public static string PlanCode(EcoScenario scenario) => Code(Layout(scenario), Turns(scenario));
 
     /// <summary>The region kinds a layout contains, for picking goals before the valley exists.</summary>
     public static HashSet<EcoRegionInfo.Kind> Kinds(EcoTile[] layout)
@@ -75,16 +87,29 @@ public static class EcoValley
         return kinds;
     }
 
-    public static string Code(EcoTile[] layout) => layout == null ? "" : string.Join("-", layout.Select(t => t.ToString()));
+    public static string Code(EcoTile[] layout, int[] turns = null) => layout == null ? "" : string.Join("-", layout.Select((t, i) =>
+        t.ToString() + (turns != null && i < turns.Length && (turns[i] & 3) != 0 ? (turns[i] & 3).ToString() : "")));
 
-    public static EcoTile[] Parse(string code)
+    public static EcoTile[] Parse(string code) => Parse(code, out _);
+
+    /// <summary>Reads a valley code; a tile without a digit is not turned (codes saved before turns existed).</summary>
+    public static EcoTile[] Parse(string code, out int[] turns)
     {
+        turns = new int[SlotOrigins.Length];
         if (string.IsNullOrEmpty(code)) return null;
         var parts = code.Split('-');
         if (parts.Length != SlotOrigins.Length) return null;
         var result = new EcoTile[parts.Length];
         for (int i = 0; i < parts.Length; i++)
-            if (!Enum.TryParse(parts[i], out result[i])) return null;
+        {
+            string name = parts[i];
+            if (name.Length > 1 && char.IsDigit(name[name.Length - 1]))
+            {
+                turns[i] = (name[name.Length - 1] - '0') & 3;
+                name = name.Substring(0, name.Length - 1);
+            }
+            if (!Enum.TryParse(name, out result[i]) || !Enum.IsDefined(typeof(EcoTile), result[i])) return null;
+        }
         return result;
     }
 
@@ -127,10 +152,10 @@ public static class EcoValley
 
     // ----------------------------------------------------------- across scene reloads
 
-    private static EcoTile[] requested;
-    /// <summary>The layout the next scene load assembles (a run start or a load from another valley sets it).</summary>
-    public static void Request(EcoTile[] layout) => requested = layout;
-    public static EcoTile[] ConsumeRequest() { var value = requested; requested = null; return value; }
+    private static string requested;
+    /// <summary>The valley code the next scene load assembles (a run start or a load from another valley sets it).</summary>
+    public static void Request(string code) => requested = code;
+    public static string ConsumeRequest() { var value = requested; requested = null; return value; }
     /// <summary>Set while a reload into another valley is in flight, so the title screen stays closed.</summary>
     public static bool SkipTitle { get; set; }
 

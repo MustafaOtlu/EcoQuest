@@ -14,6 +14,8 @@ public sealed class EcoRegion : MonoBehaviour
     [Range(0, 100)] public float airPollution, waterPollution, soilPollution, carbon;
     public float baseTemperature = 20;
     [Range(0, 1)] public float vegetation = 0.5f;
+    /// <summary>GDD v5 §6: in a rolled run the valley's own trees only hold cover up to its starting level; more needs planting.</summary>
+    [System.NonSerialized] public float wildCover = 1f;
     public bool sensitiveHabitat;
     public Renderer groundVisual;
     private MaterialPropertyBlock tint;
@@ -38,9 +40,9 @@ public sealed class EcoRegion : MonoBehaviour
     private static float worldCarbon, worldCarbonAt = -10f;
     /// <summary>GDD §10: area-weighted world carbon. The map is sampled on a grid and each point counts the region that
     /// owns it (highest priority), so overlapping pockets or many small clean regions cannot pull the average down.</summary>
-    public static float WorldCarbon()
+    public static float WorldCarbon(bool fresh = false)
     {
-        if (Time.time - worldCarbonAt < 1f && worldCarbonAt >= 0f) return worldCarbon;
+        if (!fresh && Time.time - worldCarbonAt < 1f && worldCarbonAt >= 0f) return worldCarbon;
         worldCarbonAt = Time.time;
         bool any = false; float minX = 0f, maxX = 0f, minZ = 0f, maxZ = 0f;
         foreach (var r in Active)

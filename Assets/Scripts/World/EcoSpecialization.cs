@@ -5,6 +5,8 @@ using UnityEngine.InputSystem;
 // GDD §7: YEP specialisations. One point is earned at YEP levels 2, 4, 6, ... (level / 2 rounded down, minus points already spent).
 // Three branches, three ranks each. Early choices change the order the player solves problems in; no recovery path
 // depends on a single branch (every effect is a modest efficiency bonus). [K] opens the panel.
+// GDD v5 §4: the Water and Ecology branches and the third rank are meta unlocks (green credits), so a player cannot
+// take everything in one run; the Energy branch is always open.
 public sealed class EcoSpecialization : MonoBehaviour
 {
     public enum Branch { Energy, Water, Ecology }
@@ -16,7 +18,7 @@ public sealed class EcoSpecialization : MonoBehaviour
     private static void ResetStatics() { System.Array.Clear(ranks, 0, ranks.Length); }
 
     // Effects other systems read (all are 1 when nothing is chosen).
-    public static float EnergyUse => 1f - 0.08f * ranks[0];      // tool electricity cost
+    public static float EnergyUse => (1f - 0.08f * ranks[0]) * (EcoMeta.Has("efficient_tools") ? 0.85f : 1f); // tool electricity cost
     public static float PowerOutput => 1f + 0.06f * ranks[0];    // solar / wind output
     public static float WaterEfficiency => 1f + 0.12f * ranks[1];// farm irrigation, pump and purifier flow
     public static float WaterUse => 1f - 0.05f * ranks[1];
@@ -110,7 +112,7 @@ public sealed class EcoSpecialization : MonoBehaviour
     public bool TryBuy(Branch branch)
     {
         int index = (int)branch;
-        if (ranks[index] >= MaxRank || Points <= 0) return false;
+        if (!EcoMeta.BranchOpen(index) || ranks[index] >= EcoMeta.MaxSpecRank || Points <= 0) return false;
         ranks[index]++;
         if (weapons != null) weapons.ShowFeedback("Uzmanlık: " + Names[index] + " kademe " + ranks[index]);
         nextScan = 0f;
@@ -127,7 +129,7 @@ public sealed class EcoSpecialization : MonoBehaviour
         // While closed, the HUD's skills button carries a badge when rights are available.
         if (!open) return;
         EcoTheme.Begin();
-        var r = EcoTheme.Window(680f, 650f, "UZMANLIK", "Her 40 kalıcı YEP bir hak verir. Kalan hak: " + Points + " · Dokuz kademenin hepsi açılabilir.", "ui_skills", 48);
+        var r = EcoTheme.Window(680f, 650f, "UZMANLIK", "Her 40 kalıcı YEP bir hak verir. Kalan hak: " + Points + " · Dallar ve 3. kademe yeşil krediyle açılır.", "ui_skills", 48);
         if (EcoTheme.CloseButton(r)) SetOpen(false);
         var viewport = new Rect(r.x + 32, r.y + 114, r.width - 64, r.height - 204);
         float width = viewport.width - 22, total = 0;
@@ -150,8 +152,10 @@ public sealed class EcoSpecialization : MonoBehaviour
                 GUI.color = prev;
             }
             GUI.Label(new Rect(76, y + 84, width - 100, descriptionHeight), Info[i], EcoTheme.Muted);
-            GUI.enabled = Points > 0 && ranks[i] < MaxRank;
-            if (EcoTheme.IconButton(new Rect(width - 180, y + 22, 156, 40), ranks[i] >= MaxRank ? "En yüksek" : "Geliştir", ranks[i] >= MaxRank ? "ui_check" : "yep")) TryBuy((Branch)i);
+            bool branchOpen = EcoMeta.BranchOpen(i), capped = ranks[i] >= EcoMeta.MaxSpecRank;
+            GUI.enabled = branchOpen && Points > 0 && !capped;
+            string label = !branchOpen ? "Kilitli" : ranks[i] >= MaxRank ? "En yüksek" : capped ? "Usta gerekli" : "Geliştir";
+            if (EcoTheme.IconButton(new Rect(width - 180, y + 22, 156, 40), label, !branchOpen || capped && ranks[i] < MaxRank ? "ui_cross" : ranks[i] >= MaxRank ? "ui_check" : "yep")) TryBuy((Branch)i);
             GUI.enabled = true;
             y += height + 12;
         }

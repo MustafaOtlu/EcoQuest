@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>What a goal measures. Project goals reuse an EcoProjects check; the rest read the living world.</summary>
-public enum EcoGoalMetric { Project, LakeOxygen, IndustryAqi, GroveCover, WorldCarbon, CleanGenerators, FishStock, WasteCleared, ValleyHealth }
+public enum EcoGoalMetric { Project, LakeOxygen, IndustryAqi, GroveCover, WorldCarbon, CleanGenerators, FishStock, WasteCleared, ValleyHealth, TreesGrowing, WindGenerators }
 
 /// <summary>Catalogue entry. Thresholds are indexed by difficulty (Sakin, Normal, Kriz).</summary>
 public sealed class EcoGoalSpec
@@ -29,6 +29,8 @@ public sealed class EcoGoalSpec
             case EcoGoalMetric.FishStock: return "Göllerdeki ortalama balık stoku en az " + threshold.ToString("0") + "/12";
             case EcoGoalMetric.WasteCleared: return threshold <= 0f ? "Vadide toplanmamış atık yığını kalmasın" : "Vadide en çok " + threshold.ToString("0") + " atık yığını kalsın";
             case EcoGoalMetric.ValleyHealth: return "Ekosistem sağlığı en az %" + threshold.ToString("0");
+            case EcoGoalMetric.TreesGrowing: return "Senin diktiğin en az " + threshold.ToString("0") + " ağaç sağlıklı ve yarıya kadar büyümüş";
+            case EcoGoalMetric.WindGenerators: return "Rüzgâr Tepeleri'nde senin kurduğun en az " + threshold.ToString("0") + " rüzgâr türbini çalışıyor";
             default: return EcoGoalCatalog.ProjectGoal(project);
         }
     }
@@ -75,6 +77,8 @@ public static class EcoGoalCatalog
                 new EcoGoalSpec { id = "clean_power", group = "power", title = "Temiz enerji ağı", icon = "electricity", metric = EcoGoalMetric.CleanGenerators, project = 0, kind = EcoRegionInfo.Kind.Sun, thresholds = new[] { 3f, 4f, 5f }, problemWeight = new float[] { 1, 1.5f, 1, 1, 2 } },
                 new EcoGoalSpec { id = "resilience_project", group = "power", title = "Yerleşimi dayanıklı yap", icon = "ui_layers", metric = EcoGoalMetric.Project, project = 4, kind = EcoRegionInfo.Kind.City, problemWeight = new float[] { 0.5f, 0.6f, 0.6f, 0.5f, 0.8f } },
                 new EcoGoalSpec { id = "waste_cleared", group = "waste", title = "Atıkları temizle", icon = "scrap", metric = EcoGoalMetric.WasteCleared, kind = EcoRegionInfo.Kind.City, thresholds = new[] { 3f, 1f, 0f }, problemWeight = new float[] { 0.8f, 0.8f, 0.8f, 4, 0.8f } },
+                new EcoGoalSpec { id = "wind_farm", group = "power", title = "Rüzgâr çiftliği", icon = "poi_turbine", metric = EcoGoalMetric.WindGenerators, project = 0, kind = EcoRegionInfo.Kind.Wind, thresholds = new[] { 1f, 2f, 3f }, problemWeight = new float[] { 0.8f, 1.6f, 0.8f, 0.8f, 2.2f } },
+                new EcoGoalSpec { id = "tree_planting", group = "trees", title = "Ağaçlandırma", icon = "poi_tree", metric = EcoGoalMetric.TreesGrowing, kind = EcoRegionInfo.Kind.Sun, thresholds = new[] { 6f, 10f, 14f }, problemWeight = new float[] { 0.8f, 1.6f, 2.4f, 1f, 1.8f } },
                 new EcoGoalSpec { id = "valley_health", group = "health", title = "Sağlıklı vadi", icon = "ecosystem", metric = EcoGoalMetric.ValleyHealth, kind = EcoRegionInfo.Kind.City, thresholds = new[] { 55f, 62f, 70f } },
             };
             return all;

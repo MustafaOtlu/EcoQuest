@@ -20,18 +20,38 @@ public static class EcoMeta
 
     public sealed class Unlock
     {
-        public string id, title, text, icon;
+        public string id, title, text, icon, group;
         public int cost;
+        /// <summary>Unlock ids of which at least one must be owned first (empty: a root of the tree).</summary>
+        public string[] requires = new string[0];
     }
 
+    public static readonly string[] Groups = { "Başlangıç", "Uzmanlık", "Sabah ve kriz", "Zorluk" };
+
+    /// <summary>The unlock tree (GDD v5 §4). Each branch starts cheap; deeper nodes need an earlier one.</summary>
     public static readonly Unlock[] Unlocks =
     {
-        new Unlock { id = "start_grant", title = "Başlangıç hibesi", text = "Her run +20 metal, +20 plastikle başlar", icon = "metal", cost = 30 },
-        new Unlock { id = "fourth_card", title = "Geniş seçenek", text = "Sabahları 3 yerine 4 kart", icon = "ui_journal", cost = 60 },
-        new Unlock { id = "crisis_mode", title = "Kriz zorluğu", text = "Daha kirli vadiler, daha güçlü krizler, 1,4× kredi", icon = "poi_warning", cost = 50 },
-        new Unlock { id = "early_warning", title = "Erken uyarı", text = "Akşam krizini öğleden haber verir", icon = "clock", cost = 40 },
-        new Unlock { id = "seed_bank", title = "Tohum bankası", text = "Her run +10 ağaç tohumuyla başlar", icon = "seed", cost = 35 },
+        new Unlock { id = "start_grant", group = "Başlangıç", title = "Başlangıç hibesi", text = "Her run +20 metal, +20 plastikle başlar", icon = "metal", cost = 30 },
+        new Unlock { id = "seed_bank", group = "Başlangıç", title = "Tohum bankası", text = "Her run +10 ağaç tohumuyla başlar", icon = "seed", cost = 35 },
+        new Unlock { id = "blueprints", group = "Başlangıç", title = "Su planları", text = "Pompa, arıtma ve depo tarifleri her run'da baştan açık", icon = "water", cost = 45, requires = new[] { "start_grant" } },
+        new Unlock { id = "efficient_tools", group = "Başlangıç", title = "Verimli aletler", text = "Aletlerin elektrik harcaması %15 az", icon = "electricity", cost = 50, requires = new[] { "start_grant", "seed_bank" } },
+
+        new Unlock { id = "branch_water", group = "Uzmanlık", title = "Su dalı", text = "[K] uzmanlıkta Su dalını açar (Enerji dalı herkese açık)", icon = "water", cost = 40 },
+        new Unlock { id = "branch_ecology", group = "Uzmanlık", title = "Ekoloji dalı", text = "[K] uzmanlıkta Ekoloji dalını açar", icon = "biodiversity", cost = 40 },
+        new Unlock { id = "spec_master", group = "Uzmanlık", title = "Usta", text = "Uzmanlık dalları 2 yerine 3. kademeye çıkabilir", icon = "yep", cost = 80, requires = new[] { "branch_water", "branch_ecology" } },
+
+        new Unlock { id = "early_warning", group = "Sabah ve kriz", title = "Erken uyarı", text = "Akşam krizini öğleden haber verir", icon = "clock", cost = 40 },
+        new Unlock { id = "card_reroll", group = "Sabah ve kriz", title = "Kart yenileme", text = "Günde bir kez sabah kartlarını yenile", icon = "ui_journal", cost = 45 },
+        new Unlock { id = "fourth_card", group = "Sabah ve kriz", title = "Geniş seçenek", text = "Sabahları 3 yerine 4 kart", icon = "ui_journal", cost = 60, requires = new[] { "card_reroll", "early_warning" } },
+
+        new Unlock { id = "crisis_mode", group = "Zorluk", title = "Kriz zorluğu", text = "Daha kirli vadiler, daha güçlü krizler, 1,4× kredi", icon = "poi_warning", cost = 50 },
     };
+
+    public static bool Available(Unlock unlock) => unlock.requires.Length == 0 || unlock.requires.Any(Has);
+
+    /// <summary>The Energy branch is open to everyone; the other two are bought.</summary>
+    public static bool BranchOpen(int branch) => branch == 0 || branch == 1 && Has("branch_water") || branch == 2 && Has("branch_ecology");
+    public static int MaxSpecRank => Has("spec_master") ? 3 : 2;
 
     private static Profile profile;
     public static string FilePath => Path.Combine(Application.persistentDataPath, "EcoQuest", "meta.json");
@@ -62,7 +82,7 @@ public static class EcoMeta
     public static bool Buy(string id)
     {
         var unlock = Unlocks.FirstOrDefault(u => u.id == id);
-        if (unlock == null || Has(id) || Current.credits < unlock.cost) return false;
+        if (unlock == null || Has(id) || !Available(unlock) || Current.credits < unlock.cost) return false;
         Current.credits -= unlock.cost; Current.unlocks.Add(id); Save(); return true;
     }
 

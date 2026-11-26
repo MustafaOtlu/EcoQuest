@@ -49,6 +49,22 @@ public sealed class EcoPlaytestLog : MonoBehaviour
         current.Write("hedef", text);
     }
 
+    public const string RunHeader = "date,valley,layout,seed,difficulty,problem,result,grade,score,credits,play_minutes,goals_done,goals,cards,crises,health_by_day";
+    public static string RunsPath => Path.Combine(Application.persistentDataPath, "playtest", "runs.csv");
+
+    /// <summary>Phase 3 balance data: one CSV row per finished run (never per session), kept across sessions.</summary>
+    public static void Run(string row)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(RunsPath));
+            if (!File.Exists(RunsPath)) File.WriteAllText(RunsPath, RunHeader + "\n");
+            File.AppendAllText(RunsPath, row + "\n");
+        }
+        catch (Exception e) { Debug.LogWarning("Run günlüğü yazılamadı: " + e.Message); }
+        current?.Write("run_bitti", row);
+    }
+
     private void Update()
     {
         if (projects == null && EcoProjects.Current != null) { projects = EcoProjects.Current; projects.Completed += OnProjectCompleted; }
