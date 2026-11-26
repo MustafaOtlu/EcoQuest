@@ -73,6 +73,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &964554540357445631
 GameObject:
   m_ObjectHideFlags: 0
@@ -1027,6 +1030,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   regionName: "Kirli sanayi alan\u0131"
+  key: 
   size: {x: 32, y: 40}
   priority: 0
   airPollution: 65
@@ -1123,6 +1127,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &5410836862233354144
 GameObject:
   m_ObjectHideFlags: 0
@@ -1143,7 +1150,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7534840695882343786
 Transform:
   m_ObjectHideFlags: 0
@@ -1247,6 +1254,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cleanWater: 1
   useRegionalQuality: 1
+  shoreRadius: 0
+  finiteVolume: 0
+  capacity: 400
+  rainFillPerSecond: 0.5
+  storedWater: -1
+  containsTransferredDirtyWater: 0
+  localPollution: 0
   statusLabel: {fileID: 0}
 --- !u!114 &7654525973683630302
 MonoBehaviour:
@@ -1813,6 +1827,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cleanWater: 1
   useRegionalQuality: 1
+  shoreRadius: 0
+  finiteVolume: 0
+  capacity: 400
+  rainFillPerSecond: 0.5
+  storedWater: -1
+  containsTransferredDirtyWater: 0
+  localPollution: 0
   statusLabel: {fileID: 781556223687909842}
 --- !u!114 &7326038183637679325
 MonoBehaviour:
@@ -1900,6 +1921,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &5973276123460337595
 GameObject:
   m_ObjectHideFlags: 0
@@ -6806,6 +6830,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &6064279599670169126
 GameObject:
   m_ObjectHideFlags: 0
@@ -7045,6 +7072,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   filtered: 0
+  converted: 0
   smoke: {fileID: 435936812152206545}
   filterVisual: {fileID: 1767310608543424674}
   airPerSecond: 0.12
@@ -7122,6 +7150,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &7516796711391851377
 GameObject:
   m_ObjectHideFlags: 0
@@ -7303,7 +7334,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2795142821619416147
 Transform:
   m_ObjectHideFlags: 0
@@ -7401,6 +7432,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6be5f9c325994df1883024c53cfa1782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  fontPixels: 22
+  maximumWidthPixels: 340
+  signboard: {fileID: 0}
 --- !u!1 &8361660859464768925
 GameObject:
   m_ObjectHideFlags: 0
@@ -12354,6 +12388,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   regionName: "Sa\u011Fl\u0131kl\u0131 koruluk"
+  key: 
   size: {x: 32, y: 40}
   priority: 0
   airPollution: 0
