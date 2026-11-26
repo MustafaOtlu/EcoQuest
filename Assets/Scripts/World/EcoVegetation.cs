@@ -14,6 +14,13 @@ public sealed class EcoVegetation : MonoBehaviour
         foreach (var tree in Active) if (tree != null && tree.health >= 0.5f && EcoRegion.At(tree.transform.position) == region) count++;
         return count;
     }
+    /// <summary>Grown trees the player planted that are still healthy (GDD v5 tree_planting goal).</summary>
+    public static int PlantedHealthy()
+    {
+        int count = 0;
+        foreach (var tree in Active) if (tree != null && tree.planted && tree.health >= 0.5f && tree.GetComponent<PlantedSeed>() == null) count++;
+        return count;
+    }
     public static Transform FirstHealthyTree(EcoRegion region)
     {
         foreach (var tree in Active) if (tree != null && tree.health >= 0.5f && EcoRegion.At(tree.transform.position) == region) return tree.transform;

@@ -108,7 +108,7 @@ Run başında vadide olan bölge türlerinden seçilir: 2 zorunlu + 1 bonus, ayn
 | **wind_farm** (yeni) | enerji | Rüzgâr | Rüzgâr Tepeleri'nde oyuncunun türbini ≥ | 1 / 2 / 3 |
 | resilience_project | enerji | Şehir | Dayanıklılık projesi | — |
 | waste_cleared | atık | Şehir | Kalan atık yığını ≤ | 3 / 1 / 0 |
-| **tree_planting** (yeni) | ağaç | Güneş (her vadide) | Oyuncunun diktiği, sağlıklı ve en az yarı büyümüş ağaç ≥ | 6 / 10 / 14 |
+| **tree_planting** (yeni) | ağaç | Güneş (her vadide) | Oyuncunun diktiği, sağlıklı ve en az yarı büyümüş fidan ya da ondan büyüyen ağaç ≥ | 6 / 10 / 14 |
 | valley_health | sağlık | Şehir | Ekosistem sağlığı ≥ | %55 / 62 / 70 |
 | energy_project | enerji | Güneş | Enerji projesi (yalnız eğitim) | — |
 
@@ -155,7 +155,7 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 
 **Kredi (Denge taslağı):** eğitim 30 (başarısız 10); başarılı run S 60 / A 45 / B 30 / C 20, başarısız 8; her bonus hedef +5, fırtına zaferi +10; Sakin ×0,8, Kriz ×1,4.
 
-**Açılım ağacı (11 düğüm, toplam 515 kredi).** Derin bir düğüm, aynı daldaki "Önce" düğümlerinden **birini** ister. Brifingde ve değerlendirme ekranında "Açılım ağacı" düğmesiyle açılır.
+**Açılım ağacı (12 düğüm, toplam 560 kredi).** Derin bir düğüm, aynı daldaki "Önce" düğümlerinden **birini** ister. Brifingde ve değerlendirme ekranında "Açılım ağacı" düğmesiyle açılır.
 
 | Dal | Düğüm | Kredi | Önce | Etki |
 | --- | --- | --- | --- | --- |
@@ -165,6 +165,7 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 | Başlangıç | Verimli aletler | 50 | Hibe ya da tohum bankası | Alet elektriği %15 az |
 | Uzmanlık | Su dalı | 40 | — | [K] uzmanlıkta Su dalı |
 | Uzmanlık | Ekoloji dalı | 40 | — | [K] uzmanlıkta Ekoloji dalı |
+| Uzmanlık | Enerji planları | 45 | — | Rüzgâr türbini ve doğal akış santrali run başından kurulabilir ("Mahalleye ilk enerji" ve "Gölü canlandır" projelerini beklemez) |
 | Uzmanlık | Usta | 80 | Su ya da Ekoloji dalı | Dallar 3. kademeye çıkar (yoksa en çok 2) |
 | Sabah ve kriz | Erken uyarı | 40 | — | Akşam krizi öğleden haber verilir |
 | Sabah ve kriz | Kart yenileme | 45 | — | Günde bir kez sabah kartlarını yenile |
@@ -173,7 +174,7 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 
 **Uzmanlık bağlantısı (v4 S4'ün çözümü):** Enerji dalı herkese açıktır; Su ve Ekoloji dalları ve 3. kademe meta açılımıdır. Böylece bir run'da her şey alınamaz, her run'ın uzmanlık seçimi anlam kazanır. YEP ve hak kazanımı (her 40 YEP bir hak) v4 §7 ile aynıdır.
 
-**Tempo hesabı:** başarılı bir Normal run ortalama 35–45 kredi getirir; ağacın tamamı ≈ 12–14 run'da (≈ 13–16 saat) dolar. İlk iki run'da ilk açılım alınır.
+**Tempo hesabı:** başarılı bir Normal run ortalama 35–45 kredi getirir; ağacın tamamı ≈ 13–15 run'da (≈ 14–17 saat) dolar. İlk iki run'da ilk açılım alınır.
 
 <a id="denge"></a>
 ## 6. Denge ve ölçüm
@@ -198,7 +199,7 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 | --- | --- | --- |
 | V1 | Karo başına ikinci bir tasarım (farklı göl biçimi, farklı fabrika dizilişi) gerekli mi, yoksa dönüş yeterli mi? | Açık; playtest'te "vadiler birbirine benziyor" denirse yapılır |
 | V2 | Şehir karosu küçük; ev sayısı yetiyor mu? | Açık |
-| V3 | Kredi temposu (ağacın tamamı ≈ 13 run) uzun mu? | runs.csv ile ölçülecek |
+| V3 | Kredi temposu (ağacın tamamı ≈ 14 run) uzun mu? | runs.csv ile ölçülecek |
 | V4 | Kriz gücü 5. günde ×1,85 (Kriz zorluğunda ×2,2): fazla mı? | Sonda ve playtest |
 | V5 | Genel arayüz kullanıcının şablonunu bekliyor (v4'ten devam) | Bekliyor |
 | V6 | v4'ten açık kalanlar: S7 (fener), S8, Ö4 kıyı kurulum alanı | Bekliyor |
@@ -227,3 +228,4 @@ Profil ayrı bir dosyadadır (`<persistentDataPath>/EcoQuest/meta.json`); bir ru
 | Tarih | Madde | Durum |
 | --- | --- | --- |
 | 26 Kasım | **Rastgele vadi run'ları, Aşama 3 (meta, içerik, denge).** **Karo dönüşleri:** yan karolar tohumla 0/90/180/270° döner; vadi kodu dönüşü rakamla taşır (`Grove1-DirtyLake-Industry-Wind3`, rakamsız eski kodlar 0° sayılır), minimap karoları da döndürür, dışa bakan 6 yol ağzı haritada zeminle örtülür. **Açılım ağacı (§5):** 4 grup (Başlangıç, Uzmanlık, Sabah ve kriz, Zorluk), 11 açılım, toplam 515 kredi, iki seviyeli ön koşullar; yeni açılımlar: Planlar (su tarifi baştan açık), Verimli aletler (enerji kullanımı ×0,85), Su/Ekoloji dalı, Uzman (uzmanlık 3. kademe), Kart yenileme, Erken uyarı, 4. kart, Kriz zorluğu. Uzmanlık dalları ve 3. kademe artık meta açılımına bağlı (Enerji hep açık). Sonuç ekranından ve brifingden açılan 4 sütunlu ağaç ekranı. **İçerik:** 6 yeni sabah kartı (toplam 19: fidanlık, dere temizliği, yeşil çatılar, karbon vergisi, gece devriyesi, hurda mezadı), 3 yeni kriz (toplam 10: sel, sıcaklık terslemesi, istilacı tür; aynı kriz üst üste gelmez), 2 yeni hedef (rüzgâr çiftliği yalnız Rüzgâr Tepeleri olan vadide, ağaçlandırma: büyüyen dikili ağaç sayısı); boşta tutan `city_air` çıkarıldı. Günde bir kez kart yenileme. **Denge (§6):** zarlanan vadide doğal toparlanma ×0,35, yabani ağaçların emmesi ×0,12 ve örtü büyümesi başlangıç örtüsüyle sınırlı; ölçülen hedef eşikleri vadinin başlangıç değerine göre sıkılaştırılıyor; brifing bunu söylüyor. `runs.csv` run başına bir satır; editörde `EcoBalanceProbe` boşta oyuncu sondası. **Doğrulama:** EditMode 18/18 (yeni `EcoMetaTests`: ağaç yapısı, kart/kriz kimlikleri, kriz tekrar etmez, rüzgâr hedefi yalnız rüzgâr karosuyla; dönüş kodu gidiş-dönüş testleri). Play Mode'da 5 sondalı run: son ayarla boşta run Başarısız 12 puan, vadi çökmeden; açılım ağacı ekranı ve kart yenileme görüntüyle kontrol edildi. Kayıtlar test öncesi yedeklenip geri yüklendi | Yapıldı |
+| 26 Kasım | **Aşama 3 eksik taraması ve düzeltmeler.** (1) **Ağaçlandırma hedefi** yalnız fidanları sayıyordu; olgunlaşan fidan ağaca dönüşüp `PlantedSeed`'i bıraktığı için sayaç oyuncu ilerledikçe düşüyordu. Artık oyuncunun diktiği büyümüş ağaçlar da sayılıyor (`EcoRun.PlantedTrees`, `EcoVegetation.planted`). (2) **Plandaki bina açılımı eksikti:** rüzgâr türbini "Mahalleye ilk enerji", hidro "Gölü canlandır" projesine bağlıydı. Yeni düğüm **Enerji planları** (Uzmanlık, 45 kredi) ikisini run başından açıyor; ağaç 12 düğüm / 560 kredi. (3) **Yabani ağaç örtü tavanı** kayda yazılmıyordu (yüklemede o anki örtü sayılıyordu); başlangıç örtüsü bölge anahtarıyla run durumuna yazılıyor, eski kayıtlarda eski davranış sürüyor. Taranıp sorun bulunmayanlar: karo bölgelerinin anahtarları keşif ve tarif aramalarıyla uyumlu (Koruluk, Doğu Gölü…), bir vadide aynı karo iki kez çıkmıyor, büyümüş ağaçlar kayıttan dikili olarak dönüyor, sıkılaştırılmış eşikler kayda yazılıyor. Bilinçli olarak açık kalanlar: karo başına ikinci tasarım (V1), run başı yükleme ekranı, gerçek oyuncuyla denge. **Doğrulama:** EditMode 19/19 (yeni: Enerji planları rüzgâr ve hidroyu açar). Play Mode'da tohum 198: büyütülen dikili ağaç sayaçta 1, 7 bölgenin başlangıç örtüsü JSON gidiş-dönüşünde korunuyor, açılım ağacı ekranında 4. Uzmanlık kartı sığıyor. Kayıtlar değişmedi | Yapıldı |

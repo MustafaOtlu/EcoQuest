@@ -38,6 +38,7 @@ public static class EcoMeta
 
         new Unlock { id = "branch_water", group = "Uzmanlık", title = "Su dalı", text = "[K] uzmanlıkta Su dalını açar (Enerji dalı herkese açık)", icon = "water", cost = 40 },
         new Unlock { id = "branch_ecology", group = "Uzmanlık", title = "Ekoloji dalı", text = "[K] uzmanlıkta Ekoloji dalını açar", icon = "biodiversity", cost = 40 },
+        new Unlock { id = "energy_plans", group = "Uzmanlık", title = "Enerji planları", text = "Rüzgâr türbini ve doğal akış santrali her run'da baştan kurulabilir", icon = "electricity", cost = 45 },
         new Unlock { id = "spec_master", group = "Uzmanlık", title = "Usta", text = "Uzmanlık dalları 2 yerine 3. kademeye çıkabilir", icon = "yep", cost = 80, requires = new[] { "branch_water", "branch_ecology" } },
 
         new Unlock { id = "early_warning", group = "Sabah ve kriz", title = "Erken uyarı", text = "Akşam krizini öğleden haber verir", icon = "clock", cost = 40 },

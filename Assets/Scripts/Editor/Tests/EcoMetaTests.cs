@@ -56,6 +56,23 @@ public sealed class EcoMetaTests
     }
 
     [Test]
+    public void EnergyPlansOpenWindAndHydroWithoutTheProjects()
+    {
+        var saved = EcoDiscoveries.Capture();
+        try
+        {
+            EcoDiscoveries.Restore(new[] { "recipe.wind" });
+            Assert.IsFalse(EcoDiscoveries.CanBuild("wind"), "wind still waits for the first energy project");
+            Assert.IsFalse(EcoDiscoveries.CanBuild("hydro"));
+            EcoDiscoveries.Restore(new[] { "plan.energy" });
+            Assert.IsTrue(EcoDiscoveries.CanBuild("wind"));
+            Assert.IsTrue(EcoDiscoveries.CanBuild("hydro"));
+            Assert.IsNotNull(EcoMeta.Unlocks.FirstOrDefault(u => u.id == "energy_plans"));
+        }
+        finally { EcoDiscoveries.Restore(saved); }
+    }
+
+    [Test]
     public void WindValleysCanRollTheWindGoal()
     {
         bool seen = false;

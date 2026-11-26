@@ -29,9 +29,10 @@ public sealed class EcoDiscoveries : MonoBehaviour
     public static bool CanBuild(string id)
     {
         if (id == "solar" || id == "battery" || id == "charger" || id == "farm" || id == "recycling") return true;
-        if (id == "wind") return Has("recipe.wind") && Completed(0); // GDD §7: wind opens after the first energy project
+        // GDD §7: wind opens after the first energy project; the "Enerji planları" unlock (GDD v5 §5) opens it in a run.
+        if (id == "wind") return Has("plan.energy") || Has("recipe.wind") && Completed(0);
         if (id == "intake" || id == "purifier" || id == "tank") return Has("recipe.water");
-        if (id == "hydro") return Has("recipe.hydro") || Completed(1);
+        if (id == "hydro") return Has("plan.energy") || Has("recipe.hydro") || Completed(1);
         if (id == "station" || id == "glacier") return Has("recipe.station");
         return false;
     }

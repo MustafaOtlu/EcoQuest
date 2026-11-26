@@ -21,6 +21,9 @@ public sealed class EcoRun : MonoBehaviour
         public int seed, difficulty, startDay = 1, lastMorningDay, lastCrisisDay, lastWarningDay, lowHealthDays, fireGuardDay = -1, rerollDay = -1;
         public bool patrol;
         public float playSeconds;
+        // Start cover per region key: the cap for wild-tree regrowth (EcoRegion.wildCover), kept across loads.
+        public List<string> coverKeys = new List<string>();
+        public List<float> coverValues = new List<float>();
         public int result, score, credits;
         public string grade = "";
         public float solarBoost = 1f, windBoost = 1f, recoveryBoost = 1f;
@@ -210,6 +213,7 @@ public sealed class EcoRun : MonoBehaviour
                 region.carbon = scenario.Pollution(info.kind, region.carbon);
                 region.vegetation = scenario.Vegetation(info.kind, region.vegetation);
                 region.wildCover = region.vegetation;
+                State.coverKeys.Add(region.Key); State.coverValues.Add(region.vegetation);
             }
         SpawnFires(scenario.fires, EcoRegionInfo.Kind.Grove, EcoRegionInfo.Kind.Wind);
         SpawnWaste(scenario.wastePiles, EcoRegionInfo.Kind.City, EcoRegionInfo.Kind.Sun, EcoRegionInfo.Kind.Industry, EcoRegionInfo.Kind.Lake);
@@ -220,6 +224,7 @@ public sealed class EcoRun : MonoBehaviour
             player.ReturnMaterials(scenario.startMetal + grant, scenario.startPlastic + grant);
             if (EcoMeta.Has("seed_bank")) player.AddSeeds(EcoCropCatalog.Kind.Tree, 10);
             if (EcoMeta.Has("blueprints")) EcoDiscoveries.Remember("recipe.water");
+            if (EcoMeta.Has("energy_plans")) EcoDiscoveries.Remember("plan.energy");
         }
     }
 
@@ -414,7 +419,7 @@ public sealed class EcoRun : MonoBehaviour
             }
             case EcoGoalMetric.TreesGrowing:
             {
-                int count = FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None).Count(p => p.kind == EcoCropCatalog.Kind.Tree && !p.IsWithered && p.growth >= 0.5f);
+                int count = PlantedTrees();
                 status = "Ağaç " + count + " / " + t.ToString("0");
                 progress = Mathf.Clamp01(count / Mathf.Max(1f, t)); return count >= t;
             }
@@ -554,8 +559,13 @@ public sealed class EcoRun : MonoBehaviour
             restored = false;
             // Enemy zone budgets live in the scene; a patrol card bought earlier in the run applies again.
             if (State.patrol) foreach (var zone in FindObjectsByType<EcoEnemySpawnZone>(FindObjectsSortMode.None)) zone.dailyBudget = Mathf.Max(1, zone.dailyBudget - 2);
-            // The start cover is not saved; the loaded cover is the closest stand-in for the wild-tree cap.
-            if (!State.training) foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None)) region.wildCover = region.vegetation;
+            if (!State.training)
+                foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None))
+                {
+                    int i = State.coverKeys != null ? State.coverKeys.IndexOf(region.Key) : -1;
+                    // Older run saves have no start cover; the loaded cover is the closest stand-in.
+                    region.wildCover = i >= 0 && i < State.coverValues.Count ? State.coverValues[i] : region.vegetation;
+                }
             ui.AfterLoad(); return;
         }
         var scenario = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal);
@@ -573,6 +583,11 @@ public sealed class EcoRun : MonoBehaviour
 
     /// <summary>The region of a kind. With several (two lakes) the one carrying a project wins, then the most polluted;
     /// the choice is cached so cleaning a lake never switches the goal over to the other one.</summary>
+    /// <summary>Trees the player planted that are taking root: saplings at half growth or more, plus the grown trees
+    /// they became (a mature sapling turns into a tree and leaves PlantedSeed behind, so both are counted).</summary>
+    public static int PlantedTrees() => FindObjectsByType<PlantedSeed>(FindObjectsSortMode.None).Count(p => p.kind == EcoCropCatalog.Kind.Tree && !p.IsWithered && p.growth >= 0.5f)
+        + EcoVegetation.PlantedHealthy();
+
     public static EcoRegion RegionOf(EcoRegionInfo.Kind kind)
     {
         if (regionCache.TryGetValue(kind, out var cached) && cached != null && cached.isActiveAndEnabled) return cached;
