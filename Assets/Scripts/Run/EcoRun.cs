@@ -217,6 +217,7 @@ public sealed class EcoRun : MonoBehaviour
             }
         SpawnFires(scenario.fires, EcoRegionInfo.Kind.Grove, EcoRegionInfo.Kind.Wind);
         SpawnWaste(scenario.wastePiles, EcoRegionInfo.Kind.City, EcoRegionInfo.Kind.Sun, EcoRegionInfo.Kind.Industry, EcoRegionInfo.Kind.Lake);
+        if (!scenario.training) ScatterLitter();
         var player = FindFirstObjectByType<PlayerWeaponSystem>();
         if (player != null)
         {
@@ -233,6 +234,7 @@ public sealed class EcoRun : MonoBehaviour
     private void Update()
     {
         if (!Active || Ended || Clock == null) return;
+        if (!State.training && EcoTraffic.Current == null) EcoTraffic.Ensure();
         var save = EcoWorldSave.Current;
         if (save != null && save.IsLoading) return;
         accumulated += Time.deltaTime;
@@ -455,7 +457,7 @@ public sealed class EcoRun : MonoBehaviour
     }
 
     public static int WastePiles() => FindObjectsByType<RecyclableResource>(FindObjectsSortMode.None)
-        .Count(w => w != null && !w.Claimed && w.GetComponent<EnemyLootDrop>() == null);
+        .Count(w => w != null && !w.Claimed && !w.litter && w.GetComponent<EnemyLootDrop>() == null);
 
     // ================================================================== health, ending
 
@@ -647,11 +649,39 @@ public sealed class EcoRun : MonoBehaviour
         return placed;
     }
 
+    /// <summary>
+    /// Cans and bottles lying around at the start, in proportion to how dirty each region is (average of air, water and
+    /// soil pollution): a clean glacier has almost none, a smoggy factory district a dozen. Each is worth 2 metal or
+    /// 2 plastic, so the first minutes of a dirty valley already pay for the first builds.
+    /// </summary>
+    private int ScatterLitter()
+    {
+        int placed = 0;
+        foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.InstanceID))
+        {
+            if (!region.TryGetComponent<EcoRegionInfo>(out _)) continue;
+            float dirt = (region.airPollution + region.waterPollution + region.soilPollution) / 3f;
+            int count = Mathf.Min(14, Mathf.RoundToInt(LitterFor(dirt)));
+            for (int i = 0; i < count && placed < 70; i++)
+            {
+                if (!FindSpot(new[] { region }, 0.4f, out var position)) continue;
+                if (EcoTraffic.Litter(position, SpawnRandom.NextDouble() < 0.5) != null) placed++;
+            }
+        }
+        EcoPlaytestLog.Objective("Başlangıç çöpü: " + placed + " parça (kirliliğe göre)");
+        return placed;
+    }
+
+    /// <summary>Opening litter for a region's average pollution (0–100): none below 5, one per 5 points above.</summary>
+    public static float LitterFor(float pollution) => Mathf.Max(0f, pollution - 5f) / 5f;
+
     /// <summary>Open, flat ground inside one of the given region kinds, away from the player and other objects.</summary>
     private bool FindSpot(EcoRegionInfo.Kind[] kinds, float clearance, out Vector3 position)
+        => FindSpot(kinds.Select(RegionOf).Where(r => r != null).ToArray(), clearance, out position);
+
+    private bool FindSpot(EcoRegion[] regions, float clearance, out Vector3 position)
     {
         position = Vector3.zero;
-        var regions = kinds.Select(RegionOf).Where(r => r != null).ToArray();
         if (regions.Length == 0) return false;
         var player = FindFirstObjectByType<PlayerController>();
         for (int attempt = 0; attempt < 60; attempt++)

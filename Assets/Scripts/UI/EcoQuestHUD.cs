@@ -714,7 +714,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         yepIcon.gameObject.SetActive(!training);
         yepText.gameObject.SetActive(!training);
         yepTrack.gameObject.SetActive(!training);
-        bool resourceCompact = !training && (sade || resourcesCard.IsCollapsed || ry + 240f > height - margin);
+        // Sade mode starts these cards closed (EcoUI.StartsCollapsed) but the toggle still opens them; forcing them shut
+        // here left the expand button doing nothing.
+        bool resourceCompact = !training && (resourcesCard.IsCollapsed || ry + 240f > height - margin);
         resourcesCard.Layout(new Vector2(-margin, -ry), resourceCompact ? EcoWorldHUD.CompactMapWidth : rightWidth,
             resourceCompact ? 0f : training ? 72f : 206f, forceExpanded: training);
         resourcesCard.toggle.gameObject.SetActive(!training);

@@ -1270,7 +1270,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         const float margin = 16f;
         bool compact = width < 1250f;
         var mode = EcoUI.Mode;
-        bool hidden = mode == EcoUI.HudMode.Hidden, sade = mode == EcoUI.HudMode.Compact;
+        bool hidden = mode == EcoUI.HudMode.Hidden;
         float leftWidth = EcoQuestHUD.LeftColumnWidth, rightWidth = compact ? 250f : 276f;
         bool narrow = width - leftWidth - rightWidth - 4f * margin < 280f;
 
@@ -1278,8 +1278,8 @@ public sealed class EcoWorldHUD : MonoBehaviour
         laidOutVitalsBottom = EcoQuestHUD.VitalsBottom;
         laidOutDockWidth = EcoQuestHUD.DockWidth; laidOutDockTop = EcoQuestHUD.DockTop;
         envCard.SetVisible(!hidden);
-        bool compactEnvironment = envCard.IsCollapsed || sade || narrow;
-        float envBody = sade ? 0f : 8 * 29f + 8f;
+        bool compactEnvironment = envCard.IsCollapsed || narrow; // the toggle works in Sade mode too
+        float envBody = 8 * 29f + 8f;
         envCard.Layout(new Vector2(margin, -(EcoQuestHUD.VitalsBottom + 7f)), leftWidth, envBody, true);
         envCard.background.enabled = true;
         envCard.body.gameObject.SetActive(!compactEnvironment);

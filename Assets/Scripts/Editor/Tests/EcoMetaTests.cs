@@ -90,6 +90,14 @@ public sealed class EcoMetaTests
     }
 
     [Test]
+    public void OpeningLitterFollowsPollution()
+    {
+        Assert.AreEqual(0f, EcoRun.LitterFor(4f), 1e-4f, "a clean region starts without litter");
+        Assert.Greater(EcoRun.LitterFor(80f), 8f, "a dirty region starts with a handful of cans and bottles");
+        for (float p = 0f; p < 100f; p += 5f) Assert.LessOrEqual(EcoRun.LitterFor(p), EcoRun.LitterFor(p + 5f));
+    }
+
+    [Test]
     public void WindValleysCanRollTheWindGoal()
     {
         bool seen = false;
