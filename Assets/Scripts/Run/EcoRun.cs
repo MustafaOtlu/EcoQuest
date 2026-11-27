@@ -203,6 +203,8 @@ public sealed class EcoRun : MonoBehaviour
 
     private void ApplyScenario(EcoScenario scenario)
     {
+        // The valley tiles were just placed; make their colliders match before fires, waste and litter look for ground.
+        Physics.SyncTransforms();
         if (!scenario.training)
             foreach (var region in FindObjectsByType<EcoRegion>(FindObjectsSortMode.None))
             {

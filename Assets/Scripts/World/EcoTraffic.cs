@@ -68,9 +68,16 @@ public sealed class EcoTraffic : MonoBehaviour
         return false;
     }
 
+    private int attempts;
+
     private void BuildGrid()
     {
         built = true;
+        // The run starts behind the paused morning card: no physics step has run since the tiles were placed and
+        // turned, so their colliders still sit where they were instantiated. Raycasting then found a few metres of road
+        // around the start and everybody piled up there, unable to go anywhere.
+        Physics.SyncTransforms();
+        laneCells.Clear(); kerbCells.Clear();
         var map = EcoGround.HasMap ? EcoGround.MapRect : new Rect(0, 0, 150, 150);
         origin = map.position;
         width = Mathf.CeilToInt(map.width / Cell); height = Mathf.CeilToInt(map.height / Cell);
@@ -225,6 +232,11 @@ public sealed class EcoTraffic : MonoBehaviour
             go.name = isCar ? "Traffic car" : "Townsfolk";
             go.hideFlags = HideFlags.DontSave;
             foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
+            // Solid, so the player bumps into people and cars instead of walking through them; kinematic, so they
+            // are moved by this script and never shoved around by physics.
+            if (isCar) { var box = go.AddComponent<BoxCollider>(); box.center = new Vector3(0f, 0.55f, 0f); box.size = new Vector3(1.2f, 1.05f, 2.4f); }
+            else { var capsule = go.AddComponent<CapsuleCollider>(); capsule.center = new Vector3(0f, 0.58f, 0f); capsule.height = 1.15f; capsule.radius = 0.2f; }
+            var rb = go.AddComponent<Rigidbody>(); rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             if (!isCar)
             {
                 go.transform.localScale = Vector3.one * Mathf.Lerp(0.94f, 1.06f, Next());
@@ -258,7 +270,15 @@ public sealed class EcoTraffic : MonoBehaviour
 
     private void Update()
     {
-        if (!built) { if (Time.unscaledTime >= buildAt) { BuildGrid(); Spawn(); } return; }
+        if (!built)
+        {
+            if (Time.unscaledTime < buildAt || Time.timeScale <= 0f) return;
+            BuildGrid();
+            // A valley always has well over a thousand lane cells; far fewer means the world was not ready yet.
+            if (laneCells.Count < 300 && ++attempts < 6) { built = false; buildAt = Time.unscaledTime + 2f; return; }
+            Spawn();
+            return;
+        }
         if (player == null) { var p = FindFirstObjectByType<PlayerController>(); if (p != null) player = p.transform; }
         float dt = Time.deltaTime;
         foreach (var m in movers)
@@ -274,7 +294,7 @@ public sealed class EcoTraffic : MonoBehaviour
             if (off > 6f * 6f && m.index > 0) { Plan(m); continue; } // knocked off the route: walk back to the nearest road
             if (flat.sqrMagnitude < 0.0001f || off < (m.car ? 2.2f : 0.6f) * (m.car ? 2.2f : 0.6f)) { m.index++; continue; }
             float speed = m.speed;
-            if (m.car && Blocked(m, pos, flat.normalized))
+            if (m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f))
             {
                 speed = 0f;
                 // Someone standing in the road (usually the player): wait a moment, then take another way.
@@ -309,11 +329,11 @@ public sealed class EcoTraffic : MonoBehaviour
         return false;
     }
 
-    private static bool Ahead(Vector3 pos, Vector3 heading, Vector3 other, float range)
+    private static bool Ahead(Vector3 pos, Vector3 heading, Vector3 other, float range, float halfWidth = 1.1f)
     {
         var d = other - pos; d.y = 0f;
         float along = Vector3.Dot(d, heading);
-        return along > 0f && along < range && Mathf.Abs(Vector3.Cross(heading, d).y) < 1.1f;
+        return along > 0f && along < range && Mathf.Abs(Vector3.Cross(heading, d).y) < halfWidth;
     }
 
     public static int LitterCount()
@@ -329,7 +349,11 @@ public sealed class EcoTraffic : MonoBehaviour
         // Walkers drop it at their feet; a car throws it out of the window onto the verge.
         var side = m.body.right * (Next() < 0.5f ? -1f : 1f);
         var spot = m.body.position + side * (m.car ? 1.6f : 0.45f) - m.body.forward * (m.car ? 1.2f : 0.2f);
-        if (!Physics.Raycast(spot + Vector3.up * 6f, Vector3.down, out var hit, 14f, ~0, QueryTriggerInteraction.Ignore)) return;
+        // The highest surface that is not a car or a walker (otherwise a can could land on a car roof).
+        RaycastHit hit = default; bool found = false;
+        foreach (var h in Physics.RaycastAll(spot + Vector3.up * 6f, Vector3.down, 14f, ~0, QueryTriggerInteraction.Ignore))
+            if (h.collider.GetComponentInParent<EcoTraffic>() == null && (!found || h.point.y > hit.point.y)) { hit = h; found = true; }
+        if (!found) return;
         if (hit.normal.y < 0.7f || hit.collider.GetComponentInParent<Rigidbody>() != null) return;
         var litter = Litter(hit.point, Next() < 0.45f);
         if (litter == null) return;
