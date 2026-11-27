@@ -148,7 +148,7 @@ public static class EcoUI
     /// <summary>
     /// Gives each top-level panel of a large HUD canvas its own nested canvas. Unity rebuilds a whole canvas when any
     /// graphic in it changes; with ~150 graphics per HUD and numbers, pins and bars changing several times a second
-    /// that cost 4–5 ms on some frames (measured: median frame 12.3 → 7.8 ms in the editor after splitting). Nested
+    /// the profiler showed 4–5 ms of canvas rebuild on the slowest frames. Steady frames cost the same either way. Nested
     /// canvases keep the draw order of the hierarchy; each gets a raycaster so its buttons and tooltips still respond.
     /// </summary>
     public static void SplitIntoPanelCanvases(Canvas root)
