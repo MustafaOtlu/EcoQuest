@@ -12,6 +12,7 @@ namespace LowPolyWater
         public Vector3 waveOriginPosition = Vector3.zero;
 
         private Mesh mesh;
+        private Renderer surface;
         private Vector3[] originalVertices, vertices;
 
         private void Start()
@@ -42,10 +43,12 @@ namespace LowPolyWater
             mesh.RecalculateNormals();
             RefreshBounds();
             filter.sharedMesh = mesh;
+            surface = GetComponent<Renderer>();
         }
         private void Update()
         {
-            if (mesh == null) return;
+            // Off screen the waves are not worth rebuilding the mesh and its normals every frame.
+            if (mesh == null || surface != null && !surface.isVisible) return;
             float length = Mathf.Max(0.001f, Mathf.Abs(waveLength));
             for (int i = 0; i < vertices.Length; i++)
             {
@@ -64,7 +67,8 @@ namespace LowPolyWater
             mesh.RecalculateBounds();
             // A small margin keeps boundary vertices inside the box despite floating-point rounding.
             var bounds = mesh.bounds;
-            bounds.Expand(0.01f);
+            // Room for a full wave either way, so the box stays valid while updates pause off screen.
+            bounds.Expand(0.01f + 2f * Mathf.Abs(waveHeight));
             mesh.bounds = bounds;
         }
         private void OnDestroy()

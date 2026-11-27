@@ -34,6 +34,9 @@ public sealed class EcoEveningLighting : MonoBehaviour
     private readonly Dictionary<Mesh, Mesh> houseMeshes = new Dictionary<Mesh, Mesh>();
     private readonly Dictionary<Mesh, (Mesh glass, Vector3 centre)> lampGlass = new Dictionary<Mesh, (Mesh, Vector3)>();
     private readonly HashSet<int> seen = new HashSet<int>();
+    // Renderers already checked and found to be neither window, lamp nor lit house. The periodic discovery pass
+    // re-read the names, parents and materials of all ~3000 renderers every 10 s (a 15 ms hitch); now each is judged once.
+    private readonly HashSet<int> rejected = new HashSet<int>();
     private Material glow;
     private bool initialized, explicitScope;
     private float level = -1f, nextDiscovery, nextLightSelection;
@@ -161,10 +164,12 @@ public sealed class EcoEveningLighting : MonoBehaviour
             : FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (var renderer in renderers)
         {
-            if (renderer == null || !renderer.gameObject.activeInHierarchy || seen.Contains(renderer.GetInstanceID())) continue;
+            if (renderer == null) continue;
+            int id = renderer.GetInstanceID();
+            if (seen.Contains(id) || rejected.Contains(id) || !renderer.gameObject.activeInHierarchy) continue;
             if (scope == null && renderer.gameObject.scene != gameObject.scene) continue;
             string name = renderer.name.ToLowerInvariant();
-            if (name.StartsWith("eco evening")) continue;
+            if (name.StartsWith("eco evening")) { rejected.Add(id); continue; }
             var meshFilter = renderer.GetComponent<MeshFilter>();
             var sourceMaterials = renderer.sharedMaterials;
             bool window = name == "window" || name == "window up" || name == "windows";
@@ -184,8 +189,8 @@ public sealed class EcoEveningLighting : MonoBehaviour
                 modernHouse |= material.name.StartsWith("tripo_36893c51_51bc_41a3_b8b7_eb9e78d2c5e4");
                 lamp |= name == "lamp head" && material.name.StartsWith("LampGlow");
             }
-            if (!window && !lamp && !modernHouse) continue;
-            seen.Add(renderer.GetInstanceID());
+            if (!window && !lamp && !modernHouse) { rejected.Add(id); continue; }
+            seen.Add(id);
             if (window) AddWindowSurface(renderer);
             else if (modernHouse && meshFilter != null && meshFilter.sharedMesh != null) AddHouseWindows(renderer, meshFilter);
             else if (lamp) AddStreetLamp(renderer, meshFilter);

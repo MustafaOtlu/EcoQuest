@@ -16,11 +16,17 @@ public sealed class EcoPollutionField : MonoBehaviour
     private float[] raw, blurred;
     private Color32[] pixels;
     private float next;
+    // Which region owns each texel. Regions do not move during a run, so the lookup is redone only every few
+    // rebuilds; each region's pollution is sampled once per rebuild instead of once per texel (was a 4 ms spike).
+    private EcoRegion[] owners;
+    private int ownersAge;
+    private readonly System.Collections.Generic.Dictionary<EcoRegion, float> regionLoad = new System.Collections.Generic.Dictionary<EcoRegion, float>();
 
     private void OnEnable()
     {
         map = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "Eco pollution field" };
         raw = new float[resolution * resolution]; blurred = new float[raw.Length]; pixels = new Color32[raw.Length];
+        owners = new EcoRegion[raw.Length]; ownersAge = 100;
         Shader.SetGlobalTexture(MapId, map);
         Shader.SetGlobalVector(RectId, new Vector4(area.x, area.y, 1f / Mathf.Max(1f, area.width), 1f / Mathf.Max(1f, area.height)));
         Shader.SetGlobalFloat(ReadyId, 0f);
@@ -53,12 +59,21 @@ public sealed class EcoPollutionField : MonoBehaviour
     {
         int n = resolution;
         float y = transform.position.y;
-        for (int j = 0; j < n; j++)
-            for (int i = 0; i < n; i++)
-            {
-                var p = new Vector3(area.x + (i + 0.5f) / n * area.width, y, area.y + (j + 0.5f) / n * area.height);
-                raw[j * n + i] = Sample(EcoRegion.At(p));
-            }
+        if (++ownersAge > 8 || Time.timeSinceLevelLoad < 10f) // the valley is still being laid out at first
+        {
+            ownersAge = 0;
+            for (int j = 0; j < n; j++)
+                for (int i = 0; i < n; i++)
+                    owners[j * n + i] = EcoRegion.At(new Vector3(area.x + (i + 0.5f) / n * area.width, y, area.y + (j + 0.5f) / n * area.height));
+        }
+        regionLoad.Clear();
+        for (int k = 0; k < raw.Length; k++)
+        {
+            var region = owners[k];
+            if (region == null) { raw[k] = 0f; continue; }
+            if (!regionLoad.TryGetValue(region, out float load)) regionLoad[region] = load = Sample(region);
+            raw[k] = load;
+        }
         // Soft borders between regions: two box-blur passes.
         for (int pass = 0; pass < 2; pass++)
         {

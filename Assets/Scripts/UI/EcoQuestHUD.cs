@@ -111,6 +111,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
         EcoUI.LayoutChanged += MarkDirty;
         lastMode = EcoUI.Mode;
         ApplyLayout();
+        EcoUI.SplitIntoPanelCanvases(canvas);
         if (weapons != null) weapons.Changed += OnInventoryChanged;
         if (!training)
         {

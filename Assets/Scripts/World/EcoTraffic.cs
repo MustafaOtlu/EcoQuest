@@ -290,6 +290,15 @@ public sealed class EcoTraffic : MonoBehaviour
             if (m.body == null) continue;
             if (m.index >= m.path.Count) { if ((m.wait -= dt) <= 0f) { Plan(m); m.wait = m.car ? 0.5f : Mathf.Lerp(1f, 4f, Next()); } continue; }
             var pos = m.body.position;
+            // Cars round corners wide and can pass a waypoint without coming within reach of it. The index then lagged
+            // behind while the look-ahead point sat right under the car: it neither drove nor turned, and the cars
+            // behind queued up for good. A waypoint counts as passed once the mover is beyond it along the path.
+            while (m.index + 1 < m.path.Count)
+            {
+                var a = m.path[m.index]; var ab = m.path[m.index + 1] - a; ab.y = 0f;
+                var ap = pos - a; ap.y = 0f;
+                if (ab.sqrMagnitude > 0.0001f && Vector3.Dot(ap, ab) >= ab.sqrMagnitude) m.index++; else break;
+            }
             // Aim a little ahead along the path so corners are rounded rather than stepped.
             int look = Mathf.Min(m.path.Count - 1, m.index + (m.car ? 2 : 1));
             var aim = m.path[look]; aim.y = pos.y;
@@ -298,15 +307,14 @@ public sealed class EcoTraffic : MonoBehaviour
             if (off > 6f * 6f && m.index > 0) { Plan(m); continue; } // knocked off the route: walk back to the nearest road
             if (flat.sqrMagnitude < 0.0001f || off < (m.car ? 2.2f : 0.6f) * (m.car ? 2.2f : 0.6f)) { m.index++; continue; }
             float speed = m.speed;
-            if (m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f))
-            {
-                speed = 0f;
-                // Someone standing in the road (usually the player): wait a moment, then take another way.
-                if ((m.stuck += dt) > 4f) { m.stuck = 0f; Plan(m, true); continue; }
-            }
-            else m.stuck = 0f;
+            bool blocked = m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f);
+            if (blocked) speed = 0f;
             // A car facing away from where it must go slows down and turns first instead of sweeping through.
             if (m.car) speed *= Mathf.Clamp01(Vector3.Dot(m.body.forward, flat.normalized) * 1.4f - 0.2f);
+            // Standing still for 4 s for any reason (someone in the road, a turn that does not resolve): take another
+            // way. Blocked movers turn back; the rest simply plan afresh from where they are.
+            if (speed < 0.05f) { if ((m.stuck += dt) > 4f) { m.stuck = 0f; Plan(m, blocked); continue; } }
+            else m.stuck = 0f;
             if (m.animator != null) m.animator.speed = speed > 0f ? m.speed / StrideSpeed : 0f;
             var forward = Vector3.RotateTowards(m.body.forward, flat.normalized, (m.car ? 2.4f : 5f) * dt, 0f);
             forward.y = 0f;

@@ -29,9 +29,13 @@ public sealed class EcoVegetation : MonoBehaviour
     [Range(0, 1)] public float health = 1;
     public Renderer[] foliage;
     private MaterialPropertyBlock tint;
+    // Trees stand still: the owning region is looked up every couple of seconds, not every frame for every tree.
+    private EcoRegion region;
+    private float regionAt = -10f;
     private void Update()
     {
-        if (health > 0 && EcoRegion.At(transform.position) is EcoRegion region)
+        if (Time.time - regionAt > 2f || Time.time < regionAt) { regionAt = Time.time; region = EcoRegion.At(transform.position); }
+        if (health > 0 && region != null && region.isActiveAndEnabled)
         {
             // GDD v5 §6: in a rolled run the valley's own (wild) trees clean far less and only hold cover at the starting
             // level (EcoRegion.wildCover), so an idle player cannot pass the carbon or cover goals. Trees the player

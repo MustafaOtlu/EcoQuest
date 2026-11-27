@@ -155,6 +155,7 @@ public sealed class EcoWorldHUD : MonoBehaviour
         EcoUI.LayoutChanged += MarkDirty;
         lastMode = EcoUI.Mode;
         ApplyLayout();
+        EcoUI.SplitIntoPanelCanvases(canvas);
     }
 
     private void MarkDirty() => dirty = true;

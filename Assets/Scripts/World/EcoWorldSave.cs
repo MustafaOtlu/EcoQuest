@@ -20,7 +20,10 @@ public sealed class EcoWorldSave : MonoBehaviour
     public static EcoWorldSave Current { get; private set; }
     public string Status { get; private set; } = "";
     public bool IsLoading => loading;
-    public bool CanWrite => initialized && !loading && !writing && FindFirstObjectByType<PlayerWeaponSystem>() != null && !BossActive;
+    // Read every frame from LateUpdate: the player's weapons are found once and then kept, not searched each frame.
+    private PlayerWeaponSystem weaponsSeen;
+    public bool CanWrite => initialized && !loading && !writing && HasWeapons() && !BossActive;
+    private bool HasWeapons() { if (weaponsSeen == null) weaponsSeen = FindFirstObjectByType<PlayerWeaponSystem>(); return weaponsSeen != null; }
     public bool HasSave => Slots.Any(id => File.Exists(PathFor(id)) || File.Exists(PathFor(id) + ".bak"));
     public string SaveDirectory => Path.Combine(Application.persistentDataPath, "EcoQuest", "Saves");
     public string LastSavedAt { get; private set; } = "";
