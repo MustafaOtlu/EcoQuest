@@ -13,6 +13,9 @@ public sealed class EcoTraffic : MonoBehaviour
     public static EcoTraffic Current { get; private set; }
     public const int Walkers = 7, Cars = 4, LitterCap = 40;
     private const float Cell = 1.5f;
+    private const float PlayerScale = 1.4f;
+    // Ground speed at which the walk clip plays at normal rate (its stride grows with the 1.4 scale).
+    private const float StrideSpeed = 1.3f * PlayerScale;
 
     // ------------------------------------------------------------------ road grid
     private int width, height;
@@ -239,7 +242,8 @@ public sealed class EcoTraffic : MonoBehaviour
             var rb = go.AddComponent<Rigidbody>(); rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             if (!isCar)
             {
-                go.transform.localScale = Vector3.one * Mathf.Lerp(0.94f, 1.06f, Next());
+                // The player model stands at 1.4 scale (about 1.6 m); townsfolk match it, give or take a few percent.
+                go.transform.localScale = Vector3.one * PlayerScale * Mathf.Lerp(0.94f, 1.06f, Next());
                 // The male walker shares the player's model: a light cool tint keeps the player the one in the brown coat.
                 if (prefab == male)
                 {
@@ -258,11 +262,11 @@ public sealed class EcoTraffic : MonoBehaviour
             var m = new Mover
             {
                 body = go.transform, car = isCar, animator = go.GetComponentInChildren<Animator>(),
-                speed = isCar ? Mathf.Lerp(5f, 7f, Next()) : Mathf.Lerp(1.1f, 1.45f, Next()),
+                speed = isCar ? Mathf.Lerp(5f, 7f, Next()) : Mathf.Lerp(1.35f, 1.75f, Next()),
                 // The first drop comes a while after the run starts, then every one to three minutes.
                 nextLitter = Time.time + Mathf.Lerp(20f, 90f, Next()),
             };
-            if (m.animator != null) m.animator.speed = m.speed / 1.3f;
+            if (m.animator != null) m.animator.speed = m.speed / StrideSpeed;
             movers.Add(m);
             Plan(m);
         }
@@ -303,7 +307,7 @@ public sealed class EcoTraffic : MonoBehaviour
             else m.stuck = 0f;
             // A car facing away from where it must go slows down and turns first instead of sweeping through.
             if (m.car) speed *= Mathf.Clamp01(Vector3.Dot(m.body.forward, flat.normalized) * 1.4f - 0.2f);
-            if (m.animator != null) m.animator.speed = speed > 0f ? m.speed / 1.3f : 0f;
+            if (m.animator != null) m.animator.speed = speed > 0f ? m.speed / StrideSpeed : 0f;
             var forward = Vector3.RotateTowards(m.body.forward, flat.normalized, (m.car ? 2.4f : 5f) * dt, 0f);
             forward.y = 0f;
             if (forward.sqrMagnitude > 0.0001f) m.body.rotation = Quaternion.LookRotation(forward);

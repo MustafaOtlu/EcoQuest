@@ -83,6 +83,8 @@ public sealed class EcoValleyAssembler : MonoBehaviour
         RetireDemoSet();
         PlacePlayer();
         ClearRoads();
+        SettleBuildings();
+        PlantTurningCircles();
     }
 
     // The first prototype's demo corner (a factory, two mini regions, a pond, a brush fire and three trees inside
@@ -135,6 +137,182 @@ public sealed class EcoValleyAssembler : MonoBehaviour
             moved++;
         }
         if (moved > 0) Physics.SyncTransforms();
+    }
+
+    /// <summary>
+    /// The tiles' own buildings (the town's market, home, library and clinic, a few houses, the glacier station) were
+    /// placed off one point of a curving street, so a corner could stand on the asphalt or the pavement. Each one that
+    /// touches a road is slid by the smallest step (up to 6 m, in 16 directions) that clears every road surface and
+    /// every other building. Doors, labels and markers are children and move with it.
+    /// </summary>
+    private void SettleBuildings()
+    {
+        Physics.SyncTransforms();
+        var owner = new Dictionary<Collider, Transform>();
+        var buildings = new List<Transform>();
+        foreach (Transform tile in Root)
+            foreach (Transform group in tile)
+            {
+                if (group.name == "Roads" || group.name == "Ground" || group.name == "Props") continue;
+                foreach (Transform b in group)
+                {
+                    if (!b.gameObject.activeInHierarchy || !Footprint(b, out var bounds)) continue;
+                    if ((bounds.size.x < 2.5f && bounds.size.z < 2.5f) || bounds.size.x > 30f || bounds.size.z > 30f) continue;
+                    var colliders = b.GetComponentsInChildren<Collider>();
+                    if (colliders.Length == 0) continue;
+                    buildings.Add(b);
+                    foreach (var c in colliders) owner[c] = b;
+                }
+            }
+        int moved = 0;
+        foreach (var b in buildings)
+        {
+            Footprint(b, out var bounds);
+            // Where the building stands: points under its own colliders, seen from above.
+            var samples = new List<Vector2>();
+            for (float x = bounds.min.x + 0.3f; x <= bounds.max.x; x += 0.75f)
+                for (float z = bounds.min.z + 0.3f; z <= bounds.max.z; z += 0.75f)
+                    foreach (var hit in Physics.RaycastAll(new Vector3(x, bounds.max.y + 2f, z), Vector3.down, bounds.size.y + 4f, ~0, QueryTriggerInteraction.Ignore))
+                        if (owner.TryGetValue(hit.collider, out var who) && who == b) { samples.Add(new Vector2(x, z)); break; }
+            var evicted = new List<Transform>();
+            if (samples.Count == 0 || !Blocked(b, samples, Vector2.zero, owner, false, false, evicted)) continue;
+            // Clear road and pavement; failing that, a town landmark may take the lot of a small back-row house
+            // ("House N"), which is removed; failing that too, at least the carriageway must be clear.
+            bool landmark = !b.name.StartsWith("House ") && !b.name.StartsWith("Building ");
+            bool done = false;
+            foreach (var (pavementOk, evict) in new[] { (false, false), (false, landmark), (true, false), (true, landmark) })
+            {
+                if (done) break;
+                for (float step = 0.5f; step <= 8f && !done; step += 0.5f)
+                    for (int a = 0; a < 16 && !done; a++)
+                    {
+                        float angle = a * Mathf.PI / 8f;
+                        var offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * step;
+                        var c = new Vector2(bounds.center.x, bounds.center.z) + offset;
+                        evicted.Clear();
+                        if (c.x < 2f || c.y < 2f || c.x > 148f || c.y > 148f || Blocked(b, samples, offset, owner, pavementOk, evict, evicted)) continue;
+                        foreach (var house in evicted) { house.gameObject.SetActive(false); foreach (var col in house.GetComponentsInChildren<Collider>(true)) owner.Remove(col); }
+                        b.position += new Vector3(offset.x, 0f, offset.y);
+                        Physics.SyncTransforms();
+                        moved++; done = true;
+                    }
+            }
+            if (!done) Debug.LogWarning("EcoValleyAssembler: " + b.name + " yoldan çekilemedi");
+        }
+        if (moved > 0) Debug.Log("EcoValleyAssembler: " + moved + " yapı yoldan çekildi");
+    }
+
+    /// <summary>
+    /// The town's dead ends finish in round turning circles that read as empty asphalt discs on the map. Each one gets a
+    /// kerbed green island with a tree in the middle, as real cul-de-sacs have; the ring around it stays drivable. The
+    /// circles are found in the junction fill mesh, where every circle is a fan of 28 triangles around its centre.
+    /// </summary>
+    private void PlantTurningCircles()
+    {
+        var turf = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Island turf", color = new Color(0.36f, 0.55f, 0.25f) };
+        var kerb = new Material(turf) { name = "Island kerb", color = new Color(0.72f, 0.71f, 0.68f) };
+        var treePrefab = Resources.Load<GameObject>("EcoArt/Tree");
+        var grassPrefab = Resources.Load<GameObject>("EcoArt/GrassPatch");
+        var cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        var cylinderMesh = cylinder.GetComponent<MeshFilter>().sharedMesh;
+        Destroy(cylinder);
+        int planted = 0;
+        foreach (Transform tile in Root)
+        {
+            var group = new GameObject("Turning circle islands").transform;
+            group.SetParent(tile, false);
+            // The collider keeps the original mesh; the renderer's may already be a static-batched combination.
+            foreach (var asphalt in tile.GetComponentsInChildren<MeshCollider>())
+            {
+                if (asphalt.name != "Asphalt" || !IsRoad(asphalt.transform) || asphalt.sharedMesh == null || !asphalt.sharedMesh.isReadable) continue;
+                foreach (var (centre, radius) in TurningCircles(asphalt.sharedMesh))
+                {
+                    // Town circles are 3.8 m: a 1.4 m island leaves a 2.4 m ring, enough to turn a car.
+                    if (radius < 3.3f) continue;
+                    float island = Mathf.Clamp(radius - 2.4f, 0.9f, 2.2f);
+                    var world = asphalt.transform.TransformPoint(centre);
+                    float r = island * asphalt.transform.lossyScale.x;
+                    var root = new GameObject("Turning circle island").transform;
+                    root.SetParent(group, false); root.position = world;
+                    Disc(root, "Kerb", cylinderMesh, kerb, r, 0.16f);
+                    Disc(root, "Turf", cylinderMesh, turf, r - 0.15f, 0.2f);
+                    if (treePrefab != null) Fit(Instantiate(treePrefab, world + Vector3.up * 0.2f, Quaternion.Euler(0f, planted * 67f, 0f), root), 3f);
+                    if (grassPrefab != null)
+                        for (int g = 0; g < 3; g++)
+                        {
+                            float a = (planted * 41f + g * 120f) * Mathf.Deg2Rad;
+                            var spot = world + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (r * 0.55f) + Vector3.up * 0.2f;
+                            Fit(Instantiate(grassPrefab, spot, Quaternion.Euler(0f, g * 90f, 0f), root), 0.9f);
+                        }
+                    planted++;
+                }
+            }
+        }
+        if (planted > 0) { Physics.SyncTransforms(); Debug.Log("EcoValleyAssembler: " + planted + " dönüş cebine ada"); }
+    }
+
+    private static void Disc(Transform parent, string name, Mesh mesh, Material material, float radius, float height)
+    {
+        var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = Vector3.up * (height * 0.5f - 0.02f);
+        go.transform.localScale = new Vector3(radius * 2f, height * 0.5f, radius * 2f); // the primitive is 2 m tall
+        go.GetComponent<MeshFilter>().sharedMesh = mesh;
+        go.GetComponent<MeshRenderer>().sharedMaterial = material;
+        go.AddComponent<MeshCollider>().sharedMesh = mesh; // solid: cars drive around it and litter lands on top
+    }
+
+    /// <summary>Scales a prop so its largest side is <paramref name="size"/>: a flat grass decal has no height to fit by.</summary>
+    private static void Fit(GameObject go, float size)
+    {
+        foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
+        if (!Footprint(go.transform, out var bounds)) return;
+        float largest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        if (largest > 0.01f) go.transform.localScale *= size / largest;
+    }
+
+    /// <summary>Fans of 28 triangles that share one centre and reach the same radius: the turning circles.</summary>
+    private static IEnumerable<(Vector3 centre, float radius)> TurningCircles(Mesh mesh)
+    {
+        var v = mesh.vertices; var t = mesh.triangles;
+        var fans = new Dictionary<Vector3Int, List<int>>();
+        for (int i = 0; i + 2 < t.Length; i += 3)
+        {
+            var key = Vector3Int.RoundToInt(v[t[i]] * 50f);
+            if (!fans.TryGetValue(key, out var list)) fans[key] = list = new List<int>();
+            list.Add(i);
+        }
+        foreach (var fan in fans.Values)
+        {
+            if (fan.Count != 28) continue;
+            var c = v[t[fan[0]]];
+            float min = float.MaxValue, max = 0f;
+            foreach (int i in fan)
+                for (int k = 1; k <= 2; k++)
+                {
+                    var d = v[t[i + k]] - c; d.y = 0f;
+                    min = Mathf.Min(min, d.magnitude); max = Mathf.Max(max, d.magnitude);
+                }
+            if (max - min < 0.05f) yield return (c, max);
+        }
+    }
+
+    private static bool IsPavement(Collider c) => c.name.Contains("kaldırım") || c.name == "Corners" || c.transform.parent != null && c.transform.parent.name == "Kaldırımlar";
+
+    private static bool Blocked(Transform self, List<Vector2> samples, Vector2 offset, Dictionary<Collider, Transform> owner, bool pavementOk,
+        bool evict, List<Transform> evicted)
+    {
+        foreach (var s in samples)
+            foreach (var hit in Physics.RaycastAll(new Vector3(s.x + offset.x, 120f, s.y + offset.y), Vector3.down, 240f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                var t = hit.collider.transform;
+                if (t.IsChildOf(self)) continue;
+                if (IsRoad(t) && !(pavementOk && IsPavement(hit.collider)) || hit.collider.name.Contains("Water") || hit.collider.GetComponentInParent<EcoPondBasin>() != null) return true;
+                if (!owner.TryGetValue(hit.collider, out var other) || other == self) continue;
+                if (evict && other.name.StartsWith("House ")) { if (!evicted.Contains(other)) evicted.Add(other); continue; }
+                return true;
+            }
+        return false;
     }
 
     private static bool IsRoad(Transform t) => Under(t, "Roads");
