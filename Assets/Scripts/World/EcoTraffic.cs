@@ -45,7 +45,10 @@ public sealed class EcoTraffic : MonoBehaviour
     public static EcoTraffic Ensure()
     {
         if (Current != null) return Current;
-        var go = new GameObject("Valley traffic") { hideFlags = HideFlags.DontSave };
+        // An ordinary scene object, so it goes with the scene. With HideFlags.DontSave it survived every scene reload
+        // (each run start and "Devam et"): the old townsfolk and cars stayed behind frozen, a new set was added on top,
+        // and after a few reloads the valley held dozens of statues (and their colliders and animators).
+        var go = new GameObject("Valley traffic");
         return go.AddComponent<EcoTraffic>();
     }
 
@@ -233,7 +236,6 @@ public sealed class EcoTraffic : MonoBehaviour
             var start = CellPoint(cells[random.Next(cells.Count)]);
             var go = Instantiate(prefab, start, Quaternion.Euler(0, Next() * 360f, 0), transform);
             go.name = isCar ? "Traffic car" : "Townsfolk";
-            go.hideFlags = HideFlags.DontSave;
             foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
             // Solid, so the player bumps into people and cars instead of walking through them; kinematic, so they
             // are moved by this script and never shoved around by physics.
