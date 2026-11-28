@@ -123,16 +123,16 @@ public sealed class EcoTitleMenu : MonoBehaviour
 
     private Entry AddButton(RectTransform panel, Kind kind, string text, ref float y, bool primary)
     {
-        float w = 480f, h = primary ? 88f : 72f;
+        float w = 540f, h = primary ? 108f : 92f; // the seven buttons fill the column down to the bottom margin
         var rect = Child(text, panel);
         rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f); rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(w, h); rect.anchoredPosition = new Vector2(120f + w * 0.5f, y - h * 0.5f);
         var image = rect.gameObject.AddComponent<Image>();
         image.sprite = EcoLeafArt.Frame((int)w, (int)h, (int)kind * 13 + 5); image.raycastTarget = false;
         var group = rect.gameObject.AddComponent<CanvasGroup>(); group.interactable = false; group.blocksRaycasts = false;
-        var label = Label(rect, text, primary ? 36 : 29, FontStyle.Bold, EcoLeafArt.Ink, TextAnchor.MiddleCenter);
+        var label = Label(rect, text, primary ? 42 : 34, FontStyle.Bold, EcoLeafArt.Ink, TextAnchor.MiddleCenter);
         label.rectTransform.anchorMin = Vector2.zero; label.rectTransform.anchorMax = Vector2.one; label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
-        y -= h + 8f;
+        y -= h + 14f;
         var entry = new Entry { kind = kind, rect = rect, group = group, label = label };
         entries.Add(entry);
         return entry;
