@@ -358,7 +358,8 @@ public sealed class EcoRun : MonoBehaviour
     {
         goal.done = true; goal.progress = 1f;
         var spec = goal.Spec;
-        FindFirstObjectByType<PlayerWeaponSystem>()?.ShowFeedback((goal.required ? "HEDEF TAMAMLANDI • " : "BONUS HEDEF • ") + spec.title);
+        // The banner says it; the toast line would only repeat it (feedback pass, GDD v5 §21).
+        EcoCelebrate.Goal(goal.id, spec.title, goal.required);
         EcoPlaytestLog.Objective("Hedef tamamlandı: " + spec.title + " (gün " + RunDay + ")");
         EcoWorldSave.Current?.RequestAutosave();
     }

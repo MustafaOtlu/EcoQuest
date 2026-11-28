@@ -377,7 +377,18 @@ public sealed class EcoRunUI : MonoBehaviour
         foreach (var goal in run.Goals)
         {
             var spec = goal.Spec;
-            EcoTheme.Icon(new Rect(rect.x + 12f, y + 2f, 16f, 16f), goal.done ? "ui_check" : spec.icon);
+            // A goal that just finished glows on its row and its tick pops in.
+            float glow = EcoCelebrate.GoalGlow(goal.id);
+            if (glow > 0f)
+            {
+                var keep = GUI.color;
+                GUI.color = new Color(EcoCelebrate.Leaf.r, EcoCelebrate.Leaf.g, EcoCelebrate.Leaf.b, 0.45f * glow * (0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 9f)));
+                GUI.DrawTexture(new Rect(rect.x + 6f, y, width - 12f, rowH), Texture2D.whiteTexture);
+                GUI.color = keep;
+            }
+            float tick = glow > 0.85f ? 1f + 0.9f * Mathf.Sin((1f - glow) / 0.15f * Mathf.PI) : 1f;
+            float ts = 16f * tick;
+            EcoTheme.Icon(new Rect(rect.x + 20f - ts * 0.5f, y + 10f - ts * 0.5f, ts, ts), goal.done ? "ui_check" : spec.icon);
             GUI.Label(new Rect(rect.x + 34f, y, width - 110f, rowH), (goal.required ? "" : "+ ") + spec.title, small);
             Bar(new Rect(rect.xMax - 72f, y + 8f, 60f, 5f), goal.done ? 1f : goal.progress, EcoSettings.Good);
             y += rowH;
