@@ -15,7 +15,8 @@ public sealed class EcoContextLabel : MonoBehaviour
     private enum Kind { Title, Body, Action }
     private sealed class Line
     {
-        public Text text; public Kind kind; public float punch = -1f, lastPunch = -9f;
+        public Text text; public Kind kind; public float punch = -1f, lastPunch = -9f, lastSet = -9f;
+        public string pending; // a value that changed too soon after the last one, shown when its turn comes
     }
 
     private static EcoContextLabel current;
@@ -32,7 +33,7 @@ public sealed class EcoContextLabel : MonoBehaviour
     private static readonly Color BodyColor = new Color32(226, 236, 228, 255);
     private static readonly Color ActionColor = new Color32(255, 214, 64, 255);
     private static readonly Color PunchColor = new Color32(140, 240, 150, 255);
-    private const float LineGap = 4f, LineWidth = 640f, ScreenScale = 0.0016f;
+    private const float LineGap = 4f, LineWidth = 640f, ScreenScale = 0.0016f, ValueSeconds = 2f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { current = null; }
@@ -87,10 +88,19 @@ public sealed class EcoContextLabel : MonoBehaviour
         {
             var line = i < lines.Count ? lines[i] : AddLine();
             line.text.gameObject.SetActive(true);
-            bool changed = line.text.text != parts[i].Key || line.kind != parts[i].Value;
-            if (line.kind != parts[i].Value) Style(line, parts[i].Value);
-            line.text.text = parts[i].Key;
-            // Same thing, new value: punch the line, but never more often than twice a second.
+            bool sameKind = line.kind == parts[i].Value;
+            bool changed = line.text.text != parts[i].Key || !sameKind;
+            if (!sameKind) Style(line, parts[i].Value);
+            // A live value (Depo 134 → 135 …) is refreshed quietly at most every two seconds, so the label stays still
+            // to read; a new title or action ("[E] Şarjı bırak") shows at once with a small punch.
+            if (!other && sameKind && changed && parts[i].Value == Kind.Body)
+            {
+                if (Time.unscaledTime - line.lastSet < ValueSeconds) { line.pending = parts[i].Key; continue; }
+                line.text.text = parts[i].Key; line.lastSet = Time.unscaledTime; line.pending = null;
+                continue;
+            }
+            line.text.text = parts[i].Key; line.pending = null;
+            if (changed || other) line.lastSet = Time.unscaledTime;
             if (!other && changed && Time.unscaledTime - line.lastPunch > 0.5f) { line.punch = 0f; line.lastPunch = Time.unscaledTime; }
             if (other) line.punch = -1f;
         }
@@ -203,6 +213,13 @@ public sealed class EcoContextLabel : MonoBehaviour
         if (age >= 0f) age += dt;
         shown = Vector3.Lerp(shown, anchor, 1f - Mathf.Exp(-12f * dt));
         Place(-1f);
+        bool relayout = false;
+        foreach (var line in lines)
+        {
+            if (line.pending != null && Time.unscaledTime - line.lastSet >= ValueSeconds)
+            { line.text.text = line.pending; line.pending = null; line.lastSet = Time.unscaledTime; relayout = true; }
+        }
+        if (relayout) Layout();
         foreach (var line in lines)
         {
             if (line.punch < 0f) { line.text.rectTransform.localScale = Vector3.one; continue; }
