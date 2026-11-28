@@ -488,7 +488,11 @@ public sealed class EcoQuestHUD : MonoBehaviour
                 ? "Basılı tut: sula / su aktar · " : "Basılı tut: topla / su çek · ") + "Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
             : tool == PlayerWeaponSystem.Tool.SeedGun && weapons.MetalMode ? "Düşmana tıkla: saldır · " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod"
             : "[Sol tık] Kullan  ·  " + EcoKeys.Tag(EcoKeys.Action.Mode) + " Mod" + (tool == PlayerWeaponSystem.Tool.SeedGun && !weapons.MetalMode ? "  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Tohum" : "");
-        context.text = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) ? weapons.LastScan : weapons.ContextHint();
+        // A fresh scan result is labelled where it was scanned; otherwise the hint for what the cursor is on.
+        bool scanShown = tool == PlayerWeaponSystem.Tool.Scanner && !string.IsNullOrEmpty(weapons.LastScan) && Time.time - weapons.LastScanTime < 8f;
+        context.text = scanShown ? weapons.LastScan : weapons.ContextHint();
+        bool contextInWorld = scanShown || weapons.ContextAnchored;
+        Vector3 contextTop = scanShown ? weapons.LastScanTop : weapons.ContextTop;
         bool building = weapons.Builder != null && weapons.Builder.IsBuilding;
         for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
@@ -508,6 +512,7 @@ public sealed class EcoQuestHUD : MonoBehaviour
             EcoUI.SetIcon(modeIcon, "ui_build");
             nextControls = "[Tab] Sayfa  ·  [Sol tık] Kur  ·  " + EcoKeys.Tag(EcoKeys.Action.Rotate) + " Döndür  ·  " + EcoKeys.Tag(EcoKeys.Action.Build) + " Çık";
             context.text = weapons.Builder.Status;
+            contextInWorld = false; // the build status is about the ghost and the money, not a thing in the world
         }
         int tutorialStep = EcoEnergyTutorial.Current is { Active: true } tutorial ? tutorial.stage : -1;
         if (instructions.text != nextControls || (tutorialStep >= 0 && tutorialStep != lastTutorialStep))
@@ -516,7 +521,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
             showControlsUntil = Time.unscaledTime + (lastTutorialStep < 0 && tutorialStep >= 0 ? 10f : 4.5f);
         }
         lastTutorialStep = tutorialStep;
-        SetVisible(contextBg, context, !string.IsNullOrEmpty(context.text) && (training || EcoUI.Mode != EcoUI.HudMode.Hidden));
+        bool contextShown = !string.IsNullOrEmpty(context.text) && (training || EcoUI.Mode != EcoUI.HudMode.Hidden);
+        // Feedback (GDD v5 §21, "Geri bildirim 12"): a hint about a thing is written above that thing in the world.
+        if (contextShown && contextInWorld && !EcoUI.WorldCovered && !PlayerController.Paused) EcoContextLabel.Show(context.text, contextTop); else EcoContextLabel.Hide();
+        SetVisible(contextBg, context, contextShown && !contextInWorld);
         FitContext();
         var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
         feedback.text = weapons.ChargingStation != null

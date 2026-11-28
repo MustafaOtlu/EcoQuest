@@ -1008,15 +1008,38 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (plant == null || !plant.Fertilize()) return false;
         StopCharging(); Compost--; Energy -= 2f; Notify("Organik gübre: büyüme desteği ve 120 saniye böcek koruması."); Changed?.Invoke(); return true;
     }
+    /// <summary>Where the last <see cref="ContextHint"/> is about: the top of the thing (GDD v5 §21, "Geri bildirim 12":
+    /// the hint is drawn there in the world). False when the hint has no place (it then stays in the HUD panel).</summary>
+    public bool ContextAnchored { get; private set; }
+    public Vector3 ContextTop { get; private set; }
+    public Vector3 LastScanTop { get; private set; }
+    public float LastScanTime { get; private set; } = -99f;
+
+    private static Vector3 TopOf(Collider collider, Vector3 point)
+    {
+        if (collider == null || EcoGround.IsGround(collider)) return point + Vector3.up * 0.6f;
+        var b = collider.bounds;
+        // Wide things (a lake, a field) are labelled where the cursor is, not at their far-away centre.
+        Vector3 at = Mathf.Max(b.extents.x, b.extents.z) > 5f ? point : b.center;
+        return new Vector3(at.x, Mathf.Min(b.max.y, point.y + 6f) + 0.35f, at.z);
+    }
+
     public string ContextHint()
     {
+        ContextAnchored = false;
         // Things used by standing next to them get a prompt even when the cursor points elsewhere.
         string near = EcoStory.Current != null ? EcoStory.Current.Prompt(this) : "";
         if (near.Length == 0 && EcoHomeSaving.Current != null) near = EcoHomeSaving.Current.Prompt(this);
-        if (near.Length > 0) return near;
+        if (near.Length > 0) { ContextAnchored = true; ContextTop = owner.position + Vector3.up * 2.3f; return near; }
         var shop = NearbyMarket();
-        if (shop != null) return shop.Describe();
+        if (shop != null)
+        {
+            var shopBody = shop.GetComponentInChildren<Collider>();
+            ContextAnchored = true; ContextTop = shopBody != null ? TopOf(shopBody, shopBody.bounds.center) : shop.transform.position + Vector3.up * 3f;
+            return shop.Describe();
+        }
         if (view == null || !Aim(12f, out var hit)) return "";
+        ContextAnchored = true; ContextTop = TopOf(hit.collider, hit.point);
         var fishing = hit.collider.GetComponentInParent<EcoFishingSpot>();
         if (fishing != null) return fishing.Describe();
         var factory = hit.collider.GetComponentInParent<EcoFactory>();
@@ -1089,6 +1112,8 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (hit.collider.GetComponentInParent<EcoFire>() is EcoFire fire) LastScan = fire.Describe();
             if (hit.collider.GetComponentInParent<EcoFishingSpot>() is EcoFishingSpot fishing) LastScan = fishing.Describe();
         }
+        LastScanTime = Time.time;
+        LastScanTop = aimed ? TopOf(hit.collider, hit.point) : owner.position + Vector3.up * 2.3f;
         // Feedback (GDD v5 §21, "Geri bildirim 11"): the scan is seen on the ground and at the target.
         string found = EcoDiscoveries.Count <= known ? null : thereNew ? there.regionName : hereNew ? here.regionName : "yeni tarif";
         EcoScanFx.Pulse(owner.position, AimOrigin, aimed, aimed ? hit.point : Vector3.zero, aimed ? hit.collider : null, found);

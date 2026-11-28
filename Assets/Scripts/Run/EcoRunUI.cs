@@ -272,6 +272,7 @@ public sealed class EcoRunUI : MonoBehaviour
                 {
                     flyFrom = box; flyIcon = card.icon; flyTitle = card.title; flyStart = Time.unscaledTime;
                     Close();
+                    return; // the offer is gone now; reading the next card would run past the emptied list
                 }
             }
         }
