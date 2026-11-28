@@ -37,6 +37,11 @@ public sealed class EcoTraffic : MonoBehaviour
         public int index;
         public Animator animator;
         public float stuck;
+        // Throw pose (walkers): the right arm bones, the time into the throw (-1 = none) and where the litter lands.
+        public Transform arm, forearm, hand;
+        public float throwing = -1f;
+        public bool released, throwMetal;
+        public Vector3 throwTo;
     }
     private readonly List<Mover> movers = new List<Mover>();
     private Transform player;
@@ -269,6 +274,13 @@ public sealed class EcoTraffic : MonoBehaviour
                 nextLitter = Time.time + Mathf.Lerp(20f, 90f, Next()),
             };
             if (m.animator != null) m.animator.speed = m.speed / StrideSpeed;
+            if (!isCar)
+                foreach (var t in go.GetComponentsInChildren<Transform>())
+                {
+                    if (t.name == "mixamorig:RightArm") m.arm = t;
+                    else if (t.name == "mixamorig:RightForeArm") m.forearm = t;
+                    else if (t.name == "mixamorig:RightHand") m.hand = t;
+                }
             movers.Add(m);
             Plan(m);
         }
@@ -309,6 +321,8 @@ public sealed class EcoTraffic : MonoBehaviour
             if (off > 6f * 6f && m.index > 0) { Plan(m); continue; } // knocked off the route: walk back to the nearest road
             if (flat.sqrMagnitude < 0.0001f || off < (m.car ? 2.2f : 0.6f) * (m.car ? 2.2f : 0.6f)) { m.index++; continue; }
             float speed = m.speed;
+            // Slow down while throwing, so the swing reads as a deliberate act.
+            if (m.throwing >= 0f) speed *= 0.4f;
             bool blocked = m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f);
             if (blocked) speed = 0f;
             // A car facing away from where it must go slows down and turns first instead of sweeping through.
@@ -317,7 +331,7 @@ public sealed class EcoTraffic : MonoBehaviour
             // way. Blocked movers turn back; the rest simply plan afresh from where they are.
             if (speed < 0.05f) { if ((m.stuck += dt) > 4f) { m.stuck = 0f; Plan(m, blocked); continue; } }
             else m.stuck = 0f;
-            if (m.animator != null) m.animator.speed = speed > 0f ? m.speed / StrideSpeed : 0f;
+            if (m.animator != null) m.animator.speed = speed > 0f ? speed / StrideSpeed : 0f;
             var forward = Vector3.RotateTowards(m.body.forward, flat.normalized, (m.car ? 2.4f : 5f) * dt, 0f);
             forward.y = 0f;
             if (forward.sqrMagnitude > 0.0001f) m.body.rotation = Quaternion.LookRotation(forward);
@@ -357,26 +371,80 @@ public sealed class EcoTraffic : MonoBehaviour
         return n;
     }
 
+    private const float ThrowSeconds = 0.95f, ReleaseAt = 0.4f;
+
+    private void LateUpdate()
+    {
+        // After the walk clip has posed the skeleton: wind the right arm up behind the shoulder, swing it forward,
+        // let go at the front of the swing, then ease back into the walk.
+        float dt = Time.deltaTime;
+        foreach (var m in movers)
+        {
+            if (m.throwing < 0f || m.body == null) continue;
+            m.throwing += dt;
+            float t = m.throwing;
+            if (m.arm != null && m.forearm != null && m.hand != null)
+            {
+                var fwd = m.body.forward; var up = Vector3.up; var right = m.body.right;
+                var wind = (-fwd * 0.45f + up * 0.85f + right * 0.25f).normalized;
+                var front = (fwd * 0.9f + up * 0.35f + right * 0.1f).normalized;
+                float swing = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.22f, ReleaseAt, t));
+                var dir = Vector3.Slerp(wind, front, swing);
+                float weight = t < 0.22f ? Mathf.SmoothStep(0f, 1f, t / 0.22f)
+                    : t < 0.62f ? 1f : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.62f) / (ThrowSeconds - 0.62f));
+                Aim(m.arm, m.forearm.position, dir, weight);
+                Aim(m.forearm, m.hand.position, dir, weight * 0.85f);
+            }
+            if (!m.released && t >= ReleaseAt)
+            {
+                m.released = true;
+                var start = m.hand != null ? m.hand.position : m.body.position + Vector3.up * 1.3f + m.body.forward * 0.4f;
+                EcoLitterToss.Throw(start, m.throwTo, m.throwMetal, 0.55f, 0.7f, transform);
+                Notice(m, m.throwTo);
+            }
+            if (t >= ThrowSeconds) m.throwing = -1f;
+        }
+    }
+
+    /// <summary>Turns a bone so the segment from it to <paramref name="child"/> points along <paramref name="dir"/>.</summary>
+    private static void Aim(Transform bone, Vector3 child, Vector3 dir, float weight)
+    {
+        var current = child - bone.position;
+        if (current.sqrMagnitude < 1e-6f || weight <= 0f) return;
+        var wanted = Vector3.Slerp(current.normalized, dir, weight);
+        bone.rotation = Quaternion.FromToRotation(current.normalized, wanted) * bone.rotation;
+    }
+
     private void DropLitter(Mover m)
     {
-        if (LitterCount() >= LitterCap) return;
-        // Walkers drop it at their feet; a car throws it out of the window onto the verge.
+        if (m.throwing >= 0f || LitterCount() >= LitterCap) return;
+        // Walkers throw it a couple of metres ahead and to one side; a car flicks it out of the window onto the verge.
         var side = m.body.right * (Next() < 0.5f ? -1f : 1f);
-        var spot = m.body.position + side * (m.car ? 1.6f : 0.45f) - m.body.forward * (m.car ? 1.2f : 0.2f);
+        var spot = m.car ? m.body.position + side * 1.8f - m.body.forward * 1.4f
+            : m.body.position + m.body.forward * Mathf.Lerp(2f, 2.8f, Next()) + m.body.right * Mathf.Lerp(0.2f, 0.7f, Next());
         // The highest surface that is not a car or a walker (otherwise a can could land on a car roof).
         RaycastHit hit = default; bool found = false;
         foreach (var h in Physics.RaycastAll(spot + Vector3.up * 6f, Vector3.down, 14f, ~0, QueryTriggerInteraction.Ignore))
             if (h.collider.GetComponentInParent<EcoTraffic>() == null && (!found || h.point.y > hit.point.y)) { hit = h; found = true; }
         if (!found) return;
         if (hit.normal.y < 0.7f || hit.collider.GetComponentInParent<Rigidbody>() != null) return;
-        var litter = Litter(hit.point, Next() < 0.45f);
-        if (litter == null) return;
-        if (player != null && (player.position - hit.point).sqrMagnitude < 22f * 22f && Time.time - lastNotice > 90f)
+        bool metal = Next() < 0.45f;
+        if (m.car)
         {
-            lastNotice = Time.time;
-            var weapons = FindFirstObjectByType<PlayerWeaponSystem>();
-            if (weapons != null) weapons.ShowFeedback(m.car ? "Bir araç camdan çöp attı: süpürgeyle topla" : "Bir yaya yere çöp attı: süpürgeyle topla");
+            var window = m.body.position + Vector3.up * 0.95f + side * 0.55f + m.body.forward * 0.2f;
+            EcoLitterToss.Throw(window, hit.point, metal, 0.6f, 0.55f, transform);
+            Notice(m, hit.point);
+            return;
         }
+        m.throwing = 0f; m.released = false; m.throwTo = hit.point; m.throwMetal = metal;
+    }
+
+    private void Notice(Mover m, Vector3 point)
+    {
+        if (player == null || (player.position - point).sqrMagnitude >= 22f * 22f || Time.time - lastNotice <= 90f) return;
+        lastNotice = Time.time;
+        var weapons = FindFirstObjectByType<PlayerWeaponSystem>();
+        if (weapons != null) weapons.ShowFeedback(m.car ? "Bir araç camdan çöp attı: süpürgeyle topla" : "Bir yaya yere çöp attı: süpürgeyle topla");
     }
 
     /// <summary>A single can (metal) or bottle (plastic). Shared by the traffic and the run's opening scatter.</summary>
