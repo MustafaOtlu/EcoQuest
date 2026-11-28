@@ -77,7 +77,8 @@ public sealed class EcoContextLabel : MonoBehaviour
     {
         var parts = Split(hint);
         string newTitle = parts.Count > 0 ? parts[0].Key : "";
-        bool other = !visible || fade < 0.05f || newTitle != title || (top - anchor).sqrMagnitude > 4f;
+        // "Balık bekleniyor… 0,8 sn" → "… 0,7 sn" is the same label counting down, not a new thing to pop in for.
+        bool other = !visible || fade < 0.05f || Shape(newTitle) != Shape(title) || (top - anchor).sqrMagnitude > 4f;
         if (other && visible && fade > 0.3f && !string.IsNullOrEmpty(text)) Leave();
         anchor = top;
         if (other) { shown = top; age = 0f; }
@@ -93,6 +94,12 @@ public sealed class EcoContextLabel : MonoBehaviour
             if (!sameKind) Style(line, parts[i].Value);
             // A live value (Depo 134 → 135 …) is refreshed quietly at most every two seconds, so the label stays still
             // to read; a new title or action ("[E] Şarjı bırak") shows at once with a small punch.
+            // A countdown or counter in the title or an action just ticks over, with no punch.
+            if (!other && sameKind && changed && parts[i].Value != Kind.Body && Shape(line.text.text) == Shape(parts[i].Key))
+            {
+                line.text.text = parts[i].Key; line.lastSet = Time.unscaledTime; line.pending = null;
+                continue;
+            }
             if (!other && sameKind && changed && parts[i].Value == Kind.Body)
             {
                 if (Time.unscaledTime - line.lastSet < ValueSeconds) { line.pending = parts[i].Key; continue; }
@@ -165,6 +172,15 @@ public sealed class EcoContextLabel : MonoBehaviour
             rect.anchoredPosition = new Vector2(0f, y);
             y += h + LineGap;
         }
+    }
+
+    /// <summary>The text without its numbers: "Balık bekleniyor… 0,8 sn" and "… 0,7 sn" have the same shape.</summary>
+    private static string Shape(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var b = new System.Text.StringBuilder(s.Length);
+        foreach (char c in s) if (!char.IsDigit(c) && c != ',' && c != '.' && c != '%' && c != '/') b.Append(c);
+        return b.ToString();
     }
 
     /// <summary>"Şarj istasyonu\nÜretim … • Depo …\n[E] Silahı şarj et" → title, body lines, action lines. A first line
