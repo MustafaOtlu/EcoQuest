@@ -248,7 +248,7 @@ public sealed class EcoWorldSave : MonoBehaviour
             if (File.Exists(path)) File.Replace(temporary, path, backup);
             else File.Move(temporary, path);
             LastSavedAt = envelope.savedAt;
-            if (!quiet) Say(SlotName(slot) + " kaydedildi • Dünya ve envanter aynı anda.");
+            if (!quiet) Say(SlotName(slot) + " kaydedildi • Dünya ve envanter aynı anda."); else EcoSaveBadge.Show("Otomatik kaydedildi"); // GDD v5 §21, "Geri bildirim 14"
             return true;
         }
         catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is ArgumentException || error is InvalidOperationException || error is TargetInvocationException)
