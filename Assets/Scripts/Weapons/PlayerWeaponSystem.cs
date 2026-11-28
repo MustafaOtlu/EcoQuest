@@ -232,17 +232,34 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         streamEffects.BindMuzzle(holder);
         areaIndicator = ToolAreaIndicator.Create(owner);
     }
+    private bool restoringTool;
     public void SelectTool(int index)
     {
         CancelAutomaticCombat();
+        var previous = Selected;
         if (index == (int)Tool.Hands)
         {
-            Selected = Tool.Hands; holder.Unequip(); ResetProcessing(); Changed?.Invoke(); return;
+            Selected = Tool.Hands; holder.Unequip(); ResetProcessing();
+            if (previous != Selected && !restoringTool) ToolSwitchFx(null);
+            Changed?.Invoke(); return;
         }
         if (index < 0 || index >= models.Length || models[index] == null) return;
         Selected = (Tool)index; holder.Equip(models[index], index); ResetProcessing();
         if (flashlight != null) flashlight.Refresh(0f);
+        if (previous != Selected && !restoringTool) ToolSwitchFx(models[index]);
         Changed?.Invoke();
+    }
+
+    /// <summary>Feedback (GDD v5 §21, "Geri bildirim 10"): the new tool pops into the hand with a small flash;
+    /// putting a tool away leaves a puff.</summary>
+    private void ToolSwitchFx(Transform model)
+    {
+        Vector3 hand = holder != null ? holder.transform.position : transform.position + Vector3.up * 1.1f;
+        if (model != null && model.gameObject.activeInHierarchy) EcoPopIn.On(model.gameObject);
+        EcoLitterToss.Burst(hand, model != null ? new Color(1f, 1f, 0.92f, 0.9f) : new Color(0.9f, 0.9f, 0.9f, 0.6f), model != null ? 10 : 6, 0.9f, 0.07f, 0.25f);
+        if (model != null)
+            for (int i = 0; i < 4; i++)
+                EcoLitterToss.Puff(hand, UnityEngine.Random.insideUnitSphere * 0.6f + Vector3.up * 0.6f, 0.3f, 0.06f, new Color32(255, 236, 140, 230));
     }
     public void CycleMode()
     {
@@ -1171,6 +1188,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         ResetProcessing();
         Mode = (VacuumMode)Mathf.Clamp(data.mode, 0, 2); MetalMode = data.metalMode;
         if (flashlight != null) flashlight.SetSwitch(data.version < 3 || data.flashlightOn);
-        SelectTool(Mathf.Clamp(data.selected, 0, ToolCount - 1)); Changed?.Invoke(); return true;
+        restoringTool = true; SelectTool(Mathf.Clamp(data.selected, 0, ToolCount - 1)); restoringTool = false;
+        Changed?.Invoke(); return true;
     }
 }

@@ -37,6 +37,11 @@ public class PlayerController : MonoBehaviour
     private InputAction moveAction, sprintAction;
     private float verticalSpeed;
     private EcoIsoCamera isoCamera;
+    // Feedback (GDD v5 §21, "Geri bildirim 10"): running kicks up dust at each stride, a sprint start and a hard stop
+    // throw a puff, and landing after a drop rings the ground. Cosmetic only.
+    private float strideLeft, airTime, lastPlanarSpeed;
+    private bool runningFx, leftFoot;
+    private static readonly Color FootDust = new Color32(176, 152, 112, 210); // warm earth, reads on grass and paths
 
     private NavMeshPath path;
     private bool hasPath, direct;
@@ -167,6 +172,7 @@ public class PlayerController : MonoBehaviour
         if (controller.isGrounded) { lastGrounded = transform.position; hasGrounded = true; }
         else if (hasGrounded && transform.position.y < lastGrounded.y - 40f) Teleport(lastGrounded + Vector3.up * 0.5f);
 
+        UpdateFootFx();
         UpdateWeaponMount();
         UpdateMarker();
 
@@ -183,6 +189,72 @@ public class PlayerController : MonoBehaviour
             characterAnimator.SetFloat(SpeedParameter, blend, 0.1f, Time.deltaTime);
             characterAnimator.speed = Mathf.Max(1f, actual / runClip);
         }
+    }
+
+    private void UpdateFootFx()
+    {
+        Vector3 planar = controller.velocity; planar.y = 0f;
+        float speed = planar.magnitude, dt = Time.deltaTime;
+        if (dt <= 0f) return;
+        Vector3 feet = transform.position + Vector3.up * 0.05f;
+        if (!controller.isGrounded) { airTime += dt; lastPlanarSpeed = speed; return; }
+        if (airTime > 0.35f) // landed after a drop: a ring of dust
+            for (int i = 0; i < 14; i++)
+            {
+                float a = i * Mathf.PI * 2f / 14f;
+                Dust(feet, new Vector3(Mathf.Cos(a), 0.15f, Mathf.Sin(a)) * 1.8f, 0.7f, 0.4f, FootDust);
+            }
+        airTime = 0f;
+        bool running = speed > walkSpeed * 1.15f;
+        Vector3 back = speed > 0.1f ? -planar / speed : -transform.forward;
+        if (running && !runningFx)
+        {
+            // Sprint start: a kick of dust behind the heels.
+            for (int i = 0; i < 7; i++)
+                Dust(feet + Random.insideUnitSphere * 0.1f, (back * Random.Range(1f, 1.8f) + Random.insideUnitSphere * 0.4f) + Vector3.up * 0.5f,
+                    Random.Range(0.6f, 0.9f), Random.Range(0.4f, 0.6f), FootDust);
+            strideLeft = 0.2f;
+        }
+        else if (!running && runningFx && speed < walkSpeed * 0.5f && lastPlanarSpeed > walkSpeed)
+        {
+            // Hard stop out of a sprint: a skid puff in front of the feet.
+            Vector3 ahead = -back;
+            for (int i = 0; i < 6; i++)
+                Dust(feet + ahead * 0.3f, (ahead * Random.Range(0.6f, 1.2f) + Random.insideUnitSphere * 0.4f) + Vector3.up * 0.4f,
+                    Random.Range(0.55f, 0.85f), Random.Range(0.35f, 0.5f), FootDust);
+        }
+        if (running || speed < walkSpeed * 0.5f) runningFx = running;
+        lastPlanarSpeed = speed;
+        if (!running) return;
+        // One small puff per stride, alternating feet.
+        strideLeft -= speed * dt;
+        if (strideLeft > 0f) return;
+        strideLeft = 1.1f;
+        leftFoot = !leftFoot;
+        Vector3 foot = feet + transform.right * (leftFoot ? -0.12f : 0.12f);
+        for (int i = 0; i < 4; i++)
+            Dust(foot + Random.insideUnitSphere * 0.06f, back * Random.Range(0.3f, 0.7f) + Vector3.up * Random.Range(0.2f, 0.5f) + Random.insideUnitSphere * 0.15f,
+                Random.Range(0.55f, 0.85f), Random.Range(0.3f, 0.45f), FootDust);
+    }
+
+    // Dust has its own soft particles: the shared effect sparks shrink fast and read as dots from the iso camera.
+    private static ParticleSystem dust;
+    private static void Dust(Vector3 position, Vector3 velocity, float life, float size, Color color)
+    {
+        if (dust == null)
+        {
+            dust = WeaponVisualEffects.CreateParticles("Foot dust", null, 240);
+            var grow = dust.sizeOverLifetime;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.6f), new Keyframe(0.3f, 1f), new Keyframe(1f, 1.5f)));
+            var fade = dust.colorOverLifetime;
+            var gradient = new Gradient();
+            gradient.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0.85f, 0f), new GradientAlphaKey(0.6f, 0.4f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+            var drag = dust.limitVelocityOverLifetime; drag.enabled = true; drag.limit = 0.2f; drag.dampen = 0.12f;
+            dust.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.3f;
+        }
+        dust.Emit(new ParticleSystem.EmitParams { position = position, velocity = velocity, startLifetime = life, startSize = size * 2f, startColor = color }, 1); // the iso camera is far: puffs need body
     }
 
     // ------------------------------------------------------------------ walk orders

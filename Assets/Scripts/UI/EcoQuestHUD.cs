@@ -86,6 +86,10 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (compost) current.chipShake[3] = 0.0001f;
     }
     private bool resourcesReady;
+    // Feedback (GDD v5 §21, "Geri bildirim 10"): the chosen tool slot's icon pops when the tool changes.
+    private readonly float[] slotPop = { -1f, -1f, -1f, -1f, -1f, -1f, -1f, -1f };
+    private readonly Vector2[] slotPopBase = new Vector2[8];
+    private int lastSlot = -1; private bool lastSlotBuilding;
     private RectTransform resourceNotice;
     private Text resourceNoticeText;
     private float resourceNoticeUntil;
@@ -298,6 +302,20 @@ public sealed class EcoQuestHUD : MonoBehaviour
         Refresh();
     }
 
+    private void AnimateSlot(int i)
+    {
+        if (i >= slotPop.Length || slotPop[i] < 0f || slotIcon[i] == null) return;
+        var rect = slotIcon[i].rectTransform;
+        slotPop[i] += Time.unscaledDeltaTime;
+        float t = slotPop[i] / 0.32f;
+        if (t >= 1f) { slotPop[i] = -1f; rect.localScale = Vector3.one; rect.anchoredPosition = slotPopBase[i]; return; }
+        float scale = 1f + 0.35f * Mathf.Sin(t * Mathf.PI) * (1f - 0.4f * t);
+        float grow = scale - 1f, size = rect.sizeDelta.x;
+        rect.localScale = Vector3.one * scale;
+        // The pivot is the top-left corner; shift so the icon grows about its centre and hops up a little.
+        rect.anchoredPosition = slotPopBase[i] + new Vector2(-size * 0.5f * grow, size * 0.5f * grow + 4f * Mathf.Sin(t * Mathf.PI));
+    }
+
     private void AnimateChip(int i)
     {
         float dt = Time.unscaledDeltaTime;
@@ -358,10 +376,17 @@ public sealed class EcoQuestHUD : MonoBehaviour
         Color raised = hudStyle.ColorFor(Tone.Raised);
         Color idle = training ? Color.Lerp(hudStyle.ColorFor(Tone.Surface), raised, 0.5f) : Color.clear;
         Color selectedSurface = training ? Color.Lerp(raised, hudStyle.ColorFor(building ? Tone.Amber : Tone.Leaf), 0.2f) : raised;
+        if (selected != lastSlot && lastSlot >= 0 && building == lastSlotBuilding && selected >= 0 && selected < slotPop.Length && slotIcon[selected] != null)
+        {
+            if (slotPop[selected] < 0f) slotPopBase[selected] = slotIcon[selected].rectTransform.anchoredPosition;
+            slotPop[selected] = 0f;
+        }
+        lastSlot = selected; lastSlotBuilding = building;
         for (int i = 0; i < PlayerWeaponSystem.ToolCount; i++)
         {
             bool showSlot = !building || i < BuilderSlotCount;
             if (slotRects[i].gameObject.activeSelf != showSlot) slotRects[i].gameObject.SetActive(showSlot);
+            AnimateSlot(i);
             if (!showSlot) continue;
             bool active = selected == i;
             slotBg[i].color = active ? selectedSurface : idle;
