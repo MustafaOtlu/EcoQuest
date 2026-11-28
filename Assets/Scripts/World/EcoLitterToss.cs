@@ -88,12 +88,15 @@ public sealed class EcoLitterToss : MonoBehaviour
         }
     }
 
+    /// <summary>One soft puff (exhaust, dust) from the shared effect particles.</summary>
+    public static void Puff(Vector3 position, Vector3 velocity, float life, float size, Color color) => Emit(position, velocity, life, size, color);
+
     private static void Emit(Vector3 position, Vector3 velocity, float life, float size, Color color)
     {
         if (effects == null)
         {
             effects = WeaponVisualEffects.CreateParticles("Litter toss effects", null, 400);
-            effects.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.06f;
+            effects.GetComponent<ParticleSystemRenderer>().maxParticleSize = 0.1f;
         }
         effects.Emit(new ParticleSystem.EmitParams { position = position, velocity = velocity, startLifetime = life, startSize = size, startColor = color }, 1);
     }

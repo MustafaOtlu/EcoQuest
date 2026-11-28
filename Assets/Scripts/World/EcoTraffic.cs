@@ -326,7 +326,7 @@ public sealed class EcoTraffic : MonoBehaviour
             float speed = m.speed;
             // Slow down while throwing, so the swing reads as a deliberate act.
             if (m.throwing >= 0f || m.glance >= 0f) speed *= 0.4f;
-            else if (Time.time < m.hurryUntil) speed *= 1.9f; // embarrassed: off at a near trot
+            else if (Time.time < m.hurryUntil) speed *= m.car ? 1.5f : 1.9f; // embarrassed: off at a near trot / a getaway
             bool blocked = m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f);
             if (blocked) speed = 0f;
             // A car facing away from where it must go slows down and turns first instead of sweeping through.
@@ -343,6 +343,10 @@ public sealed class EcoTraffic : MonoBehaviour
             int cell = CellAt(pos);
             if (cell >= 0 && road[cell]) pos.y = Mathf.Lerp(pos.y, ground[cell], 1f - Mathf.Exp(-10f * dt));
             m.body.position = pos;
+            // A getaway car leaves a trail of exhaust behind it.
+            if (m.car && Time.time < m.hurryUntil && speed > 0.5f && Next() < 0.6f)
+                EcoLitterToss.Puff(pos + Vector3.up * 0.35f - m.body.forward * 1.25f + m.body.right * 0.35f,
+                    -m.body.forward * 0.6f + Vector3.up * 0.5f, 0.9f, 0.45f, new Color(0.3f, 0.31f, 0.33f, 0.75f));
             if (Time.time >= m.nextLitter)
             {
                 m.nextLitter = Time.time + (m.car ? Mathf.Lerp(80f, 170f, Next()) : Mathf.Lerp(60f, 150f, Next()));
@@ -464,6 +468,17 @@ public sealed class EcoTraffic : MonoBehaviour
             var window = m.body.position + Vector3.up * 0.95f + side * 0.55f + m.body.forward * 0.2f;
             EcoLitterToss.Throw(window, hit.point, metal, 0.6f, 0.55f, transform);
             Notice(m, hit.point);
+            // Seen by the player: a "!" over the roof, then the driver puts the foot down in a cloud of exhaust.
+            if (player != null && (player.position - m.body.position).sqrMagnitude < GuiltyRange * GuiltyRange)
+            {
+                m.hurryUntil = Time.time + 0.5f + 3f;
+                EcoFloatingText.Follow(m.body, Vector3.up * 1.9f, "!", EcoFloatingText.Alert, 1.3f);
+                var rear = m.body.position + Vector3.up * 0.3f - m.body.forward * 1.25f;
+                for (int i = 0; i < 12; i++)
+                    EcoLitterToss.Puff(rear + m.body.right * Random.Range(-0.5f, 0.5f),
+                        -m.body.forward * Random.Range(0.8f, 1.6f) + Vector3.up * Random.Range(0.2f, 0.7f), 1f, 0.55f,
+                        new Color(0.36f, 0.36f, 0.38f, 0.8f));
+            }
             return;
         }
         m.throwing = 0f; m.released = false; m.throwTo = hit.point; m.throwMetal = metal;
