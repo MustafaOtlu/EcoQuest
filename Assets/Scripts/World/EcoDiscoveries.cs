@@ -15,6 +15,7 @@ public sealed class EcoDiscoveries : MonoBehaviour
     private void Awake() { Current = this; }
     private void OnDestroy() { if (Current == this) Current = null; }
     public static bool Has(string id) => !string.IsNullOrEmpty(id) && facts.Contains(id);
+    public static int Count => facts.Count;
     public static bool Remember(string id)
     {
         if (string.IsNullOrEmpty(id) || !facts.Add(id)) return false;

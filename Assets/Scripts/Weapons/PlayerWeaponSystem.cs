@@ -1062,8 +1062,14 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     private void Scan()
     {
-        EcoDiscoveries.DiscoverRegion(EcoRegion.At(owner.position));
-        if (!Aim(40f, out var hit)) LastScan = EcoRegion.At(owner.position)?.Describe() ?? "Bölge dışında • Hedef yok";
+        int known = EcoDiscoveries.Count;
+        var here = EcoRegion.At(owner.position);
+        bool hereNew = here != null && !EcoDiscoveries.Has("region." + here.Key);
+        EcoDiscoveries.DiscoverRegion(here);
+        bool aimed = Aim(40f, out var hit);
+        var there = aimed ? EcoRegion.At(hit.point) : null;
+        bool thereNew = there != null && there != here && !EcoDiscoveries.Has("region." + there.Key);
+        if (!aimed) LastScan = EcoRegion.At(owner.position)?.Describe() ?? "Bölge dışında • Hedef yok";
         else
         {
             EcoDiscoveries.DiscoverRegion(EcoRegion.At(hit.point));
@@ -1083,6 +1089,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
             if (hit.collider.GetComponentInParent<EcoFire>() is EcoFire fire) LastScan = fire.Describe();
             if (hit.collider.GetComponentInParent<EcoFishingSpot>() is EcoFishingSpot fishing) LastScan = fishing.Describe();
         }
+        // Feedback (GDD v5 §21, "Geri bildirim 11"): the scan is seen on the ground and at the target.
+        string found = EcoDiscoveries.Count <= known ? null : thereNew ? there.regionName : hereNew ? here.regionName : "yeni tarif";
+        EcoScanFx.Pulse(owner.position, AimOrigin, aimed, aimed ? hit.point : Vector3.zero, aimed ? hit.collider : null, found);
         Scanned?.Invoke(LastScan); Changed?.Invoke();
     }
     private void ShowStream(Vector3 target, bool contact, Vector3 normal, float seconds, Collider aimed = null)
