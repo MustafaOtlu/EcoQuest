@@ -95,10 +95,8 @@ public sealed class EcoTitleMenu : MonoBehaviour
         AddButton(panel, Kind.NewGame, "Yeni oyun", ref y, true);
         AddButton(panel, Kind.Continue, "Devam et", ref y, false).enabled = save != null && save.HasSave;
         AddButton(panel, Kind.Tutorial, "Öğretici", ref y, false);
-        AddButton(panel, Kind.EnemyTutorial, "Düşman eğitimi", ref y, false);
         AddButton(panel, Kind.Slots, "Kayıtlar", ref y, false);
         AddButton(panel, Kind.Settings, "Ayarlar", ref y, false);
-        AddButton(panel, Kind.Expert, "Uzman demo senaryoları", ref y, false);
         AddButton(panel, Kind.Survey, "Sürdürülebilirlik anketi", ref y, false);
         AddButton(panel, Kind.Quit, "Oyundan çık", ref y, false);
         foreach (var e in entries) if (!e.enabled) e.group.alpha = 0.45f;

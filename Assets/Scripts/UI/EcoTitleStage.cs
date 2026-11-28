@@ -28,6 +28,7 @@ public sealed class EcoTitleStage : MonoBehaviour
     private Vector3 baseForward, aimPoint, smoothedAim;
     private ParticleSystem specks, streaks;
     private float emitDebt;
+    private readonly List<Transform> trees = new List<Transform>();
 
     // What the menu changed in the scene, put back on Close.
     private bool fog; private AmbientMode ambientMode; private Color ambientSky, ambientEquator, ambientGround, ambientLight;
@@ -80,6 +81,7 @@ public sealed class EcoTitleStage : MonoBehaviour
         BuildHero();
         BuildParticles();
         ApplyLighting();
+        EcoTitleLife.Add(this, root, hero, trees); // a littering walker and birds over the trees
     }
 
     private void ApplyLighting()
@@ -124,7 +126,8 @@ public sealed class EcoTitleStage : MonoBehaviour
             float spread = 6f + z * 0.9f;
             float x = (R() * 2f - 1f) * spread;
             if (z < 6f && x > -4.5f && x < 3.5f) continue;
-            Place(tree, hold.transform, new Vector3(x, 0f, z), R() * 360f, Mathf.Lerp(0.85f, 1.5f, R()));
+            var placed = Place(tree, hold.transform, new Vector3(x, 0f, z), R() * 360f, Mathf.Lerp(0.85f, 1.5f, R()));
+            if (placed != null) trees.Add(placed.transform);
         }
         for (int i = 0; i < 90; i++)
         {
@@ -138,12 +141,13 @@ public sealed class EcoTitleStage : MonoBehaviour
     }
 
     /// <summary>A prefab copy with only its looks: scripts, colliders and lights are removed before it wakes up.</summary>
-    private static void Place(GameObject prefab, Transform hold, Vector3 local, float spin, float scale)
+    private static GameObject Place(GameObject prefab, Transform hold, Vector3 local, float spin, float scale)
     {
-        if (prefab == null) return;
+        if (prefab == null) return null;
         var go = Instantiate(prefab, hold);
         go.transform.localPosition = local; go.transform.localRotation = Quaternion.Euler(0f, spin, 0f); go.transform.localScale *= scale;
         Strip(go);
+        return go;
     }
 
     private static void Strip(GameObject go)
@@ -374,6 +378,19 @@ public sealed class EcoTitleStage : MonoBehaviour
             Vector3 target = to + Random.insideUnitSphere * 0.35f;
             var e = new ParticleSystem.EmitParams { position = mouth + Random.insideUnitSphere * 0.03f, velocity = (target - mouth) / life, startLifetime = life, startColor = Bits[Random.Range(0, Bits.Length)], startSize = Random.Range(0.05f, 0.11f) };
             if (Random.value < 0.4f) { e.startColor = new Color(1f, 1f, 1f, 0.6f); streaks.Emit(e, 1); } else specks.Emit(e, 1);
+        }
+    }
+
+    /// <summary>A flat ring of dust or sparks on the ground (EcoLitterToss.Burst on unscaled time).</summary>
+    public void Ring(Vector3 centre, Color color, int count, float speed, float size, float life)
+    {
+        if (specks == null) return;
+        float offset = Random.value * Mathf.PI * 2f;
+        for (int i = 0; i < count; i++)
+        {
+            float a = offset + i * Mathf.PI * 2f / count;
+            var dir = new Vector3(Mathf.Cos(a), 0.15f, Mathf.Sin(a));
+            specks.Emit(new ParticleSystem.EmitParams { position = centre + dir * 0.05f, velocity = dir * speed * Random.Range(0.75f, 1.1f), startLifetime = life, startSize = size, startColor = color }, 1);
         }
     }
 

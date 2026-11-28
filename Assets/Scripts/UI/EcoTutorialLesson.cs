@@ -113,6 +113,9 @@ public sealed partial class EcoTutorialLesson : MonoBehaviour
 
     public static void Open() => Load(ScenePath);
 
+    private const float NextLessonDelay = 3f;
+    private float doneAt = -1f;
+
     private static void Load(string path)
     {
         EcoKeys.CancelFire();
@@ -214,6 +217,8 @@ public sealed partial class EcoTutorialLesson : MonoBehaviour
                 if (Distance(finish.position) <= 1.15f) Advance();
                 break;
             case Step.Done:
+                // GDD v5 §21 "Geri bildirim 17": one tutorial button; the enemy training follows on its own.
+                if (doneAt >= 0f && Time.unscaledTime - doneAt >= NextLessonDelay) Leave(EcoEnemyTutorial.ScenePath);
                 break;
             default:
                 UpdatePowerStep();
@@ -261,6 +266,7 @@ public sealed partial class EcoTutorialLesson : MonoBehaviour
             case Step.Solar: SetTarget(solarPad.position, 2.05f); break;
             case Step.Finish: SetTarget(finish.position, 1.15f); break;
             case Step.Done:
+                doneAt = Time.unscaledTime;
                 SetTarget(Vector3.zero, 0f);
                 var button = (RectTransform)exitButton.transform;
                 button.anchorMin = button.anchorMax = new Vector2(0.5f, 1f);
@@ -343,7 +349,7 @@ public sealed partial class EcoTutorialLesson : MonoBehaviour
                 else Prompt("Güneş panelini yerleştir", "Yeşil önizlemeye tıkla", mouse: true);
                 break;
             case Step.Finish: Prompt("Bitiş halkasına yürü", ""); break;
-            case Step.Done: Prompt("Öğretici tamamlandı", ""); break;
+            case Step.Done: Prompt("Öğretici tamamlandı", "Sırada düşman eğitimi var…"); break;
             default: RefreshPowerPrompt(); break;
         }
     }
