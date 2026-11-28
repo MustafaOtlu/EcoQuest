@@ -70,6 +70,7 @@ public sealed class EcoContextLabel : MonoBehaviour
         // Drawn over the world (the thing it names may stand in front of its own label).
         overlay = new Material(Canvas.GetDefaultCanvasMaterial()) { hideFlags = HideFlags.DontSave };
         overlay.SetInt("unity_GUIZTestMode", (int)CompareFunction.Always);
+        overlay.renderQueue = WorldSpaceLabel.OverToolArea; // after the tool's area overlay, so the green fill does not tint it
         return overlay;
     }
 

@@ -242,7 +242,7 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         visibility = GetComponent<CanvasGroup>();
         if (visibility == null) visibility = gameObject.AddComponent<CanvasGroup>();
         visibility.interactable = visibility.blocksRaycasts = false;
-        var readableMaterial = Resources.Load<Material>("EcoUI/WorldCaption");
+        var readableMaterial = ReadableMaterial();
 
         var plateTransform = transform.Find("Plate");
         plate = plateTransform != null ? plateTransform.GetComponent<Image>() : null;
@@ -295,6 +295,19 @@ public sealed class WorldSpaceLabel : MonoBehaviour
         }
         return true;
     }
+
+    private static Material readable;
+    /// <summary>A copy of the caption material drawn after the tool's area overlay (queue 4000/4001), so the green
+    /// vacuum area no longer washes over a sign standing inside it (GDD v5 §21, "Geri bildirim 12e").</summary>
+    private static Material ReadableMaterial()
+    {
+        if (readable != null) return readable;
+        var source = Resources.Load<Material>("EcoUI/WorldCaption");
+        if (source == null) return null;
+        readable = new Material(source) { name = "World caption (over tool area)", hideFlags = HideFlags.DontSave, renderQueue = OverToolArea };
+        return readable;
+    }
+    public const int OverToolArea = 4010;
 
     private void Layout(float maximumWidth)
     {
