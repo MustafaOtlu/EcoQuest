@@ -32,6 +32,27 @@ public sealed class EcoGameMenu : MonoBehaviour
         // "Yeni vadi" on a run's result screen reloads the scene straight into the next briefing.
         if (EcoRun.ConsumeAutoStart() && EcoRun.Current != null) { EcoRun.Current.RequestNewRun(); return; }
         screen = Screen_.Main; PlayerController.SetPaused(true);
+        EcoTitleMenu.Open(this); // GDD v5 §21 "Ana menü": the 3D title replaces the title window
+    }
+
+    // ------------------------------------------------------------------ 3D title menu (EcoTitleMenu)
+    internal bool TitleOnMain => screen == Screen_.Main;
+    /// <summary>Opens Kayıtlar or Ayarlar over the 3D title; their "Geri" brings the title back.</summary>
+    internal void TitleOpenScreen(bool settings) => Go(settings ? Screen_.Settings : Screen_.Slots, Screen_.Main);
+    /// <summary>0 new game, 1 continue, 2 tutorial, 3 enemy tutorial (the title has already closed itself).</summary>
+    internal void TitleStart(int choice)
+    {
+        var save = EcoWorldSave.Current;
+        switch (choice)
+        {
+            case 0:
+                PlayerController.SetPaused(false);
+                if (EcoRun.Current != null && !EcoRun.Current.Active) EcoRun.Current.RequestNewRun();
+                break;
+            case 1: PlayerController.SetPaused(false); save?.QuickLoad(); break;
+            case 2: EcoTutorialLesson.Open(); break;
+            case 3: EcoEnemyTutorial.Open(); break;
+        }
     }
 
     // Esc steps back one screen (Settings/Slots/Keys → where they were opened from). On the title screen it does nothing:
@@ -51,6 +72,7 @@ public sealed class EcoGameMenu : MonoBehaviour
         if (!PlayerController.Paused) { if (screen != Screen_.Pause) screen = Screen_.Pause; listening = -1; return; }
         if (EcoExpertDemo.PanelOpen) return; // the expert demo list is drawn instead of the title menu
         if (EcoSurvey.Current != null && EcoSurvey.Current.IsOpen) return; // the survey opened from here sits on top; the menu returns when it closes
+        if (screen == Screen_.Main && EcoTitleMenu.Active) return; // drawn in 3D by EcoTitleMenu
         EcoTheme.Begin();
         string heading = screen == Screen_.Main ? "EcoQuest" : screen == Screen_.Settings ? "Ayarlar" : screen == Screen_.Keys ? "Tuş atamaları"
             : screen == Screen_.Slots ? "Kayıtlar" : "Duraklatıldı";

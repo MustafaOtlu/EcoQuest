@@ -127,6 +127,16 @@ public sealed partial class EcoCatalogueToolVisual : MonoBehaviour
 
     private void OnScan(string result) => kick = 1f;
 
+    /// <summary>Title menu (no owner, world paused): spins the vacuum's fan while it is working.</summary>
+    internal void MenuSpin(float working, float dt)
+    {
+        if (kind != Tool.Vacuum || primary == null || dt <= 0f) return;
+        work = Mathf.MoveTowards(work, working, dt * (working > work ? 8f : 4f));
+        angle = Mathf.Repeat(angle + 1120f * work * dt, 360f);
+        primary.localRotation = Quaternion.AngleAxis(angle, Forward);
+        SetLamp(Amber, .48f + work * .86f);
+    }
+
     private void LateUpdate()
     {
         if (owner == null) return;
