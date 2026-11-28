@@ -140,16 +140,27 @@ public sealed class EcoTitleLife : MonoBehaviour
         foreach (var audio in go.GetComponentsInChildren<AudioSource>(true)) DestroyImmediate(audio);
     }
 
-    /// <summary>A spot on the grass behind the character that shows on the right half of the screen.</summary>
+    /// <summary>A spot on the grass behind the character anywhere on the right half of the screen, from the edge of
+    /// the dark menu panel to the right edge, picked through the camera so it is always in view.</summary>
     private Vector3 PickSpot(Vector3 near)
     {
         var origin = stage.transform.position;
         Vector3 best = origin + new Vector3(1.8f, 0f, 2.6f);
-        for (int i = 0; i < 24; i++)
+        float bestScore = -1f;
+        var ground = new Plane(Vector3.up, origin);
+        for (int i = 0; i < 40; i++)
         {
-            var p = origin + new Vector3(Random.Range(-0.8f, 4.2f), 0f, Random.Range(1.3f, 4.6f));
-            if (near != Vector3.zero && (p - near).sqrMagnitude < 1.6f * 1.6f) continue;
-            if (InView(p, 0.56f) && InView(p + Vector3.up * 1.7f, 0.56f)) return p;
+            if (stage.Cam == null) break;
+            var ray = stage.Cam.ViewportPointToRay(new Vector3(Random.Range(0.53f, 0.95f), Random.Range(0.08f, 0.42f), 0f));
+            if (!ground.Raycast(ray, out float enter)) continue;
+            var p = ray.GetPoint(enter);
+            var local = p - origin;
+            if (local.z < 1.2f || local.z > 7.5f) continue; // behind the character, not lost in the trees
+            if (!InView(p + Vector3.up * 1.7f, 0.52f)) continue;
+            // Prefer a walk of a few metres: no dithering on the spot.
+            float score = near == Vector3.zero ? 1f : Vector3.Distance(p, near);
+            if (score >= 2.2f) return p;
+            if (score > bestScore) { bestScore = score; best = p; }
         }
         return best;
     }
@@ -174,6 +185,7 @@ public sealed class EcoTitleLife : MonoBehaviour
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
         Walk(dt);
         UpdateTosses(dt);
+        UpdateChore(dt);
         UpdateBirds(dt);
     }
 
@@ -184,10 +196,12 @@ public sealed class EcoTitleLife : MonoBehaviour
         // A thrower slows down for the swing, then hurries a little.
         float speed = throwing >= 0f ? WalkSpeed * 0.55f : glance >= 0f ? WalkSpeed * 1.25f : WalkSpeed;
         Vector3 to = target - body.position; to.y = 0f;
-        if (to.magnitude < 0.3f || now > retarget) { target = PickSpot(body.position); retarget = now + 14f; }
-        var wanted = Quaternion.LookRotation(Flat(target - body.position, body.forward));
-        body.rotation = Quaternion.RotateTowards(body.rotation, wanted, 120f * dt);
-        // Walks where it faces, so it curves round instead of sliding sideways.
+        if (to.magnitude < 0.7f || now > retarget) { target = PickSpot(body.position); retarget = now + 14f; to = target - body.position; to.y = 0f; }
+        var wanted = Quaternion.LookRotation(Flat(to, body.forward));
+        float off = Quaternion.Angle(body.rotation, wanted);
+        // Turns faster when the goal is off to the side and slows down meanwhile, so it never circles round its goal.
+        body.rotation = Quaternion.RotateTowards(body.rotation, wanted, (off > 60f ? 260f : 150f) * dt);
+        speed *= Mathf.Lerp(1f, 0.35f, Mathf.InverseLerp(30f, 120f, off));
         body.position += body.forward * speed * dt;
         // Never into the character.
         if (hero != null)
@@ -197,16 +211,16 @@ public sealed class EcoTitleLife : MonoBehaviour
         }
         if (animator != null) animator.speed = speed / StrideSpeed;
 
-        if (throwing < 0f && now >= nextThrow) TryThrow();
+        if (throwing < 0f && now >= nextThrow && lying.Count + tosses.Count < 2) TryThrow();
     }
 
     private void TryThrow()
     {
         nextThrow = Time.unscaledTime + 2f; // not now: try again shortly
-        if (!InView(body.position, 0.56f) || !InView(body.position + Vector3.up * 1.7f, 0.56f)) return;
+        if (!InView(body.position, 0.53f) || !InView(body.position + Vector3.up * 1.7f, 0.53f)) return;
         var spot = body.position + body.forward * Random.Range(1.6f, 2.3f) + body.right * Random.Range(0.2f, 0.6f);
         spot.y = stage.transform.position.y + 0.02f;
-        if (!InView(spot, 0.58f)) return;
+        if (!InView(spot, 0.55f) || spot.z - stage.transform.position.z < 0.9f) return;
         if (hero != null && (spot - hero.position).sqrMagnitude < 0.8f * 0.8f) return;
         throwTo = spot; throwMetal = Random.value < 0.45f;
         throwing = 0f; released = false;
@@ -307,6 +321,7 @@ public sealed class EcoTitleLife : MonoBehaviour
             toss.piece.localScale /= 1.25f;
             stage.Ring(toss.to + Vector3.up * 0.05f, Ping, 14, 1.6f, 0.09f, 0.35f);
             lying.Add(toss.piece);
+            landedAt = Time.unscaledTime;
             tosses.RemoveAt(i);
             // Only a handful lie about: the oldest shrinks away.
             if (lying.Count > LitterCap) { fading.Add(lying[0]); lying.RemoveAt(0); }
@@ -318,6 +333,71 @@ public sealed class EcoTitleLife : MonoBehaviour
             piece.localScale *= Mathf.Exp(-6f * dt);
             if (piece.localScale.x < 0.02f) { Destroy(piece.gameObject); fading.RemoveAt(i); }
         }
+    }
+
+    // ------------------------------------------------------------------ the character cleans up
+
+    // Once litter has landed (its hop and sparkle done), the character turns round to it and vacuums it up: dust is
+    // drawn in for a moment, then the piece itself shrinks and spins into the nozzle. Using the menu takes over at once;
+    // the litter waits until the mouse is free again.
+    private Transform chore;
+    private float choreTime, landedAt;
+    private Vector3 choreStart, choreScale;
+    private int chorePhase; // 0 turning, 1 sucking dust, 2 pulling the piece in
+    private const float ChoreDelay = 0.5f;
+
+    private void UpdateChore(float dt)
+    {
+        if (chore == null)
+        {
+            if (stage.MenuIdle && lying.Count > 0 && Time.unscaledTime - landedAt >= ChoreDelay)
+            {
+                chore = lying[0]; chorePhase = 0; choreTime = 0f;
+            }
+            else { stage.Chore = null; return; }
+        }
+        if (!stage.MenuIdle) { AbortChore(); return; }
+        choreTime += dt;
+        switch (chorePhase)
+        {
+            case 0:
+                stage.Chore = chore.position + Vector3.up * 0.1f;
+                if (stage.FacingChore || choreTime > 1.6f) { chorePhase = 1; choreTime = 0f; }
+                break;
+            case 1:
+                stage.Chore = chore.position + Vector3.up * 0.1f;
+                stage.Suck(chore.position + Vector3.up * 0.08f, dt, 200f);
+                chore.localScale *= 1f + Mathf.Sin(choreTime * 40f) * 0.02f; // it rattles in the draught
+                if (choreTime > 0.45f)
+                {
+                    chorePhase = 2; choreTime = 0f; choreStart = chore.position; choreScale = chore.localScale;
+                    lying.Remove(chore);
+                }
+                break;
+            case 2:
+                float t = Mathf.Clamp01(choreTime / 0.38f), k = t * t;
+                var mouth = stage.Muzzle;
+                chore.position = Vector3.Lerp(choreStart, mouth, k) + Vector3.up * (0.25f * Mathf.Sin(t * Mathf.PI));
+                chore.localScale = choreScale * Mathf.Lerp(1f, 0.05f, k);
+                chore.Rotate(Vector3.up, 900f * dt, Space.World);
+                stage.Suck(Vector3.Lerp(choreStart, mouth, k), dt, 140f);
+                if (t < 1f) break;
+                stage.Pop();
+                Destroy(chore.gameObject); chore = null;
+                landedAt = Time.unscaledTime; // a short beat before the next piece
+                break;
+        }
+    }
+
+    private void AbortChore()
+    {
+        stage.Chore = null;
+        if (chore == null) return;
+        if (chorePhase == 2) // already in the air: finish it off quietly
+        {
+            Destroy(chore.gameObject);
+        }
+        chore = null;
     }
 
     // ------------------------------------------------------------------ birds

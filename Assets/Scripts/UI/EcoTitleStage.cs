@@ -243,6 +243,15 @@ public sealed class EcoTitleStage : MonoBehaviour
     }
 
     public void AimAt(Vector2 screen) => aimPoint = WorldAt(screen);
+
+    /// <summary>A chore of its own (EcoTitleLife: litter on the grass): while set, the character turns all the way
+    /// round to it instead of following the cursor.</summary>
+    internal Vector3? Chore;
+    /// <summary>Set by the menu each frame: nothing is being pulled or shot and the mouse button is up.</summary>
+    internal bool MenuIdle;
+    internal bool FacingChore => Chore.HasValue && hero != null &&
+        Vector3.Angle(hero.forward, Vector3.ProjectOnPlane(Chore.Value - hero.position, Vector3.up)) < 14f &&
+        Vector3.Distance(smoothedAim, Chore.Value) < 0.4f;
     public void Kick() => kick = 1f;
 
     private void LateUpdate()
@@ -250,7 +259,8 @@ public sealed class EcoTitleStage : MonoBehaviour
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
         ApplyLighting();
         if (hero == null || tool == null) return;
-        smoothedAim = Vector3.Lerp(smoothedAim, aimPoint, 1f - Mathf.Exp(-14f * dt));
+        if (Chore.HasValue) aimPoint = Chore.Value;
+        smoothedAim = Vector3.Lerp(smoothedAim, aimPoint, 1f - Mathf.Exp(-(Chore.HasValue ? 7f : 14f) * dt));
 
         // The body turns towards the cursor (within reason), the arms follow the tool.
         Vector3 flat = Vector3.ProjectOnPlane(smoothedAim - hero.position, Vector3.up);
@@ -258,8 +268,8 @@ public sealed class EcoTitleStage : MonoBehaviour
         {
             float wanted = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
             float baseYaw = Mathf.Atan2(baseForward.x, baseForward.z) * Mathf.Rad2Deg;
-            wanted = baseYaw + Mathf.Clamp(Mathf.DeltaAngle(baseYaw, wanted), -70f, 70f);
-            yaw = Mathf.LerpAngle(yaw, wanted, 1f - Mathf.Exp(-8f * dt));
+            if (!Chore.HasValue) wanted = baseYaw + Mathf.Clamp(Mathf.DeltaAngle(baseYaw, wanted), -70f, 70f);
+            yaw = Mathf.LerpAngle(yaw, wanted, 1f - Mathf.Exp(-(Chore.HasValue ? 6f : 8f) * dt));
         }
         hero.rotation = Quaternion.Euler(0f, yaw, 0f);
 

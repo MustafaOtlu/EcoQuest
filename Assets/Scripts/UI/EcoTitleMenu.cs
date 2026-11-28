@@ -148,6 +148,7 @@ public sealed class EcoTitleMenu : MonoBehaviour
         var mouse = Mouse.current;
         Vector2 pointer = mouse != null ? mouse.position.ReadValue() : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
         bool pressed = mouse != null && mouse.leftButton.wasPressedThisFrame, held = mouse != null && mouse.leftButton.isPressed;
+        if (stage != null) stage.MenuIdle = state == State.Idle && !held;
 
         switch (state)
         {
