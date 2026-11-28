@@ -33,8 +33,8 @@ public sealed class EcoFloatingText : MonoBehaviour
     public static void Gain(Vector3 world, int metal, int plastic, int organic)
     {
         float lift = 0f;
-        if (metal > 0) { Show(world + Vector3.up * lift, "+" + metal + " metal", Metal); lift += 0.35f; }
-        if (plastic > 0) { Show(world + Vector3.up * lift, "+" + plastic + " plastik", Plastic); lift += 0.35f; }
+        if (metal > 0) { Show(world + Vector3.up * lift, "+" + metal + " metal", Metal); lift += 0.6f; }
+        if (plastic > 0) { Show(world + Vector3.up * lift, "+" + plastic + " plastik", Plastic); lift += 0.6f; }
         if (organic > 0) Show(world + Vector3.up * lift, "+" + organic + " organik", Organic);
     }
 

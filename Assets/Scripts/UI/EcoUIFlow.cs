@@ -33,7 +33,8 @@ public sealed class EcoUIFlow : MonoBehaviour
     }
     public static void SetBuild(bool active) { building = active; Apply(); }
     public static void SetPaused(bool active) { Paused = active; Apply(); }
-    private static void Apply() => Time.timeScale = Paused || PanelFreezesWorld ? 0f : IsOpen || building ? 0.1f : 1f;
+    // Build mode no longer slows the world: the player walks while placing (feedback pass, GDD v5 §21).
+    private static void Apply() => Time.timeScale = Paused || PanelFreezesWorld ? 0f : IsOpen ? 0.1f : 1f;
     private void Update()
     {
         if (ActivePanel is Object owner && owner == null) { ActivePanel = null; PanelFreezesWorld = false; }

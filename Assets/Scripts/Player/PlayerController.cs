@@ -124,8 +124,11 @@ public class PlayerController : MonoBehaviour
         bool hasControl = !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && !buildBusy && Application.isFocused
             && (vitals == null || !vitals.IsRecovering);
 
+        // Build mode keeps WASD: the player walks the ghost to where it should go (only clicks belong to building).
+        bool canWalk = !EcoUIFlow.InputBlocked && !EcoMarketUI.BlocksGameplay && Application.isFocused
+            && (vitals == null || !vitals.IsRecovering);
         UpdateCursorVisibility(hasControl, mouse);
-        Vector2 stick = hasControl && moveAction != null ? Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f) : Vector2.zero;
+        Vector2 stick = canWalk && moveAction != null ? Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f) : Vector2.zero;
         Vector3 desired = Vector3.zero;
         if (isoCamera != null && stick.sqrMagnitude > 0.01f)
         {

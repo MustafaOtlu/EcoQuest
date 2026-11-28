@@ -21,6 +21,8 @@ public sealed class EcoBuildController : MonoBehaviour
     private EcoPowerNode cableStart;
     private EcoWaterNode pipeStart;
     private float yaw;
+    private float shakeUntil = -1f;
+    private Vector3 shownPosition; private bool shown;
     private const float Reach = 14f;
     public string SlotName(int slot)
     {
@@ -135,7 +137,7 @@ public sealed class EcoBuildController : MonoBehaviour
             {
                 if (pipeStart == null)
                 {
-                    if (node.CanSend(PipeFluid)) pipeStart = node;
+                    if (node.CanSend(PipeFluid)) { pipeStart = node; EcoBuildFx.Sparks(node.SocketPosition, EcoBuildFx.SparkColor, 8); }
                     else weapons.ShowFeedback("Bu tesis seçili su türünü dışarı vermez.");
                 }
                 else if (TryConnectPipe(pipeStart, node, PipeFluid)) pipeStart = null;
@@ -148,7 +150,7 @@ public sealed class EcoBuildController : MonoBehaviour
             Status = cableStart == null ? "İlk elektrik bağlantı noktasını seç." : "İkinci noktayı seç • X: aradaki kabloyu sök";
             if (node != null && mouse != null && mouse.leftButton.wasPressedThisFrame)
             {
-                if (cableStart == null) cableStart = node;
+                if (cableStart == null) { cableStart = node; EcoBuildFx.Sparks(node.SocketPosition, EcoBuildFx.SparkColor, 8); }
                 else if (TryConnect(cableStart, node)) cableStart = null;
             }
             return;
@@ -158,12 +160,24 @@ public sealed class EcoBuildController : MonoBehaviour
         Status = reason;
         var targetStructure = hit.collider.GetComponentInParent<EcoStructure>();
         if (targetStructure != null) Status = "" + EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • " + EcoKeys.Tag(EcoKeys.Action.Dismantle) + " Sök • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
+        bool click = mouse != null && mouse.leftButton.wasPressedThisFrame;
+        // Clicking a spot that does not work shakes the red ghost and flashes it instead of doing nothing.
+        if (!valid && click && targetStructure == null) shakeUntil = Time.unscaledTime + 0.35f;
         if (preview != null)
         {
-            preview.SetActive(true); preview.transform.SetPositionAndRotation(position, rotation);
-            previewMaterial.SetColor("_BaseColor", valid ? new Color(0.2f, 0.9f, 0.4f, 0.5f) : new Color(0.95f, 0.15f, 0.1f, 0.5f));
+            // The ghost glides between grid cells instead of jumping, so it reads as one object under the cursor.
+            if (!preview.activeSelf || !shown) shownPosition = position;
+            shown = true;
+            shownPosition = Vector3.Lerp(shownPosition, position, 1f - Mathf.Exp(-22f * Time.unscaledDeltaTime));
+            float shake = Mathf.Max(0f, shakeUntil - Time.unscaledTime) / 0.35f;
+            var wobble = rotation * Vector3.right * (Mathf.Sin(Time.unscaledTime * 60f) * 0.18f * shake);
+            preview.SetActive(true); preview.transform.SetPositionAndRotation(shownPosition + wobble, rotation);
+            var color = valid ? new Color(0.2f, 0.9f, 0.4f, 0.5f) : new Color(0.95f, 0.15f, 0.1f, 0.5f);
+            if (shake > 0f) color = Color.Lerp(color, new Color(1f, 0.35f, 0.25f, 0.85f), shake);
+            else if (valid) color.a = 0.42f + 0.1f * Mathf.Sin(Time.unscaledTime * 5f);
+            previewMaterial.SetColor("_BaseColor", color);
         }
-        if (valid && mouse != null && mouse.leftButton.wasPressedThisFrame) TryPlace(Selection, position, rotation);
+        if (valid && click) TryPlace(Selection, position, rotation);
     }
     private bool Aim(out RaycastHit nearest)
     {
@@ -226,6 +240,7 @@ public sealed class EcoBuildController : MonoBehaviour
         if (go == null) { weapons.ReturnMaterials(entry.Metal, entry.Plastic); return false; }
         var structure = go.GetComponent<EcoStructure>(); structure.playerBuilt = true;
         if (go.TryGetComponent<EcoWaterNode>(out var water) && water.kind == EcoWaterNode.Kind.Intake) water.FindSource();
+        EcoBuildFx.Placed(go, entry.Footprint, entry.Metal, entry.Plastic);
         weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla."));
         EcoDiscoveries.NotifySafePlacement(entry.Id, position); // a field milestone message, if any, comes last and stays visible
         return true;
@@ -246,6 +261,7 @@ public sealed class EcoBuildController : MonoBehaviour
         if (!weapons.TrySpendMaterials(cost, cost)) { weapons.ShowFeedback("Kablo için " + cost + " metal ve plastik gerekiyor."); return false; }
         var go = new GameObject("Player power cable"); var link = go.AddComponent<EcoPowerCable>(); link.a = a; link.b = b; link.playerBuilt = true; link.materialCost = cost;
         var renderer = go.GetComponent<LineRenderer>(); renderer.sharedMaterial = Resources.Load<Material>("EcoInfrastructure/Cable"); renderer.startWidth = renderer.endWidth = 0.035f;
+        EcoBuildFx.Laid(renderer, new Color32(255, 230, 90, 255), cost, cost, a.SocketPosition, b.SocketPosition);
         weapons.ShowFeedback("Elektrik hattı bağlandı."); return true;
     }
     private void RemoveCable(EcoPowerNode end)
@@ -268,6 +284,7 @@ public sealed class EcoBuildController : MonoBehaviour
         pipe.from = from; pipe.to = to; pipe.fluid = fluid; pipe.playerBuilt = true; pipe.materialCost = cost;
         var line = go.GetComponent<LineRenderer>(); line.sharedMaterial = Resources.Load<Material>("EcoInfrastructure/WaterPipe");
         line.startWidth = line.endWidth = 0.09f; line.numCapVertices = 3; line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        EcoBuildFx.Laid(line, fluid == EcoWaterNode.Fluid.Clean ? new Color32(110, 210, 255, 255) : new Color32(200, 140, 70, 255), 0, cost, from.SocketPosition, to.SocketPosition);
         weapons.ShowFeedback("Su hattı bağlandı. Akış: " + from.DisplayName + " → " + to.DisplayName); return true;
     }
     public bool RemovePipe(EcoWaterNode from, EcoWaterNode to, EcoWaterNode.Fluid fluid)
