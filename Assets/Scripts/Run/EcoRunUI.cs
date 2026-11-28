@@ -17,12 +17,25 @@ public sealed class EcoRunUI : MonoBehaviour
     private View unlocksReturn = View.Briefing;
     private Vector2 scroll;
     private GUIStyle big, small, tag, cost;
+    // Feedback (GDD v5 §21, "Geri bildirim 9"): the chosen morning card flies into the run chip, and an evening
+    // crisis tints the screen edges in its colour and keeps a pulsing line on the chip until midnight.
+    private string flyIcon, flyTitle;
+    private Rect flyFrom, lastChip;
+    private float flyStart = -1f, chipFlashUntil, vignetteStart = -1f;
+    private Color vignetteColor;
+    private static Texture2D vignette;
+    private const float FlySeconds = 0.7f, VignetteSeconds = 8f;
 
     internal void Bind(EcoRun owner) => run = owner;
 
     public void ShowBriefing() => Open(View.Briefing);
     public void ShowCards() => Open(View.Cards);
-    public void ShowCrisis() => Open(View.Crisis);
+    public void ShowCrisis()
+    {
+        Open(View.Crisis);
+        vignetteStart = Time.unscaledTime;
+        vignetteColor = CrisisColor(run != null ? run.LastCrisis : "");
+    }
     public void ShowResult() => Open(View.Result);
     public void ShowGoals() { if (Current == View.None) Open(View.Goals); }
 
@@ -70,6 +83,7 @@ public sealed class EcoRunUI : MonoBehaviour
         EcoTheme.Begin();
         Styles();
         GUI.depth = -4;
+        DrawVignette();
         switch (Current)
         {
             case View.Briefing: DrawBriefing(); break;
@@ -80,6 +94,7 @@ public sealed class EcoRunUI : MonoBehaviour
             case View.Unlocks: DrawUnlocks(); break;
         }
         DrawChip();
+        DrawCardFly();
         EcoTheme.End();
     }
 
@@ -253,7 +268,11 @@ public sealed class EcoRunUI : MonoBehaviour
             if (!card.repeatable) GUI.Label(new Rect(box.x + 12f, box.yMax - 82f, cw - 24f, 20f), "bir kez alınır", tag);
             if (GUI.Button(new Rect(box.x + 14f, box.yMax - 54f, cw - 28f, 40f), "Seç", EcoTheme.PrimaryButton))
             {
-                if (run.ChooseCard(card.id)) Close();
+                if (run.ChooseCard(card.id))
+                {
+                    flyFrom = box; flyIcon = card.icon; flyTitle = card.title; flyStart = Time.unscaledTime;
+                    Close();
+                }
             }
         }
         string footer = run.CardFeedback.Length > 0 ? run.CardFeedback : "Kartlar " + (EcoRun.Days - day + 1) + " gün daha gelecek. Akşam 18:00'de bir kriz olur; gece 5'te fırtına gelir.";
@@ -362,9 +381,20 @@ public sealed class EcoRunUI : MonoBehaviour
         ChipVisible = show;
         if (!show) { if (Event.current.type == EventType.Repaint) ChipBottomPixels = 0f; return; }
         float pixels = Screen.width / Mathf.Max(1f, EcoTheme.Width);
-        float width = 300f, rowH = 22f, height = 62f + run.Goals.Count * rowH;
+        var crisis = TonightsCrisis();
+        float width = 300f, rowH = 22f, height = 62f + run.Goals.Count * rowH + (crisis != null ? rowH + 4f : 0f);
         var rect = new Rect(EcoTheme.Width - width - 16f, EcoQuestHUD.RightColumnBottomPixels / pixels + 8f, width, height);
+        lastChip = rect;
         EcoTheme.Panel(rect, false);
+        if (Time.unscaledTime < chipFlashUntil)
+        {
+            // The card has landed: the chip glows gold for a moment.
+            float k = (chipFlashUntil - Time.unscaledTime) / 0.9f;
+            var keep = GUI.color;
+            GUI.color = new Color(EcoCelebrate.Gold.r, EcoCelebrate.Gold.g, EcoCelebrate.Gold.b, 0.45f * k);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = keep;
+        }
         var clock = EcoWorldClock.Current;
         string day = run.Ended ? "Run bitti · not " + run.State.grade : "Gün " + Mathf.Min(run.RunDay, EcoRun.Days) + "/" + EcoRun.Days
             + (clock != null ? " · " + Mathf.FloorToInt(clock.hour).ToString("00") + ":" + Mathf.FloorToInt(clock.hour % 1f * 60f).ToString("00") : "")
@@ -393,8 +423,100 @@ public sealed class EcoRunUI : MonoBehaviour
             Bar(new Rect(rect.xMax - 72f, y + 8f, 60f, 5f), goal.done ? 1f : goal.progress, EcoSettings.Good);
             y += rowH;
         }
+        if (crisis != null)
+        {
+            // Tonight's crisis stays on the chip, pulsing in its colour, so the player remembers what is happening.
+            var color = CrisisColor(crisis.id);
+            var keep = GUI.color;
+            GUI.color = new Color(color.r, color.g, color.b, 0.25f + 0.15f * Mathf.Sin(Time.unscaledTime * 4f));
+            GUI.DrawTexture(new Rect(rect.x + 6f, y + 2f, width - 12f, rowH), Texture2D.whiteTexture);
+            GUI.color = keep;
+            EcoTheme.Icon(new Rect(rect.x + 12f, y + 5f, 16f, 16f), crisis.icon);
+            GUI.Label(new Rect(rect.x + 34f, y + 2f, width - 46f, rowH), "Kriz: " + crisis.title, new GUIStyle(small) { fontStyle = FontStyle.Bold, wordWrap = false });
+        }
         if (Event.current.type == EventType.Repaint) ChipBottomPixels = rect.yMax * pixels;
         if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) ShowGoals();
+    }
+
+    private EcoCrisis.Crisis TonightsCrisis()
+    {
+        var clock = EcoWorldClock.Current;
+        if (clock == null || run.State.lastCrisisDay != clock.day || clock.hour < 18f || string.IsNullOrEmpty(run.LastCrisis)) return null;
+        return EcoCrisis.Find(run.LastCrisis);
+    }
+
+    private static Color CrisisColor(string id)
+    {
+        switch (id)
+        {
+            case "wildfire": case "heatwave": return new Color32(255, 120, 40, 255);
+            case "oil_spill": return new Color32(110, 70, 150, 255);
+            case "factory_leak": case "inversion": return new Color32(120, 120, 120, 255);
+            case "slime_migration": return new Color32(120, 200, 60, 255);
+            case "acid_rain": return new Color32(200, 220, 40, 255);
+            case "flash_flood": case "invasive_species": return new Color32(60, 140, 230, 255);
+            case "illegal_dump": return new Color32(150, 100, 50, 255);
+            default: return new Color32(230, 70, 50, 255);
+        }
+    }
+
+    /// <summary>Screen edges washed in the crisis colour: strong while the crisis card is up, then fading out.</summary>
+    private void DrawVignette()
+    {
+        if (vignetteStart < 0f) return;
+        float t = (Time.unscaledTime - vignetteStart) / VignetteSeconds;
+        if (t >= 1f) { vignetteStart = -1f; return; }
+        if (vignette == null)
+        {
+            const int size = 64;
+            vignette = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave };
+            for (int py = 0; py < size; py++)
+                for (int px = 0; px < size; px++)
+                {
+                    float dx = (px + 0.5f) / size * 2f - 1f, dy = (py + 0.5f) / size * 2f - 1f;
+                    float edge = Mathf.Clamp01((Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) * 0.6f + Mathf.Sqrt(dx * dx + dy * dy) * 0.4f - 0.55f) / 0.45f);
+                    vignette.SetPixel(px, py, new Color(1f, 1f, 1f, edge * edge));
+                }
+            vignette.Apply();
+        }
+        float pulse = 0.8f + 0.2f * Mathf.Sin(Time.unscaledTime * 5f);
+        float fade = t < 0.75f ? 1f : 1f - (t - 0.75f) / 0.25f;
+        var keep = GUI.color;
+        GUI.color = new Color(vignetteColor.r, vignetteColor.g, vignetteColor.b, (Current == View.Crisis ? 0.7f : 0.35f) * pulse * fade); // softer once the card is closed so the HUD stays readable
+        float scale = Mathf.Max(0.0001f, GUI.matrix.m11);
+        GUI.DrawTexture(new Rect(0f, 0f, Screen.width / scale, Screen.height / scale), vignette);
+        GUI.color = keep;
+    }
+
+    /// <summary>The chosen card shrinks and flies into the run chip, then the chip glows and the player sparkles.</summary>
+    private void DrawCardFly()
+    {
+        if (flyStart < 0f) return;
+        float t = Mathf.Clamp01((Time.unscaledTime - flyStart) / FlySeconds);
+        float pixels = Screen.width / Mathf.Max(1f, EcoTheme.Width);
+        var chip = lastChip.width > 0f ? lastChip : new Rect(EcoTheme.Width - 316f, EcoQuestHUD.RightColumnBottomPixels / pixels + 8f, 300f, 120f);
+        var to = new Rect(chip.center.x - 40f, chip.y + 10f, 80f, 70f);
+        float e = t * t * (3f - 2f * t);
+        var r = new Rect(Mathf.Lerp(flyFrom.x, to.x, e), Mathf.Lerp(flyFrom.y, to.y, e) - Mathf.Sin(t * Mathf.PI) * 60f,
+            Mathf.Lerp(flyFrom.width, to.width, e), Mathf.Lerp(flyFrom.height, to.height, e));
+        var keep = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, 1f - 0.3f * t);
+        GUI.Box(r, GUIContent.none, EcoTheme.Card);
+        float icon = Mathf.Min(46f, r.width * 0.5f);
+        EcoTheme.Icon(new Rect(r.center.x - icon * 0.5f, r.y + Mathf.Min(16f, r.height * 0.15f), icon, icon), flyIcon);
+        if (t < 0.5f)
+            GUI.Label(new Rect(r.x + 8f, r.y + 70f * r.height / Mathf.Max(1f, flyFrom.height), r.width - 16f, 40f), flyTitle, new GUIStyle(EcoTheme.Subtitle) { alignment = TextAnchor.UpperCenter });
+        GUI.color = keep;
+        if (t < 1f || Event.current.type != EventType.Repaint) return;
+        flyStart = -1f;
+        chipFlashUntil = Time.unscaledTime + 0.9f;
+        // The card's effect reaches the valley: a gold ring sweeps out around the player.
+        var player = FindFirstObjectByType<PlayerWeaponSystem>();
+        if (player == null) return;
+        var at = player.transform.position;
+        EcoLitterToss.Burst(at + Vector3.up * 0.1f, EcoCelebrate.Gold, 24, 3f, 0.2f, 0.6f);
+        EcoWorkFx.Sparkle(at + Vector3.up * 1.2f, EcoCelebrate.Gold, 12);
+        EcoFloatingText.Show(at + Vector3.up * 2.2f, flyTitle, EcoCelebrate.Gold, 2f, 1f, 34f);
     }
 
     private static void Bar(Rect rect, float fill, Color color)
