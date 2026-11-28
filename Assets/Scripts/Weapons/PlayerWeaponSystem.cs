@@ -174,12 +174,16 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         aimFrame = Time.frameCount;
         Vector3 direction = owner != null ? owner.forward : Vector3.forward;
         Vector3 point;
-        if (TryGetAutoCombatAim(out point) || (owner != null && EcoIsoCamera.TryCursorPoint(owner, out point)))
+        bool auto = TryGetAutoCombatAim(out point);
+        if (auto || (owner != null && EcoIsoCamera.TryCursorPoint(owner, out point)))
         {
             Vector3 delta = point - AimOrigin;
-            // The heading comes from the body, not the tool's tip: with the cursor on a building right next to the
-            // player the tip can reach past the point under the cursor and the area would flip to the opposite side.
-            Vector3 flat = owner != null ? Vector3.ProjectOnPlane(point - owner.position, Vector3.up) : Vector3.zero;
+            // The heading comes from the body, not the tool's tip, and follows the cursor as seen on screen: with the
+            // cursor on a building's wall or roof the point hit is metres away from where it seems to be on the ground,
+            // and the tip can even reach past it, so the area used to turn sideways or flip to the opposite side.
+            Vector3 flat = Vector3.zero;
+            if (owner != null && (auto || !EcoIsoCamera.TryCursorHeading(owner, out flat)))
+                flat = Vector3.ProjectOnPlane(point - owner.position, Vector3.up);
             if (flat.sqrMagnitude > 0.09f)
             {
                 float reach = Mathf.Max(new Vector2(delta.x, delta.z).magnitude, 0.5f);

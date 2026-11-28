@@ -266,6 +266,21 @@ public sealed class EcoIsoCamera : MonoBehaviour
         return closest < float.PositiveInfinity;
     }
 
+    /// <summary>
+    /// The ground direction the cursor points to as the player sees it on screen: from the player to where the cursor
+    /// ray crosses the player's own waist height. A tall building under the cursor does not bend it (its roof or wall is
+    /// metres away from the spot on the ground the cursor seems to be over), so tools and facing follow the screen.
+    /// </summary>
+    public static bool TryCursorHeading(Transform player, out Vector3 heading)
+    {
+        heading = default;
+        if (player == null || !TryCursorRay(out var ray)) return false;
+        var plane = new Plane(Vector3.up, player.position + Vector3.up);
+        if (!plane.Raycast(ray, out float enter)) return false;
+        heading = Vector3.ProjectOnPlane(ray.GetPoint(enter) - player.position, Vector3.up);
+        return heading.sqrMagnitude > 0.0001f;
+    }
+
     /// <summary>World point under the cursor: the first solid hit, or the horizontal plane at the player's feet.</summary>
     public static bool TryCursorPoint(Transform player, out Vector3 point)
     {

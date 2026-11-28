@@ -162,6 +162,8 @@ public class PlayerController : MonoBehaviour
         bool aiming = autoAim || (worldAim && (EcoKeys.FireHeld(mouse) || lampAim)
             && EcoIsoCamera.TryCursorPoint(transform, out aimPoint));
         Vector3 face = aiming ? Vector3.ProjectOnPlane(aimPoint - transform.position, Vector3.up) : desired;
+        // The body turns to the cursor as seen on screen, not to a wall or roof point behind it (see TryCursorHeading).
+        if (aiming && !autoAim && EcoIsoCamera.TryCursorHeading(transform, out var heading)) face = heading;
         if (face.sqrMagnitude > 0.01f)
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(face.normalized), turnSpeed * Time.deltaTime);
 

@@ -223,6 +223,7 @@ public sealed class FirstPersonWeaponHolder : MonoBehaviour
         if (autoAim || (manualAim && EcoIsoCamera.TryCursorPoint(player.transform, out point)))
         {
             Vector3 flat = Vector3.ProjectOnPlane(point - player.transform.position, Vector3.up);
+            if (!autoAim && EcoIsoCamera.TryCursorHeading(player.transform, out var heading)) flat = heading;
             if (flat.sqrMagnitude > .04f)
             {
                 float yaw = Mathf.Clamp(Vector3.SignedAngle(player.transform.forward, flat, Vector3.up), -35, 35);
