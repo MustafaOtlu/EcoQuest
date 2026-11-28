@@ -25,6 +25,9 @@ public class PlayerController : MonoBehaviour
     public bool HasWalkOrder => hasPath || direct;
 
     private static readonly int SpeedParameter = Animator.StringToHash("Speed");
+    // Ground speed of the in-place clips at scale 1, measured from the planted foot (Walking Male, Running Male).
+    private const float WalkClipSpeed = 0.58f, RunClipSpeed = 2.15f;
+    private const float EverydaySpeed = 3.5f, SprintSpeed = 5f;
     private CharacterController controller;
     private Vector3 lastGrounded;
     private bool hasGrounded;
@@ -46,13 +49,11 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        // The scene stores older, slower values; the compact 200 m map needs these floors.
         path = new NavMeshPath();
-        walkSpeed = Mathf.Max(walkSpeed, 4.5f);
-        runSpeed = Mathf.Max(runSpeed, 7f);
-        // A bigger body takes longer strides; keep the pace in proportion so the world does not feel slower.
         transform.localScale = Vector3.one * characterScale;
-        walkSpeed *= Mathf.Sqrt(characterScale); runSpeed *= Mathf.Sqrt(characterScale);
+        // Paces chosen to suit the clips (the scene's stored values are older): the run clip carries the everyday
+        // pace at a little over its natural rate, Shift plays it faster still. At 5.3 and 8.3 m/s the feet slid badly.
+        walkSpeed = EverydaySpeed; runSpeed = SprintSpeed;
         BuildIsometricCamera();
     }
 
@@ -170,10 +171,14 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 planar = controller.velocity; planar.y = 0f;
             float actual = planar.magnitude;
-            float blend = actual <= walkSpeed
-                ? Mathf.InverseLerp(0f, walkSpeed, actual) * 0.5f
-                : 0.5f + Mathf.InverseLerp(walkSpeed, runSpeed, actual) * 0.5f;
+            // Match the feet to the ground: idle → walk clip up to its own pace, then the run clip, and past the run
+            // clip's pace the clip itself plays faster instead of the feet sliding.
+            float walkClip = WalkClipSpeed * characterScale, runClip = RunClipSpeed * characterScale;
+            float blend = actual <= walkClip
+                ? Mathf.InverseLerp(0f, walkClip, actual) * 0.5f
+                : 0.5f + Mathf.InverseLerp(walkClip, runClip, actual) * 0.5f;
             characterAnimator.SetFloat(SpeedParameter, blend, 0.1f, Time.deltaTime);
+            characterAnimator.speed = Mathf.Max(1f, actual / runClip);
         }
     }
 
