@@ -177,7 +177,15 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         if (TryGetAutoCombatAim(out point) || (owner != null && EcoIsoCamera.TryCursorPoint(owner, out point)))
         {
             Vector3 delta = point - AimOrigin;
-            if (delta.sqrMagnitude > 0.04f) direction = delta.normalized;
+            // The heading comes from the body, not the tool's tip: with the cursor on a building right next to the
+            // player the tip can reach past the point under the cursor and the area would flip to the opposite side.
+            Vector3 flat = owner != null ? Vector3.ProjectOnPlane(point - owner.position, Vector3.up) : Vector3.zero;
+            if (flat.sqrMagnitude > 0.09f)
+            {
+                float reach = Mathf.Max(new Vector2(delta.x, delta.z).magnitude, 0.5f);
+                direction = (flat.normalized * reach + Vector3.up * delta.y).normalized;
+            }
+            else if (delta.sqrMagnitude > 0.04f) direction = delta.normalized;
         }
         aimDirection = direction;
     }
