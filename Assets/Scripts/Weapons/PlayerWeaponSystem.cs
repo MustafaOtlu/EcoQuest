@@ -467,7 +467,15 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
         { ResetProcessing(); Notify("Büyük atık • Geri dönüşüm cihazında işleme kademesi " + resource.requiredRecyclerRank + " gerekiyor."); return; }
         if (processing != resource) { processing = resource; progress = 0f; }
         progress += deltaTime * (Selected == Tool.Recycler ? Upgrades.RecyclingSpeed : 1);
-        if (progress >= (Selected == Tool.Recycler ? resource.processingSeconds : 0.4f) && resource.TryClaim())
+        bool done = progress >= (Selected == Tool.Recycler ? resource.processingSeconds : 0.4f);
+        if (done && !resource.Claimed)
+        {
+            // Feedback before the claim deactivates it: a copy is pulled into the nozzle and the yield floats up.
+            EcoSuckedIn.Pull(resource.gameObject, () => AimOrigin);
+            EcoFloatingText.Gain(resource.transform.position + Vector3.up * 0.6f,
+                Mathf.Max(0, resource.metal), Mathf.Max(0, resource.plastic), Mathf.Max(0, resource.organic));
+        }
+        if (done && resource.TryClaim())
         {
             int recoveredMetal = Mathf.Max(0, resource.metal), recoveredPlastic = Mathf.Max(0, resource.plastic), recoveredOrganic = Mathf.Max(0, resource.organic);
             Pulse(WeaponVisualEffects.Burst.Pop, resource.transform.position + Vector3.up * 0.2f);

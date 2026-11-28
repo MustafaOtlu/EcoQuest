@@ -99,6 +99,50 @@ public sealed class EcoLitterToss : MonoBehaviour
     }
 }
 
+/// <summary>
+/// The vacuum's catch: a cosmetic copy of the collected waste shrinks and spins as it is pulled into the nozzle, so the
+/// pickup reads as "sucked in" rather than "vanished". Every behaviour, collider and body is stripped from the copy.
+/// </summary>
+public sealed class EcoSuckedIn : MonoBehaviour
+{
+    private System.Func<Vector3> target;
+    private Vector3 start, startScale;
+    private float age;
+    private const float Seconds = 0.28f;
+    private static GameObject holder;
+
+    public static void Pull(GameObject source, System.Func<Vector3> nozzle)
+    {
+        if (source == null || nozzle == null) return;
+        // Made under an inactive holder, so none of the copied behaviours wakes up (no save identity, no growth).
+        if (holder == null) { holder = new GameObject("Sucked in holder"); holder.SetActive(false); }
+        var copy = Instantiate(source, source.transform.position, source.transform.rotation, holder.transform);
+        copy.name = "Sucked in";
+        // Behaviours first: some require a collider or body and would block their removal.
+        foreach (var c in copy.GetComponentsInChildren<MonoBehaviour>(true)) DestroyImmediate(c);
+        foreach (var c in copy.GetComponentsInChildren<Component>(true))
+            if (c != null && !(c is Transform) && !(c is MeshFilter) && !(c is Renderer)) DestroyImmediate(c);
+        copy.transform.SetParent(null, true);
+        copy.SetActive(true);
+        var s = copy.AddComponent<EcoSuckedIn>();
+        s.target = nozzle; s.start = copy.transform.position; s.startScale = copy.transform.localScale;
+    }
+
+    private void Update()
+    {
+        age += Time.deltaTime;
+        float t = Mathf.Clamp01(age / Seconds);
+        Vector3 end;
+        try { end = target(); } catch { end = start; }
+        // Ease in: it lingers a moment, then whips into the nozzle.
+        float k = t * t;
+        transform.position = Vector3.Lerp(start, end, k) + Vector3.up * (0.25f * Mathf.Sin(t * Mathf.PI));
+        transform.localScale = startScale * Mathf.Lerp(1f, 0.05f, k);
+        transform.Rotate(Vector3.up, 900f * Time.deltaTime, Space.World);
+        if (t >= 1f) Destroy(gameObject);
+    }
+}
+
 /// <summary>Freshly thrown litter pulses a little for a while so it is easy to spot among the grass.</summary>
 public sealed class EcoLitterGlint : MonoBehaviour
 {

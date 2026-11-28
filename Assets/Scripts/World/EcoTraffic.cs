@@ -38,8 +38,10 @@ public sealed class EcoTraffic : MonoBehaviour
         public Animator animator;
         public float stuck;
         // Throw pose (walkers): the right arm bones, the time into the throw (-1 = none) and where the litter lands.
-        public Transform arm, forearm, hand;
+        public Transform arm, forearm, hand, head;
         public float throwing = -1f;
+        // Caught in the act: seconds into the guilty look at the player (-1 = none), then a hurried walk away.
+        public float glance = -1f, hurryUntil;
         public bool released, throwMetal;
         public Vector3 throwTo;
     }
@@ -280,6 +282,7 @@ public sealed class EcoTraffic : MonoBehaviour
                     if (t.name == "mixamorig:RightArm") m.arm = t;
                     else if (t.name == "mixamorig:RightForeArm") m.forearm = t;
                     else if (t.name == "mixamorig:RightHand") m.hand = t;
+                    else if (t.name == "mixamorig:Head") m.head = t;
                 }
             movers.Add(m);
             Plan(m);
@@ -322,7 +325,8 @@ public sealed class EcoTraffic : MonoBehaviour
             if (flat.sqrMagnitude < 0.0001f || off < (m.car ? 2.2f : 0.6f) * (m.car ? 2.2f : 0.6f)) { m.index++; continue; }
             float speed = m.speed;
             // Slow down while throwing, so the swing reads as a deliberate act.
-            if (m.throwing >= 0f) speed *= 0.4f;
+            if (m.throwing >= 0f || m.glance >= 0f) speed *= 0.4f;
+            else if (Time.time < m.hurryUntil) speed *= 1.9f; // embarrassed: off at a near trot
             bool blocked = m.car ? Blocked(m, pos, flat.normalized) : player != null && Ahead(pos, flat.normalized, player.position, 0.9f, 0.55f);
             if (blocked) speed = 0f;
             // A car facing away from where it must go slows down and turns first instead of sweeping through.
@@ -380,7 +384,9 @@ public sealed class EcoTraffic : MonoBehaviour
         float dt = Time.deltaTime;
         foreach (var m in movers)
         {
-            if (m.throwing < 0f || m.body == null) continue;
+            if (m.body == null) continue;
+            if (m.glance >= 0f) Glance(m, dt);
+            if (m.throwing < 0f) continue;
             m.throwing += dt;
             float t = m.throwing;
             if (m.arm != null && m.forearm != null && m.hand != null)
@@ -401,9 +407,33 @@ public sealed class EcoTraffic : MonoBehaviour
                 var start = m.hand != null ? m.hand.position : m.body.position + Vector3.up * 1.3f + m.body.forward * 0.4f;
                 EcoLitterToss.Throw(start, m.throwTo, m.throwMetal, 0.55f, 0.7f, transform);
                 Notice(m, m.throwTo);
+                // Seen by the player: a guilty look over the shoulder with a "!" overhead, then hurry off.
+                if (player != null && (player.position - m.body.position).sqrMagnitude < GuiltyRange * GuiltyRange)
+                {
+                    m.glance = 0f; m.hurryUntil = Time.time + GlanceSeconds + 4f;
+                    var anchor = m.head != null ? m.head : m.body;
+                    EcoFloatingText.Follow(anchor, Vector3.up * (m.head != null ? 0.45f : 2.1f), "!", EcoFloatingText.Alert, 1.1f);
+                }
             }
             if (t >= ThrowSeconds) m.throwing = -1f;
         }
+    }
+
+    private const float GuiltyRange = 14f, GlanceSeconds = 1.1f;
+
+    /// <summary>Turns the head towards the player for a moment, easing in and out.</summary>
+    private void Glance(Mover m, float dt)
+    {
+        m.glance += dt;
+        if (m.glance >= GlanceSeconds) { m.glance = -1f; return; }
+        if (m.head == null || player == null) return;
+        var to = player.position + Vector3.up * 1.4f - m.head.position;
+        var facing = m.body.forward;
+        // No owl necks: at most 75 degrees off the shoulders.
+        var look = Vector3.RotateTowards(facing, to.normalized, 75f * Mathf.Deg2Rad, 0f);
+        float t = m.glance / GlanceSeconds;
+        float weight = Mathf.SmoothStep(0f, 1f, Mathf.Min(1f, t / 0.2f)) * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.7f, 1f, t)));
+        m.head.rotation = Quaternion.Slerp(Quaternion.identity, Quaternion.FromToRotation(facing, look), weight) * m.head.rotation;
     }
 
     /// <summary>Turns a bone so the segment from it to <paramref name="child"/> points along <paramref name="dir"/>.</summary>
