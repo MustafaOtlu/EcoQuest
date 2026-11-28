@@ -10,6 +10,13 @@ internal sealed class EcoEnemyAppearance : MonoBehaviour
     private float gait, travel, pulse, nextHit, phaseOffset, defeated;
     private float nextBlink = 2.2f;
     private float blink;
+    // Feedback (GDD v5 §21, "Geri bildirim 7"): a hit flashes the creature white for an instant.
+    private Renderer[] flashRenderers;
+    private Color[][] flashBase;
+    private MaterialPropertyBlock flashBlock;
+    private float flash;
+    private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorId = Shader.PropertyToID("_Color");
 
     internal static EcoEnemyAppearance Install(EnemyBrain enemy, CharacterController motor)
     {
@@ -43,9 +50,43 @@ internal sealed class EcoEnemyAppearance : MonoBehaviour
         if (Time.time < nextHit) return;
         nextHit = Time.time + 0.19f;
         pulse = 1f;
+        flash = 1f;
     }
 
     internal void Defeat(float progress) => defeated = progress;
+
+    private void Flash()
+    {
+        if (rig == null) return;
+        if (flashRenderers == null)
+        {
+            flashRenderers = rig.GetComponentsInChildren<Renderer>(true);
+            flashBase = new Color[flashRenderers.Length][];
+            flashBlock = new MaterialPropertyBlock();
+            for (int r = 0; r < flashRenderers.Length; r++)
+            {
+                var mats = flashRenderers[r].sharedMaterials;
+                flashBase[r] = new Color[mats.Length];
+                for (int m = 0; m < mats.Length; m++)
+                    flashBase[r][m] = mats[m] != null && mats[m].HasProperty(BaseColorId) ? mats[m].GetColor(BaseColorId) : Color.white;
+            }
+        }
+        flash = Mathf.MoveTowards(flash, 0f, Time.deltaTime * 9f);
+        float k = flash * flash * 0.85f;
+        for (int r = 0; r < flashRenderers.Length; r++)
+        {
+            var renderer = flashRenderers[r];
+            if (renderer == null) continue;
+            for (int m = 0; m < flashBase[r].Length; m++)
+            {
+                if (k <= 0f) { renderer.SetPropertyBlock(null, m); continue; }
+                var c = Color.Lerp(flashBase[r][m], Color.white, k);
+                flashBlock.Clear(); flashBlock.SetColor(BaseColorId, c); flashBlock.SetColor(ColorId, c);
+                renderer.SetPropertyBlock(flashBlock, m);
+            }
+        }
+        if (k <= 0f) { flashRenderers = null; flashBase = null; }
+    }
 
     private void LateUpdate()
     {
@@ -55,6 +96,7 @@ internal sealed class EcoEnemyAppearance : MonoBehaviour
         travel = Mathf.MoveTowards(travel, Mathf.Clamp01(speed / Mathf.Max(0.1f, enemy.chaseSpeed)), Time.deltaTime * 6f);
         gait += Time.deltaTime * Mathf.Lerp(3f, 11f, travel);
         pulse = Mathf.MoveTowards(pulse, 0f, Time.deltaTime * 5.8f);
+        if (flash > 0f || flashRenderers != null) Flash();
         float clock = Time.time + phaseOffset;
         float breath = Mathf.Sin(clock * 3.1f);
         float elapsed = enemy.AttackAge;

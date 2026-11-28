@@ -235,7 +235,9 @@ public sealed class EnemyBrain : MonoBehaviour
     {
         if (State == Behaviour.Dead || !EcoRegion.Valid(amount)) return;
         appearance?.Hit();
+        float before = Health;
         Health = Mathf.Max(0f, Health - amount);
+        ShowDamage(before - Health);
         if (Health > 0f)
         {
             // Continuous weapon damage must not cancel and restart the attack windup every frame.
@@ -276,10 +278,42 @@ public sealed class EnemyBrain : MonoBehaviour
         FilterInstalled = true; Health = 0; Defeat();
         user.ShowFeedback("Küçük filtre takıldı • Teneke kalıcı olarak etkisiz hale geldi"); return true;
     }
+    // Damage numbers: a stream deals damage every frame, so it is gathered and shown a few times a second.
+    private float shownDamage, nextDamageNumber;
+    private void ShowDamage(float amount)
+    {
+        shownDamage += amount;
+        if (Time.time < nextDamageNumber && Health > 0f) return;
+        int whole = Mathf.CeilToInt(shownDamage);
+        if (whole <= 0) return;
+        nextDamageNumber = Time.time + 0.28f;
+        shownDamage = 0f;
+        Vector3 top = motor != null ? motor.bounds.center + Vector3.up * (motor.bounds.extents.y + 0.35f) : transform.position + Vector3.up * 1.8f;
+        EcoFloatingText.Show(top + Random.insideUnitSphere * 0.25f, "−" + whole, new Color32(255, 150, 90, 255), 0.8f, 0.7f, 26f);
+        // A few sparks off the body in the creature's colour.
+        Vector3 centre = motor != null ? motor.bounds.center : transform.position + Vector3.up;
+        EcoLitterToss.Burst(centre, HitColor, 6, 1.6f, 0.12f, 0.25f);
+    }
+    private Color HitColor => species switch
+    {
+        Species.Flame => new Color32(255, 150, 60, 230), Species.Slime => new Color32(150, 220, 90, 230), Species.Tin => new Color32(220, 228, 236, 230),
+        Species.Acid => new Color32(200, 240, 80, 230), _ => new Color32(190, 190, 200, 230),
+    };
+
+    private Vector3 defeatCentre;
     private void Defeat()
     {
         if (State == Behaviour.Dead) return;
+        defeatCentre = motor.bounds.center;
         State = Behaviour.Dead; motor.enabled = false;
+        // A defeat puff: a ring on the ground and a burst off the body.
+        Vector3 at = defeatCentre;
+        EcoLitterToss.Burst(new Vector3(at.x, transform.position.y + 0.1f, at.z), HitColor, 18, 2.4f, 0.2f, 0.5f);
+        for (int i = 0; i < 12; i++)
+        {
+            var v = Random.insideUnitSphere * 2f; v.y = Mathf.Abs(v.y) + 1.2f;
+            EcoLitterToss.Puff(at, v, Random.Range(0.4f, 0.7f), Random.Range(0.15f, 0.28f), HitColor);
+        }
         if (animator != null) animator.enabled = false;
         SpawnLoot();
         gameObject.AddComponent<EnemyDefeatMotion>();
@@ -294,13 +328,16 @@ public sealed class EnemyBrain : MonoBehaviour
         int metalPerPiece = metal > 0 ? Mathf.CeilToInt(metal / (float)pieces) : 0;
         for (int i = 0; i < pieces; i++)
         {
-            Vector3 position = transform.position + Vector3.up * 0.18f + transform.right * (i == 0 ? -0.22f : 0.22f);
+            // Loot pops out of the body and lands a step away (EnemyLootDrop flies it there).
+            float angle = Random.value * Mathf.PI * 2f + i * Mathf.PI;
+            Vector3 position = transform.position + Vector3.up * 0.18f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * Random.Range(0.9f, 1.4f);
+            if (Physics.Raycast(position + Vector3.up * 1.5f, Vector3.down, out var ground, 3f, ~(1 << 2), QueryTriggerInteraction.Ignore)) position.y = ground.point.y + 0.18f;
             var drop = EcoWorldArt.Spawn(metal > 0 ? "MetalScrap" : "PlasticScrap", position);
             if (drop == null) continue;
             drop.name = species + " loot";
             var amountMetal = Mathf.Min(metalPerPiece, Mathf.Max(0, metal - i * metalPerPiece));
             var amountPlastic = i == 0 ? plastic : 0;
-            drop.AddComponent<EnemyLootDrop>().Initialize(position, amountMetal, amountPlastic);
+            drop.AddComponent<EnemyLootDrop>().Initialize(position, amountMetal, amountPlastic, defeatCentre);
         }
     }
     public void ApplyKnockback(Vector3 direction, float force)
