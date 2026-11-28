@@ -526,10 +526,9 @@ public sealed class EcoQuestHUD : MonoBehaviour
         if (contextShown && contextInWorld && !EcoUI.WorldCovered && !PlayerController.Paused) EcoContextLabel.Show(context.text, contextTop); else EcoContextLabel.Hide();
         SetVisible(contextBg, context, contextShown && !contextInWorld);
         FitContext();
-        var chargerPower = weapons.ChargingStation != null ? weapons.ChargingStation.GetComponent<EcoPowerNode>() : null;
-        feedback.text = weapons.ChargingStation != null
-            ? (chargerPower != null && chargerPower.DeliveredPower > 0f ? "Araç bataryası şarj oluyor…" : "Şarj bağlı · Elektrik bekleniyor…")
-            : Time.time < weapons.FeedbackUntil ? weapons.Feedback : "";
+        // Charging no longer holds a top-centre notice: it flipped between "şarj oluyor" and "elektrik bekleniyor" as the
+        // supply came and went. The station's own world label ("[E] Şarjı bırak") and the tool energy bar tell it.
+        feedback.text = Time.time < weapons.FeedbackUntil ? weapons.Feedback : "";
         SetVisible(feedbackBg, feedback, !string.IsNullOrEmpty(feedback.text));
         // Never under the region banner: both live at the top centre.
         feedbackPanel.anchoredPosition = new Vector2(feedbackPanel.anchoredPosition.x,
