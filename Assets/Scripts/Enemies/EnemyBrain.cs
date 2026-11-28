@@ -59,6 +59,42 @@ public sealed class EnemyBrain : MonoBehaviour
         State = Behaviour.Idle; nextDecision = Time.time + Random.Range(1f, 3f);
     }
     private void Start() { player = FindFirstObjectByType<PlayerVitals>(); }
+
+    // ------------------------------------------------------------------ shot hitbox
+    // GDD v5 §21 "Geri bildirim 18": the CharacterController is a thin walking capsule (the Tin's is 0.25 m wide inside a
+    // 1.3 m body), so iron balls flew straight through the visible model. Shots test this wider capsule instead,
+    // measured once from the rendered body.
+    public static readonly System.Collections.Generic.List<EnemyBrain> Active = new System.Collections.Generic.List<EnemyBrain>();
+    private float hitRadius = -1f, hitHeight;
+    private void OnEnable() { if (!Active.Contains(this)) Active.Add(this); }
+    private void OnDisable() { Active.Remove(this); }
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetActive() => Active.Clear();
+
+    /// <summary>The upright capsule a projectile hits: base point, radius and height in world space.</summary>
+    public void ShotCapsule(out Vector3 bottom, out float radius, out float height)
+    {
+        if (hitRadius < 0f)
+        {
+            hitRadius = motor != null ? motor.radius : 0.3f; hitHeight = motor != null ? motor.height : 1.4f;
+            bool any = false; var b = new Bounds(transform.position, Vector3.zero);
+            foreach (var r in GetComponentsInChildren<Renderer>())
+            {
+                if (!r.enabled || r is ParticleSystemRenderer || r.GetComponentInParent<Canvas>() != null) continue;
+                if (!any) b = r.bounds; else b.Encapsulate(r.bounds); any = true;
+            }
+            if (any)
+            {
+                float scale = Mathf.Max(0.01f, transform.lossyScale.y);
+                // Most of the silhouette, not its widest stray corner.
+                float wide = (b.extents.x + b.extents.z) * 0.5f * 0.85f / Mathf.Max(0.01f, transform.lossyScale.x);
+                hitRadius = Mathf.Clamp(Mathf.Max(hitRadius, wide), 0.2f, 1.2f);
+                hitHeight = Mathf.Clamp(Mathf.Max(hitHeight, (b.max.y - transform.position.y) / scale), 0.5f, 4f);
+            }
+        }
+        float s = transform.lossyScale.x;
+        bottom = transform.position; radius = hitRadius * s; height = hitHeight * transform.lossyScale.y;
+    }
     private void Update()
     {
         if (State == Behaviour.Dead) return;

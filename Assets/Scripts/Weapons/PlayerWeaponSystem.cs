@@ -564,8 +564,7 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     {
         reason = "Hedef etkisiz hale geldi.";
         if (!ToolAreaTargeting.Alive(combatTarget)) return false;
-        if (Selected == Tool.SeedGun && MetalMode && combatTarget.species == EnemyBrain.Species.Tin && combatTarget.IsStunned)
-        { reason = "Teneke sersemledi • Yaklaş ve " + EcoKeys.Tag(EcoKeys.Action.Interact) + " ile küçük filtre tak"; return false; }
+        // A stunned Tin can still be shot (GDD v5 §21 "Geri bildirim 18"): each hit does damage and keeps it stunned.
         if (!(Selected == Tool.SeedGun && MetalMode) && DamageRate(Selected, Mode, combatTarget.species) <= 0)
         { reason = "Bu araç bu hedefe etkili değil."; return false; }
         Vector3 at = ToolAreaTargeting.EnemyPoint(combatTarget);
