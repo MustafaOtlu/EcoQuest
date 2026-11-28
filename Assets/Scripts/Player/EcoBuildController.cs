@@ -159,7 +159,19 @@ public sealed class EcoBuildController : MonoBehaviour
         bool valid = CanPlace(Selection, position, rotation, out string reason);
         Status = reason;
         var targetStructure = hit.collider.GetComponentInParent<EcoStructure>();
-        if (targetStructure != null) Status = "" + EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • " + EcoKeys.Tag(EcoKeys.Action.Dismantle) + " Sök • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
+        bool removable = targetStructure != null && targetStructure.playerBuilt;
+        if (removable)
+        {
+            // Feedback (GDD v5 §21, "Geri bildirim 13"): pointing at your own building shows it red with what taking it
+            // down gives back, instead of a red ghost on top of it.
+            bool full = targetStructure.RefundOf(out int backMetal, out int backPlastic);
+            string back = (backMetal > 0 ? " +" + backMetal + " metal" : "") + (backPlastic > 0 ? " +" + backPlastic + " plastik" : "");
+            Status = EcoKeys.Tag(EcoKeys.Action.Dismantle) + " Sök •" + (back.Length > 0 ? back : " iade yok") + (full ? " (tam iade)" : " (yarısı)")
+                + "\n" + EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • Sağlamlık %" + targetStructure.integrity.ToString("0")
+                + (targetStructure.UpgradeHint.Length > 0 ? "\n" + targetStructure.UpgradeHint : "");
+            EcoRemoveHighlight.Show(targetStructure.gameObject);
+        }
+        else if (targetStructure != null) Status = EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
         bool click = mouse != null && mouse.leftButton.wasPressedThisFrame;
         // Clicking a spot that does not work shakes the red ghost and flashes it instead of doing nothing.
         if (!valid && click && targetStructure == null)
@@ -168,7 +180,8 @@ public sealed class EcoBuildController : MonoBehaviour
             var wanted = EcoBuildingCatalog.Entries[Selection];
             EcoQuestHUD.Shortage(weapons.Metal < wanted.Metal, weapons.Plastic < wanted.Plastic);
         }
-        if (preview != null)
+        if (preview != null && removable) { preview.SetActive(false); shown = false; }
+        else if (preview != null)
         {
             // The ghost glides between grid cells instead of jumping, so it reads as one object under the cursor.
             if (!preview.activeSelf || !shown) shownPosition = position;
@@ -243,10 +256,11 @@ public sealed class EcoBuildController : MonoBehaviour
         if (!weapons.TrySpendMaterials(entry.Metal, entry.Plastic)) return false;
         var go = EcoBuildingCatalog.CreateInstance(index, position, Quaternion.Euler(0, rotation.eulerAngles.y, 0));
         if (go == null) { weapons.ReturnMaterials(entry.Metal, entry.Plastic); return false; }
-        var structure = go.GetComponent<EcoStructure>(); structure.playerBuilt = true;
+        var structure = go.GetComponent<EcoStructure>(); structure.playerBuilt = true; structure.builtAt = Time.time;
         if (go.TryGetComponent<EcoWaterNode>(out var water) && water.kind == EcoWaterNode.Kind.Intake) water.FindSource();
         EcoBuildFx.Placed(go, entry.Footprint, entry.Metal, entry.Plastic);
-        weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla."));
+        weapons.ShowFeedback(entry.Name + " kuruldu." + (water != null ? " Su borusuyla bağla." : " Elektrik kablosuyla bağla.")
+            + "\nYanlış yer mi? Üstüne gelip " + EcoKeys.Tag(EcoKeys.Action.Dismantle) + " • " + (int)EcoStructure.FullRefundSeconds + " sn içinde tam iade.");
         EcoDiscoveries.NotifySafePlacement(entry.Id, position); // a field milestone message, if any, comes last and stays visible
         return true;
     }

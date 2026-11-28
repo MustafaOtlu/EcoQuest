@@ -7,6 +7,22 @@ public sealed class EcoStructure : MonoBehaviour
     internal static readonly HashSet<EcoStructure> Active = new HashSet<EcoStructure>();
     public string buildingId;
     public bool playerBuilt;
+    // Feedback (GDD v5 §21, "Geri bildirim 13"): a structure placed by mistake can be taken back in full for a short
+    // while (Time.time when the player placed it; -1 for loaded or scene structures, which refund half as before).
+    [System.NonSerialized] public float builtAt = -1f;
+    public const float FullRefundSeconds = 30f;
+    public bool FreshlyBuilt => playerBuilt && builtAt >= 0f && Time.time - builtAt < FullRefundSeconds;
+    /// <summary>What dismantling gives back now: everything while freshly built, otherwise half (GDD §9).</summary>
+    public bool RefundOf(out int metal, out int plastic)
+    {
+        metal = plastic = 0;
+        int index = EcoBuildingCatalog.Find(buildingId);
+        if (index < 0) return false;
+        var entry = EcoBuildingCatalog.Entries[index];
+        bool full = FreshlyBuilt;
+        metal = full ? entry.Metal : entry.Metal / 2; plastic = full ? entry.Plastic : entry.Plastic / 2;
+        return full;
+    }
     [Range(0f, 100f)] public float integrity = 100f;
     [Range(1, 3)] public int tier = 1;
     // GDD §9: production/storage facilities have three tiers. Tier 2 needs two completed projects and the base cost
@@ -87,12 +103,14 @@ public sealed class EcoStructure : MonoBehaviour
         int index = EcoBuildingCatalog.Find(buildingId);
         if (owner == null || !owner.CanOperate || !playerBuilt || index < 0) return false;
         if (TryGetComponent<EcoFarm>(out var farm) && farm.HasCrops) { owner.ShowFeedback("Tarlayı sökmeden önce bitkileri hasat et veya kuruyanları gübreye dönüştür."); return false; }
+        bool full = RefundOf(out int metal, out int plastic); // GDD §9: 50 % of the base cost; all of it just after placing
         playerBuilt = false; // A second request in the same frame cannot refund twice.
         var entry = EcoBuildingCatalog.Entries[index];
         if (TryGetComponent<EcoRecyclingFacility>(out var recycler)) recycler.RecoverContents(owner);
-        owner.ReturnMaterials(entry.Metal / 2, entry.Plastic / 2); // GDD §9: dismantling returns 50 % of the base cost
+        owner.ReturnMaterials(metal, plastic);
+        EcoBuildFx.Dismantled(gameObject, entry.Footprint, metal, plastic);
         gameObject.SetActive(false); Destroy(gameObject);
-        owner.ShowFeedback("Yapı söküldü • Malzemenin yarısı geri alındı."); return true;
+        owner.ShowFeedback(entry.Name + " söküldü • " + (full ? "Malzemenin tamamı geri alındı." : "Malzemenin yarısı geri alındı.")); return true;
     }
     private void OnDestroy()
     {

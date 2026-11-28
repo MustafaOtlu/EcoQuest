@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -61,6 +62,118 @@ public static class EcoBuildFx
     }
 
     public static Color SparkColor => Spark;
+    public static readonly Color Gain = new Color32(120, 235, 140, 255);
+
+    /// <summary>Feedback (GDD v5 §21, "Geri bildirim 13"): a dismantled structure squashes and sinks into the ground in a
+    /// ring of dust and the materials it gives back float up in green. Call before the structure is hidden.</summary>
+    public static void Dismantled(GameObject structure, Vector2 footprint, int metal, int plastic)
+    {
+        if (structure == null) return;
+        float radius = Mathf.Max(0.6f, Mathf.Max(footprint.x, footprint.y) * 0.55f);
+        var copy = MeshCopy(structure, null, "Dismantled structure");
+        copy.AddComponent<EcoBuildSink>();
+        var at = structure.transform.position;
+        DustRing(at, radius * 0.8f, 18);
+        for (int i = 0; i < 5; i++) Sparks(at + Random.insideUnitSphere * radius * 0.5f + Vector3.up * 0.5f, Spark, 1);
+        float lift = 0f; var label = at + Vector3.up * 2.2f;
+        if (metal > 0) { EcoFloatingText.Show(label, "+" + metal + " metal", Gain, 1.5f, 0.9f); lift += 0.6f; }
+        if (plastic > 0) EcoFloatingText.Show(label + Vector3.up * lift, "+" + plastic + " plastik", Gain, 1.5f, 0.9f);
+    }
+
+    /// <summary>Only the visible meshes of <paramref name="source"/> (no scripts or colliders), at the same place.
+    /// <paramref name="material"/> replaces every material when given.</summary>
+    public static GameObject MeshCopy(GameObject source, Material material, string name)
+    {
+        var root = new GameObject(name);
+        root.transform.SetPositionAndRotation(source.transform.position, source.transform.rotation);
+        foreach (var r in source.GetComponentsInChildren<MeshRenderer>())
+        {
+            if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+            var filter = r.GetComponent<MeshFilter>();
+            if (filter == null || filter.sharedMesh == null) continue;
+            var go = new GameObject(r.name);
+            go.transform.SetParent(root.transform, false);
+            go.transform.SetPositionAndRotation(r.transform.position, r.transform.rotation);
+            var parentScale = root.transform.lossyScale; var scale = r.transform.lossyScale;
+            go.transform.localScale = new Vector3(scale.x / parentScale.x, scale.y / parentScale.y, scale.z / parentScale.z);
+            go.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = material != null ? Enumerable.Repeat(material, r.sharedMaterials.Length).ToArray() : r.sharedMaterials;
+            mr.shadowCastingMode = material != null ? UnityEngine.Rendering.ShadowCastingMode.Off : r.shadowCastingMode;
+        }
+        return root;
+    }
+}
+
+/// <summary>A dismantled structure's copy: a short squash up, then it shrinks and sinks into the ground.</summary>
+public sealed class EcoBuildSink : MonoBehaviour
+{
+    private Vector3 start;
+    private float age;
+    private const float Pop = 0.08f, Sink = 0.38f;
+
+    private void Awake() => start = transform.position;
+
+    private void Update()
+    {
+        age += Time.deltaTime;
+        float sy, sxz, down = 0f;
+        if (age < Pop) { float t = age / Pop; sy = 1f + 0.12f * t; sxz = 1f - 0.05f * t; }
+        else
+        {
+            float t = (age - Pop) / Sink;
+            if (t >= 1f) { Destroy(gameObject); return; }
+            float e = t * t;
+            sy = Mathf.Lerp(1.12f, 0.02f, e); sxz = Mathf.Lerp(0.95f, 0.6f, e); down = 0.4f * e;
+        }
+        transform.localScale = new Vector3(sxz, sy, sxz);
+        transform.position = start + Vector3.down * down;
+    }
+}
+
+/// <summary>
+/// The player's own building under the cursor in build mode glows red (a slightly larger see-through copy that
+/// pulses), so it is clear what [X] will take down. Shown each frame it is pointed at; gone the frame after.
+/// </summary>
+public sealed class EcoRemoveHighlight : MonoBehaviour
+{
+    private static EcoRemoveHighlight current;
+    private static Material material;
+    private GameObject target;
+    private int frame;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() { current = null; }
+
+    public static void Show(GameObject structure)
+    {
+        if (structure == null) return;
+        if (current != null && current.target != structure) { Destroy(current.gameObject); current = null; }
+        if (current == null)
+        {
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { hideFlags = HideFlags.DontSave };
+                material.SetFloat("_Surface", 1); material.SetFloat("_ZWrite", 0);
+                material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.renderQueue = 3001;
+            }
+            var copy = EcoBuildFx.MeshCopy(structure, material, "Remove highlight");
+            copy.transform.localScale = Vector3.one * 1.04f;
+            current = copy.AddComponent<EcoRemoveHighlight>();
+            current.target = structure;
+        }
+        current.frame = Time.frameCount;
+    }
+
+    private void LateUpdate()
+    {
+        if (target == null || !target.activeInHierarchy || frame != Time.frameCount) { Destroy(gameObject); if (current == this) current = null; return; }
+        transform.SetPositionAndRotation(target.transform.position, target.transform.rotation);
+        float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 7f);
+        material.SetColor("_BaseColor", new Color(1f, 0.2f, 0.12f, 0.22f + 0.2f * pulse));
+    }
 }
 
 /// <summary>Squash and stretch out of the ground, then a dust ring where it lands.</summary>
