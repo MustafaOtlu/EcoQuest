@@ -39,7 +39,7 @@ public sealed class EcoGameMenu : MonoBehaviour
     internal bool TitleOnMain => screen == Screen_.Main;
     /// <summary>Opens Kayıtlar or Ayarlar over the 3D title; their "Geri" brings the title back.</summary>
     internal void TitleOpenScreen(bool settings) => Go(settings ? Screen_.Settings : Screen_.Slots, Screen_.Main);
-    /// <summary>0 new game, 1 continue, 2 tutorial, 3 enemy tutorial (the title has already closed itself).</summary>
+    /// <summary>0 new game, 1 continue, 2 tutorial, 3 enemy tutorial, 4 run already begun (the title has already closed itself).</summary>
     internal void TitleStart(int choice)
     {
         var save = EcoWorldSave.Current;
@@ -52,6 +52,7 @@ public sealed class EcoGameMenu : MonoBehaviour
             case 1: PlayerController.SetPaused(false); save?.QuickLoad(); break;
             case 2: EcoTutorialLesson.Open(); break;
             case 3: EcoEnemyTutorial.Open(); break;
+            case 4: PlayerController.SetPaused(false); break; // the run was begun from the briefing over the title
         }
     }
 

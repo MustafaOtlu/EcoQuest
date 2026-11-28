@@ -210,6 +210,8 @@ public sealed class EcoTitleMenu : MonoBehaviour
         {
             case Kind.Slots: case Kind.Settings: case Kind.Expert: case Kind.Survey:
                 StartFire(); break;
+            case Kind.NewGame when EcoRun.Current != null && !EcoRun.Current.Active:
+                StartFire(); break; // the valley briefing opens over the title
             case Kind.Quit:
                 Application.Quit();
                 StartReturn(); break; // in the editor (or if quitting is refused) the button comes back
@@ -245,6 +247,7 @@ public sealed class EcoTitleMenu : MonoBehaviour
             case Kind.Settings: menu.TitleOpenScreen(true); break;
             case Kind.Expert: EcoExpertDemo.Current?.Open(); break;
             case Kind.Survey: EcoSurvey.Current?.Open(false); break;
+            case Kind.NewGame: EcoRun.Current?.RequestNewRun(); break;
         }
     }
 
@@ -259,10 +262,21 @@ public sealed class EcoTitleMenu : MonoBehaviour
             if (t >= 1f) { Destroy(flyer.gameObject); flyer = null; }
         }
         stage.AimAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+        var run = EcoRun.Current;
         bool open = active.kind == Kind.Expert ? EcoExpertDemo.PanelOpen
             : active.kind == Kind.Survey ? EcoSurvey.Current != null && EcoSurvey.Current.IsOpen
+            : active.kind == Kind.NewGame ? run != null && run.BriefingOpen
             : !menu.TitleOnMain;
         if (open) return;
+        // "Vadiye in" took the pending valley: the run has started (or the scene is reloading into it).
+        if (active.kind == Kind.NewGame && (run == null || run.Pending == null))
+        {
+            if (flyer != null) { Destroy(flyer.gameObject); flyer = null; }
+            var owner = menu;
+            Close();
+            owner.TitleStart(4);
+            return;
+        }
         // Closed: the panel is pulled back into the vacuum.
         if (flyer != null) Destroy(flyer.gameObject);
         flyer = Card();
@@ -340,8 +354,9 @@ public sealed class EcoTitleMenu : MonoBehaviour
         var rect = Child("Panel card", fxLayer);
         rect.anchorMin = rect.anchorMax = Vector2.zero; rect.pivot = new Vector2(0.5f, 0.5f);
         float units = EcoTheme.Height > 0f ? Screen.height / EcoTheme.Height / canvas.scaleFactor : 1f;
-        float h = active.kind == Kind.Settings ? 720f : active.kind == Kind.Slots ? 680f : 640f;
-        rect.sizeDelta = new Vector2(Mathf.Min(620f * units, 1700f), Mathf.Min(h * units, 1000f));
+        float h = active.kind == Kind.Settings ? 720f : active.kind == Kind.Slots ? 680f : active.kind == Kind.NewGame ? 720f : 640f;
+        float w = active.kind == Kind.NewGame ? 980f : 620f;
+        rect.sizeDelta = new Vector2(Mathf.Min(w * units, 1700f), Mathf.Min(h * units, 1000f));
         var image = rect.gameObject.AddComponent<Image>(); image.sprite = EcoLeafArt.Frame(372, 420, 91); image.raycastTarget = false;
         rect.gameObject.AddComponent<CanvasGroup>().blocksRaycasts = false;
         var label = Label(rect, active.label.text, 40, FontStyle.Bold, EcoLeafArt.Ink, TextAnchor.MiddleCenter);

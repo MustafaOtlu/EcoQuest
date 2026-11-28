@@ -88,8 +88,8 @@ public sealed class EcoRun : MonoBehaviour
     /// <summary>Title "Yeni oyun": roll a valley and show the briefing. The world changes only on "Başla".</summary>
     public void RequestNewRun()
     {
-        bool first = EcoMeta.Current.runs == 0;
-        Pending = first ? EcoScenario.Training() : EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal);
+        // GDD v5 §21 "Geri bildirim 16": no fixed training valley any more; every new game rolls a valley.
+        Pending = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal);
         PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
         ui.ShowBriefing();
     }
@@ -103,15 +103,13 @@ public sealed class EcoRun : MonoBehaviour
         if (Pending == null || Pending.training) return;
         Pending = EcoScenario.Roll(NewSeed(), Pending.difficulty); PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
     }
-    /// <summary>Lets a returning player skip the training valley.</summary>
-    public void SkipTraining()
-    {
-        Pending = EcoScenario.Roll(NewSeed(), EcoDifficulty.Normal); PendingGoals = EcoGoalCatalog.Pick(Pending, PendingKinds());
-    }
     private static int NewSeed() => (int)(DateTime.UtcNow.Ticks % 2000000000L) ^ UnityEngine.Random.Range(1, 99999);
 
     /// <summary>Goals are picked from the regions the pending valley will have, not the one on screen.</summary>
     private HashSet<EcoRegionInfo.Kind> PendingKinds() => EcoValleyAssembler.Current != null ? EcoValley.Kinds(EcoValley.Layout(Pending)) : PresentKinds();
+
+    /// <summary>The briefing (or the unlock tree opened from it) is on screen.</summary>
+    public bool BriefingOpen => ui != null && (ui.Current == EcoRunUI.View.Briefing || ui.Current == EcoRunUI.View.Unlocks);
 
     public void BeginPending()
     {

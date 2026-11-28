@@ -71,6 +71,8 @@ public sealed class EcoRunUI : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && (Current == View.Goals || Current == View.Crisis))
         { EcoUIFlow.ConsumeEscape(); Close(); }
+        else if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && Current == View.Briefing && EcoTitleMenu.Active)
+        { EcoUIFlow.ConsumeEscape(); Close(); } // back to the 3D title, which pulls the briefing in again
     }
 
     // ================================================================== drawing
@@ -78,8 +80,10 @@ public sealed class EcoRunUI : MonoBehaviour
     private void OnGUI()
     {
         if (run == null) return;
-        if (PlayerController.Paused && Current != View.Briefing) { ChipBottomPixels = 0f; return; }
-        if (Current == View.Briefing && PlayerController.Paused) return;
+        // Over the 3D title (GDD v5 §21 "Geri bildirim 16") the briefing and its unlock tree draw while the game is paused.
+        bool overTitle = EcoTitleMenu.Active && (Current == View.Briefing || Current == View.Unlocks);
+        if (PlayerController.Paused && !overTitle && Current != View.Briefing) { ChipBottomPixels = 0f; return; }
+        if (Current == View.Briefing && PlayerController.Paused && !overTitle) return;
         EcoTheme.Begin();
         Styles();
         GUI.depth = -4;
@@ -181,7 +185,7 @@ public sealed class EcoRunUI : MonoBehaviour
         // Footer.
         float bw = 200f;
         if (!s.training && GUI.Button(new Rect(x, footer, bw, 42f), "Başka vadi", EcoTheme.Button)) run.RerollPending();
-        if (s.training && EcoMeta.Current.runs == 0 && GUI.Button(new Rect(x, footer, bw + 40f, 42f), "Eğitimi atla", EcoTheme.Button)) run.SkipTraining();
+        if (EcoTitleMenu.Active && GUI.Button(new Rect(x + (s.training ? 0f : bw + 12f), footer, 140f, 42f), "Geri", EcoTheme.Button)) Close();
         if (EcoTheme.IconButton(new Rect(r.xMax - 36f - 220f, footer, 220f, 42f), "Vadiye in", "player", EcoTheme.PrimaryButton))
         { Close(); run.BeginPending(); }
     }
