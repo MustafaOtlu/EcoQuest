@@ -104,9 +104,12 @@ public sealed class EcoMarketUI : MonoBehaviour
             buttons[i] = ButtonAt(card, "İşlem", new Vector2(13, -108), new Vector2(194, 28), () =>
             {
                 if (vendor == null || player == null) return;
-                if (page == Page.Upgrades) vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
-                else if (page == Page.Support) Support(index);
-                else vendor.Trade(player, (EcoMarket.Offer)index);
+                bool done;
+                if (page == Page.Upgrades) done = vendor.Upgrade(player, (EcoEquipmentUpgrades.Upgrade)index);
+                else if (page == Page.Support) done = Support(index);
+                else done = vendor.Trade(player, (EcoMarket.Offer)index);
+                // Feedback (GDD v5 §21): the card punches green on success, shakes red when it did not go through.
+                EcoUIPop.Play((RectTransform)card.transform, done, done ? (page == Page.Upgrades ? "Geliştirildi!" : page == Page.Support ? "Tamam!" : EcoMarket.IsPurchase((EcoMarket.Offer)index) ? "Alındı!" : "Satıldı!") : "Olmadı");
                 Refresh();
             });
         }
@@ -120,13 +123,18 @@ public sealed class EcoMarketUI : MonoBehaviour
     private static readonly string[] SupportTitles = { "Acil şarj", "Temel destek", "Elle ayırma", "Atölye: demir top", "Atölye: küçük filtre", "Atölye: büyük filtre" };
     private static readonly string[] SupportIcons = { "electricity", "seed", "tool_recycle", "ammo", "filter", "poi_factory" };
     private static readonly EcoMarket.Offer[] Crafts = { EcoMarket.Offer.IronAmmo, EcoMarket.Offer.SmallFilter, EcoMarket.Offer.LargeFilter };
-    private void Support(int index)
+    private bool Support(int index)
     {
         var shop = EcoWorkshop.For(player);
-        if (index == 0) shop.StartCharge(vendor);
-        else if (index == 1) shop.Rescue();
-        else if (index == 2) player.HandSort();
-        else shop.Enqueue(Crafts[index - 3]);
+        if (index == 0) return shop.StartCharge(vendor);
+        if (index == 1) return shop.Rescue();
+        if (index == 2)
+        {
+            int before = player.CollectedMetalScrap + player.CollectedPlasticScrap + player.CollectedOrganicWaste;
+            player.HandSort();
+            return player.CollectedMetalScrap + player.CollectedPlasticScrap + player.CollectedOrganicWaste < before;
+        }
+        return shop.Enqueue(Crafts[index - 3]);
     }
     private bool DescribeSupport(int index, out string description, out string price, out string action)
     {

@@ -28,7 +28,14 @@ public sealed class EcoFactory : MonoBehaviour
         if (Vector3.Distance(player.transform.position, hit != null ? hit.bounds.ClosestPoint(player.transform.position) : transform.position) > 3) return false;
         if (filtered) { player.ShowFeedback("Bu fabrikada filtre zaten takılı."); return false; }
         if (!player.UseAirFilter(true)) { player.ShowFeedback("Marketten büyük hava filtresi alman gerekiyor."); return false; }
-        filtered = true; RefreshVisual();
+        filtered = true; RefreshVisual(keepSmoke: true);
+        // Feedback (GDD v5 §21): the filter snaps into its frame and the stack lets out one clean white puff; the
+        // dark smoke already in the air drifts away, so the plume turns from grey to white.
+        var frame = filterVisual != null ? filterVisual.transform.position : (hit != null ? hit.bounds.center + Vector3.up * hit.bounds.extents.y : transform.position + Vector3.up * 3f);
+        EcoPopIn.On(filterVisual);
+        EcoWorkFx.Sparkle(frame, EcoWorkFx.Gold, 16);
+        if (smoke != null) for (int i = 0; i < 10; i++) EcoLitterToss.Puff(smoke.transform.position, new Vector3(UnityEngine.Random.Range(-0.5f, 0.5f), UnityEngine.Random.Range(1.5f, 2.5f), UnityEngine.Random.Range(-0.5f, 0.5f)), 1.2f, 0.4f, new Color(0.95f, 0.97f, 0.97f, 0.8f));
+        EcoFloatingText.Show(frame + Vector3.up * 0.8f, "Filtre takıldı · hava −%80", Color.white, 1.8f, 1f, 30f);
         player.ShowFeedback("Büyük filtre takıldı • Hava emisyonu %80 azaldı. Karbon üretimi sürüyor."); return true;
     }
     public bool ConvertToCleanPower(PlayerWeaponSystem player)
@@ -39,7 +46,13 @@ public sealed class EcoFactory : MonoBehaviour
         converted = true;
         var node = GetComponent<EcoPowerNode>(); if (node == null) node = gameObject.AddComponent<EcoPowerNode>();
         node.kind = EcoPowerNode.Kind.Consumer; node.requestedPower = 2;
-        RefreshVisual(); player.ShowFeedback("Temiz enerji dönüşümü tamam. Kabloyu bağla; karbon yükü %90 azalır."); return true;
+        RefreshVisual(keepSmoke: true);
+        var body = GetComponentInChildren<Collider>();
+        Vector3 at = body != null ? body.bounds.center : transform.position + Vector3.up;
+        EcoLitterToss.Burst(new Vector3(at.x, transform.position.y + 0.1f, at.z), EcoWorkFx.Clean, 24, 3f, 0.25f, 0.6f);
+        EcoWorkFx.Sparkle(at, EcoWorkFx.Clean, 20);
+        EcoFloatingText.Show(at + Vector3.up * 2f, "TEMİZ ENERJİ", EcoWorkFx.Clean, 2f, 1.2f, 40f);
+        player.ShowFeedback("Temiz enerji dönüşümü tamam. Kabloyu bağla; karbon yükü %90 azalır."); return true;
     }
     public void RestoreState(bool hasFilter, bool cleanPower)
     {
@@ -47,7 +60,8 @@ public sealed class EcoFactory : MonoBehaviour
         if (converted) { var node = GetComponent<EcoPowerNode>(); if (node == null) node = gameObject.AddComponent<EcoPowerNode>(); node.kind = EcoPowerNode.Kind.Consumer; node.requestedPower = 2; }
         RefreshVisual();
     }
-    public void RefreshVisual()
+    public void RefreshVisual() => RefreshVisual(false);
+    public void RefreshVisual(bool keepSmoke)
     {
         if (filterVisual != null) filterVisual.SetActive(filtered);
         foreach (var caption in GetComponentsInChildren<UnityEngine.UI.Text>())
@@ -55,7 +69,9 @@ public sealed class EcoFactory : MonoBehaviour
         if (smoke == null) return;
         var main = smoke.main; main.startColor = filtered ? new Color(0.92f, 0.95f, 0.95f, 0.6f) : new Color(0.12f, 0.1f, 0.08f, 0.85f);
         // Existing particles must also change when the filter is installed.
-        smoke.Clear(); if (Application.isPlaying && smoke.gameObject.activeInHierarchy) smoke.Play();
+        // On load the old colour is cleared at once; a filter fitted in play lets the dark puffs drift off.
+        if (!keepSmoke) smoke.Clear();
+        if (Application.isPlaying && smoke.gameObject.activeInHierarchy && !smoke.isPlaying) smoke.Play();
     }
     public string Describe() => filtered ? "Fabrika • Büyük filtre takılı\nHava emisyonu %80 azaldı • Karbon üretimi sürüyor"
         : "Filtresiz fabrika • Hava kirliliği ve karbon üretiyor\n" + EcoKeys.Tag(EcoKeys.Action.Interact) + " Büyük hava filtresi tak";

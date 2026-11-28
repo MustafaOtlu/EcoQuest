@@ -90,6 +90,8 @@ public sealed class EcoWorkshop : MonoBehaviour
             {
                 chargeAt = null; ChargeProgress = 0f;
                 player.ReceiveElectricity(ChargeAmount);
+                EcoFloatingText.Show(player.transform.position + Vector3.up * 2f, "+" + ChargeAmount + " EB", EcoWorkFx.Gold);
+                EcoWorkFx.Sparkle(player.transform.position + Vector3.up * 1.1f, EcoWorkFx.Gold, 12);
                 player.ShowFeedback("Acil şarj tamam • +15 EB. Kalıcı çözüm için güneş + batarya + şarj kur.");
             }
         }
@@ -97,7 +99,12 @@ public sealed class EcoWorkshop : MonoBehaviour
         {
             var offer = queue[0]; queue.RemoveAt(0); PackProgress = 0f;
             // Same recipe as the market; the daily counter is not touched because the workshop is the slow path.
-            if (player.ExecuteMarketTrade(offer)) player.ShowFeedback("Atölye hazır: " + EcoMarket.Titles[(int)offer] + ".");
+            if (player.ExecuteMarketTrade(offer))
+            {
+                player.ShowFeedback("Atölye hazır: " + EcoMarket.Titles[(int)offer] + ".");
+                EcoFloatingText.Show(player.transform.position + Vector3.up * 2f, "+ " + EcoMarket.Titles[(int)offer], EcoWorkFx.Gold, 1.8f);
+                EcoWorkFx.Sparkle(player.transform.position + Vector3.up * 1.1f, EcoWorkFx.Gold, 12);
+            }
             else player.ShowFeedback("Atölye " + EcoMarket.Titles[(int)offer] + " yapamadı • malzeme yetmedi, sıra iptal.");
         }
     }
