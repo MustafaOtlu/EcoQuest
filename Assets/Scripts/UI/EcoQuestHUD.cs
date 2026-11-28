@@ -69,6 +69,22 @@ public sealed class EcoQuestHUD : MonoBehaviour
     private readonly Text[] chipValues = new Text[10], chipNames = new Text[10];
     private readonly GameObject[] chipHits = new GameObject[10];
     private readonly int[] lastResources = new int[Chips.Length];
+    // Feedback (GDD v5 §21, "Geri bildirim 5"): a counter that changes punches, flashes green/red and lets a
+    // "+N"/"−N" ghost rise; a counter that was short when the player tried to spend shakes red.
+    private readonly Image[] chipFlashes = new Image[10];
+    private readonly Text[] chipGhosts = new Text[10];
+    private readonly float[] chipPulse = new float[10], chipGhostAge = new float[10], chipShake = new float[10];
+    private readonly int[] chipDelta = new int[10];
+    private static EcoQuestHUD current;
+    private static readonly Color GainColor = new Color32(96, 214, 120, 255), LossColor = new Color32(240, 96, 80, 255);
+    /// <summary>Shakes the counters the player was short of (0 metal, 1 plastic, 3 compost).</summary>
+    public static void Shortage(bool metal, bool plastic, bool compost = false)
+    {
+        if (current == null) return;
+        if (metal) current.chipShake[0] = 0.0001f;
+        if (plastic) current.chipShake[1] = 0.0001f;
+        if (compost) current.chipShake[3] = 0.0001f;
+    }
     private bool resourcesReady;
     private RectTransform resourceNotice;
     private Text resourceNoticeText;
@@ -185,7 +201,17 @@ public sealed class EcoQuestHUD : MonoBehaviour
             hudStyle.Tint(hit, Tone.Raised);
             hudStyle.Tint(chipValues[i], Tone.Text);
             hudStyle.Tint(chipNames[i], Tone.Muted);
+            chipFlashes[i] = EcoUI.Panel("Flash", hit.transform, new Vector2(0, 1), new Vector2(0, 1), Color.clear, false);
+            EcoUI.Stretch(chipFlashes[i].rectTransform); chipFlashes[i].raycastTarget = false;
+            chipFlashes[i].transform.SetAsFirstSibling();
+            chipGhosts[i] = EcoUI.Label("Delta", hit.transform, "", 14, TextAnchor.MiddleRight, GainColor, true);
+            chipGhosts[i].raycastTarget = false; chipGhosts[i].horizontalOverflow = HorizontalWrapMode.Overflow;
+            chipGhosts[i].verticalOverflow = VerticalWrapMode.Overflow;
+            chipGhosts[i].gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.55f);
+            chipGhosts[i].gameObject.SetActive(false);
+            chipPulse[i] = chipGhostAge[i] = chipShake[i] = -1f;
         }
+        current = this;
         yepIcon = EcoUI.Icon("YEP", resourcesCard.body, "yep", new Vector2(0, 1), new Vector2(0, 1), 24f);
         yepText = EcoUI.Label("YEP text", resourcesCard.body, "", 13, TextAnchor.MiddleLeft, EcoUI.Ink, true);
         yepFill = EcoUI.Meter("YEP meter", resourcesCard.body, out yepTrack);
@@ -272,6 +298,49 @@ public sealed class EcoQuestHUD : MonoBehaviour
         Refresh();
     }
 
+    private void AnimateChip(int i)
+    {
+        float dt = Time.unscaledDeltaTime;
+        float scale = 1f, shakeX = 0f, flash = 0f; Color tint = GainColor;
+        if (chipPulse[i] >= 0f)
+        {
+            chipPulse[i] += dt;
+            float t = chipPulse[i] / 0.35f;
+            if (t >= 1f) chipPulse[i] = -1f;
+            else { scale = 1f + 0.35f * Mathf.Sin(t * Mathf.PI) * (1f - t * 0.5f); flash = 1f - t; tint = chipDelta[i] > 0 ? GainColor : LossColor; }
+        }
+        if (chipShake[i] >= 0f)
+        {
+            chipShake[i] += dt;
+            float t = chipShake[i] / 0.5f;
+            if (t >= 1f) chipShake[i] = -1f;
+            else { shakeX = Mathf.Sin(chipShake[i] * 70f) * 5f * (1f - t); flash = Mathf.Max(flash, 1f - t); tint = LossColor; }
+        }
+        // Icon and value grow about their own centres; positions match ApplyLayout.
+        float grow = scale - 1f;
+        chipIcons[i].rectTransform.localScale = Vector3.one * scale;
+        chipIcons[i].rectTransform.anchoredPosition = new Vector2(4f - 11f * grow + shakeX, -4f + 11f * grow);
+        chipValues[i].rectTransform.localScale = Vector3.one * (scale / EcoUI.RasterScale); // labels draw at the 2× raster
+        chipValues[i].rectTransform.anchoredPosition = new Vector2(32f + shakeX, -1f + 8.5f * grow);
+        var text = hudStyle.ColorFor(Tone.Text);
+        chipValues[i].color = flash > 0f ? Color.Lerp(text, tint, Mathf.Clamp01(flash * 1.4f)) : text;
+        chipFlashes[i].color = new Color(tint.r, tint.g, tint.b, 0.35f * flash);
+        var ghost = chipGhosts[i];
+        if (chipGhostAge[i] >= 0f)
+        {
+            chipGhostAge[i] += dt;
+            float g = chipGhostAge[i] / 1.1f;
+            if (g >= 1f) { chipGhostAge[i] = -1f; ghost.gameObject.SetActive(false); return; }
+            ghost.gameObject.SetActive(true);
+            ghost.text = (chipDelta[i] > 0 ? "+" : "−") + Mathf.Abs(chipDelta[i]);
+            var c = chipDelta[i] > 0 ? GainColor : LossColor;
+            c.a = g < 0.6f ? 1f : 1f - (g - 0.6f) / 0.4f;
+            ghost.color = c;
+            float w = ((RectTransform)chipHits[i].transform).sizeDelta.x;
+            EcoUI.Layout(ghost, new Vector2(w - 60f, -2f + 16f * (1f - (1f - g) * (1f - g))), new Vector2(54f, 18f));
+        }
+    }
+
     private void Update()
     {
         if (canvas == null) return;
@@ -346,7 +415,15 @@ public sealed class EcoQuestHUD : MonoBehaviour
             chipValues[i].text = counts[i].ToString();
             int gain = counts[i] - lastResources[i];
             if (resourcesReady && gain > 0 && resourceGain == null) resourceGain = "+" + gain + " " + Chips[i].name;
+            if (resourcesReady && gain != 0)
+            {
+                // Changes that come in quick succession add up in one ghost ("+2", then "+4").
+                bool sameWay = chipGhostAge[i] >= 0f && chipGhostAge[i] < 0.6f && System.Math.Sign(chipDelta[i]) == System.Math.Sign(gain);
+                chipDelta[i] = sameWay ? chipDelta[i] + gain : gain;
+                chipPulse[i] = 0f; chipGhostAge[i] = 0f;
+            }
             lastResources[i] = counts[i];
+            AnimateChip(i);
         }
         resourcesReady = true;
         if (resourceGain != null)

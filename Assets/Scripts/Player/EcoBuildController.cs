@@ -162,7 +162,12 @@ public sealed class EcoBuildController : MonoBehaviour
         if (targetStructure != null) Status = "" + EcoKeys.Tag(EcoKeys.Action.Toggle) + " Tamir • " + EcoKeys.Tag(EcoKeys.Action.Dismantle) + " Sök • Sağlamlık %" + targetStructure.integrity.ToString("0") + "\n" + targetStructure.UpgradeHint;
         bool click = mouse != null && mouse.leftButton.wasPressedThisFrame;
         // Clicking a spot that does not work shakes the red ghost and flashes it instead of doing nothing.
-        if (!valid && click && targetStructure == null) shakeUntil = Time.unscaledTime + 0.35f;
+        if (!valid && click && targetStructure == null)
+        {
+            shakeUntil = Time.unscaledTime + 0.35f;
+            var wanted = EcoBuildingCatalog.Entries[Selection];
+            EcoQuestHUD.Shortage(weapons.Metal < wanted.Metal, weapons.Plastic < wanted.Plastic);
+        }
         if (preview != null)
         {
             // The ghost glides between grid cells instead of jumping, so it reads as one object under the cursor.

@@ -650,7 +650,9 @@ public sealed class PlayerWeaponSystem : MonoBehaviour
     }
     public bool TrySpendMaterials(int metal, int plastic, int compost = 0)
     {
-        if (!CanOperate || metal < 0 || plastic < 0 || compost < 0 || Metal < metal || Plastic < plastic || Compost < compost) return false;
+        if (!CanOperate || metal < 0 || plastic < 0 || compost < 0) return false;
+        if (Metal < metal || Plastic < plastic || Compost < compost)
+        { EcoQuestHUD.Shortage(Metal < metal, Plastic < plastic, Compost < compost); return false; }
         Metal -= metal; Plastic -= plastic; Compost -= compost; Changed?.Invoke(); return true;
     }
     public void ReturnMaterials(int metal, int plastic, int compost = 0)
